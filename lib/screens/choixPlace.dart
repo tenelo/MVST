@@ -1,26 +1,28 @@
 import 'dart:async';
 
 import 'package:badges/badges.dart' as badges;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/bloc/state.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/models/listeDesPlaeces.dart';
+import 'package:mvst/models/mesfonctions.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 
 DateTime? dateActuelle = DateTime.now();
 DateTime? dateDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 1);
-String? _date;
 
 List<int> listeDesPlacesChoisies = [];
+String? _depart, _destination, _date, _heure;
 
 class ChoixPlaces extends StatefulWidget {
   const ChoixPlaces(
       {super.key,
+      required this.idDate,
       required this.id,
       required this.depart,
       required this.destination,
@@ -29,6 +31,7 @@ class ChoixPlaces extends StatefulWidget {
       required this.date,
       required this.heure,
       required this.prixDuBillet});
+  final String idDate;
   final String id;
   final String nom;
   final String contact;
@@ -45,14 +48,20 @@ class ChoixPlaces extends StatefulWidget {
 class _ChoixPlacesState extends State<ChoixPlaces> {
   int _seconds = 30;
   late Timer _timer;
+
   bool _isLoading = true;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _date = widget.idDate;
+    _heure = widget.heure;
+    _depart = widget.depart;
+    _destination = widget.destination;
     _loadData();
     startCountdown();
+    listeDesPlacesChoisies.clear();
   }
 
   @override
@@ -121,6 +130,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => Tickets(
+                          idDate: widget.idDate,
                           nombreDeTicket: state.tickets,
                           place: listeDesPlacesChoisies.toList(),
                           id: widget.id,
@@ -204,32 +214,26 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                             child: Column(
                               children: [
                                 // DERNIERE RANGEE
-                                const Row(
+                                Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Places(
+                                    PlacesReservees(
                                       index: 61,
-                                      clicable: "true",
                                     ),
-                                    Places(
+                                    PlacesReservees(
                                       index: 60,
-                                      clicable: "true",
                                     ),
-                                    Places(
+                                    PlacesReservees(
                                       index: 59,
-                                      clicable: "true",
                                     ),
-                                    Places(
+                                    PlacesReservees(
                                       index: 58,
-                                      clicable: "true",
                                     ),
-                                    Places(
+                                    PlacesReservees(
                                       index: 57,
-                                      clicable: "true",
                                     ),
-                                    Places(
+                                    PlacesReservees(
                                       index: 56,
-                                      clicable: "true",
                                     ),
                                   ],
                                 ),
@@ -367,15 +371,13 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                             ),
                                           ],
                                         ),
-                                        const Row(
+                                        Row(
                                           children: [
-                                            Places(
+                                            PlacesReservees(
                                               index: 5,
-                                              clicable: "true",
                                             ),
-                                            Places(
+                                            PlacesReservees(
                                               index: 4,
-                                              clicable: "true",
                                             ),
                                           ],
                                         ),
@@ -386,7 +388,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                       width: 35,
                                     ),
                                     // RANGE DE 3 SIEGES
-                                    const Column(
+                                    Column(
                                       children: [
                                         Row(
                                           children: [
@@ -550,17 +552,14 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         ),
                                         Row(
                                           children: [
-                                            Places(
+                                            PlacesReservees(
                                               index: 3,
-                                              clicable: "true",
                                             ),
-                                            Places(
+                                            PlacesReservees(
                                               index: 2,
-                                              clicable: "true",
                                             ),
-                                            Places(
+                                            PlacesReservees(
                                               index: 1,
-                                              clicable: "true",
                                             ),
                                           ],
                                         ),
@@ -626,6 +625,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => Tickets(
+                      idDate: widget.idDate,
                       nombreDeTicket: state.tickets,
                       place: listeDesPlacesChoisies.toList(),
                       id: widget.id,
@@ -673,6 +673,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => Tickets(
+                              idDate: widget.idDate,
                               nombreDeTicket: state.tickets,
                               place: listeDesPlacesChoisies.toList(),
                               id: widget.id,
@@ -761,10 +762,19 @@ class _PlacesState extends State<Places> {
   }
 
   void verification() {
-    if (ListeDesPlaces.listeNummeros.contains(widget.index)) {
+    if (listeDesNumeros.contains(widget.index)) {
       couleurInitiale = couleurSelection;
       control = "false";
     }
+  }
+
+  void rafraichissement() {
+    final collectionRef = FirebaseFirestore.instance.collection('tickets');
+    final subscription = collectionRef.snapshots().listen((snapshot) {
+      snapshot.docChanges.forEach((change) {
+        setState(() {});
+      });
+    });
   }
 
   // La liste de booléens qui représente la sélection de chaque carte
@@ -780,12 +790,14 @@ class _PlacesState extends State<Places> {
             selection[widget.index] = !selection[widget.index];
             if (selection[widget.index]) {
               counterBloc.add(EventIcrement());
-              ClasseListeDesPlaces.getTicketsStream();
+              ClasseListeDesPlaces.getTicketsStream(
+                  _depart!, _destination!, _date!, _heure!);
               verification();
               listeDesPlacesChoisies.add(widget.index);
             } else {
               counterBloc.add(EventDecrement());
-              ClasseListeDesPlaces.getTicketsStream();
+              ClasseListeDesPlaces.getTicketsStream(
+                  _depart!, _destination!, _date!, _heure!);
               verification();
               listeDesPlacesChoisies.remove(widget.index);
             }
@@ -868,17 +880,11 @@ class _PlacesState extends State<Places> {
   }
 }
 
-class PlacesVide extends StatefulWidget {
-  const PlacesVide({
-    super.key,
-  });
-
-  @override
-  State<PlacesVide> createState() => _PlacesVideState();
-}
-
-class _PlacesVideState extends State<PlacesVide> {
-  Color couleurSelection = const Color.fromARGB(255, 182, 214, 251);
+// ignore: must_be_immutable
+class PlacesReservees extends StatelessWidget {
+  PlacesReservees({super.key, required this.index});
+  final int index;
+  Color couleurSelection = Color.fromARGB(166, 249, 195, 115);
 
   @override
   Widget build(BuildContext context) {
@@ -894,12 +900,12 @@ class _PlacesVideState extends State<PlacesVide> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const SizedBox(
+            child: SizedBox(
               height: 35,
               width: 35,
               child: Center(
                 child: Text(
-                  (""), // On convertit l'index en chaîne de caractères
+                  index.toString(),
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold),
                 ),
@@ -953,16 +959,12 @@ class _PlacesVideState extends State<PlacesVide> {
   }
 }
 
-class PlacesChauffeur extends StatefulWidget {
-  const PlacesChauffeur({
+// ignore: must_be_immutable
+class PlacesChauffeur extends StatelessWidget {
+  PlacesChauffeur({
     super.key,
   });
 
-  @override
-  State<PlacesChauffeur> createState() => _PlacesChauffeurState();
-}
-
-class _PlacesChauffeurState extends State<PlacesChauffeur> {
   Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
 
   @override

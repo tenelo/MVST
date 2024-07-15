@@ -1,11 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mvst/bloc/bloc.dart';
+import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/screens/petitsEcrans.dart/home2.dart';
 
 class ChoixPaiement2 extends StatefulWidget {
   const ChoixPaiement2({
     super.key,
+    required this.idDate,
     required this.nombreDeTicket,
     required this.prixUnitaire,
     required this.id,
@@ -17,7 +21,7 @@ class ChoixPaiement2 extends StatefulWidget {
     required this.destination,
     required this.depart,
   });
-
+  final String idDate;
   final int nombreDeTicket;
   final int prixUnitaire;
   final String id;
@@ -37,16 +41,46 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
   bool _isLoading = false;
 
   Future<void> _ajouterTicketsFirestore() async {
+    // Désactiver le bouton ou la fonctionnalité pendant l'exécution
+    if (_isLoading) return;
+
     setState(() {
       _isLoading = true;
     });
 
     FirebaseFirestore firestore = FirebaseFirestore.instance;
-    CollectionReference tickets = firestore.collection('tickets');
+    // Référence du document 'date' dans la collection 'tickets'
+    DocumentReference dateDocRef = firestore.collection('tickets').doc(
+        "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h");
+
+    // Vérifier si le document parent existe
+    DocumentSnapshot dateDocSnapshot = await dateDocRef.get();
+
+    // Cast les données du document en Map<String, dynamic>
+    Map<String, dynamic>? dateData =
+        dateDocSnapshot.data() as Map<String, dynamic>?;
+
+    if (!dateDocSnapshot.exists) {
+      // Si aucun document avec pour id widget.idDate n'existe dans la collection 'tickets'
+      // Créer un nouveau document avec ces trois champs ('createdAt', 'dateDeDepart', 'heureDeDepart')
+      await dateDocRef.set({
+        'createdAt': FieldValue.serverTimestamp(),
+        'dateDeDepart': widget.idDate,
+        'heureDeDepart': widget.heure,
+      });
+    } else {}
+
+    // Référence de la sous-collection 'sousCollectionTickets' du document 'date'
+    CollectionReference sousCollectionTickets =
+        dateDocRef.collection('sousCollectionTickets');
+
     WriteBatch batch = firestore.batch();
 
-    for (int place in widget.place) {
-      DocumentReference docRef = tickets.doc();
+    // Éliminer les doublons dans la liste 'place'
+    List<int> placesSansDoublons = widget.place.toSet().toList();
+
+    for (int place in placesSansDoublons) {
+      DocumentReference docRef = sousCollectionTickets.doc();
       batch.set(docRef, {
         'idUtilisateur': widget.id,
         'nom': widget.nom,
@@ -104,6 +138,7 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
 
   @override
   Widget build(BuildContext context) {
+    final BlocCompteur initialiseBloc = BlocProvider.of<BlocCompteur>(context);
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -246,6 +281,8 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
                                               onPressed: () async {
                                                 await _ajouterTicketsFirestore();
                                                 Navigator.of(context).pop();
+                                                initialiseBloc
+                                                    .add(EventInitialise());
                                                 Navigator.of(context)
                                                     .pushReplacement(
                                                   MaterialPageRoute(
@@ -321,6 +358,8 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
                                               onPressed: () async {
                                                 await _ajouterTicketsFirestore();
                                                 Navigator.of(context).pop();
+                                                initialiseBloc
+                                                    .add(EventInitialise());
                                                 Navigator.of(context)
                                                     .pushReplacement(
                                                   MaterialPageRoute(
@@ -396,6 +435,8 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
                                               onPressed: () async {
                                                 await _ajouterTicketsFirestore();
                                                 Navigator.of(context).pop();
+                                                initialiseBloc
+                                                    .add(EventInitialise());
                                                 Navigator.of(context)
                                                     .pushReplacement(
                                                   MaterialPageRoute(
@@ -472,6 +513,8 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
                                               onPressed: () async {
                                                 await _ajouterTicketsFirestore();
                                                 Navigator.of(context).pop();
+                                                initialiseBloc
+                                                    .add(EventInitialise());
                                                 Navigator.of(context)
                                                     .pushReplacement(
                                                   MaterialPageRoute(

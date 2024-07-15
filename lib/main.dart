@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:mvst/bloc/bloc.dart';
-import 'package:mvst/bloc/bloctket/tkbloc.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/firebase_options.dart';
 import 'package:mvst/screens/home.dart';
@@ -30,15 +29,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     tailleEcran = calculeTailleEcran(context).round();
 
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<BlocCompteur>(
-          create: (context) => BlocCompteur(),
-        ),
-        BlocProvider<BlocAjoutListe>(
-          create: (context) => BlocAjoutListe(),
-        ),
-      ],
+    return BlocProvider(
+      create: (context) => BlocCompteur(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: ThemeData(

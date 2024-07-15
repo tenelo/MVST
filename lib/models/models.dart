@@ -189,7 +189,7 @@ class _PetitesCartesState extends State<PetitesCartes> {
             setState(() {
               _isLoading = true;
             });
-
+            //listenForTicketChanges();
             // Récupérer les données utilisateur
             Map<String, dynamic>? data = await InformationsUtilisateur();
             setState(() {

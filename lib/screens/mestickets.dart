@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
@@ -23,7 +23,9 @@ String? dateDeDemain;
 class MesTickets extends StatefulWidget {
   const MesTickets({
     super.key,
+    required this.idUtilisateur,
   });
+  final String idUtilisateur;
   @override
   State<MesTickets> createState() => _MesTicketsState();
 }
@@ -38,12 +40,30 @@ class _MesTicketsState extends State<MesTickets> {
     dateDeDemain = DateFormat('EEEE d MMMM y', 'fr_FR').format(dateDemain!);
   }
 
-  final Stream<QuerySnapshot> _listeDesTickets = FirebaseFirestore.instance
-      .collection('tickets')
-      .where('idUtilisateur', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-      .orderBy('dateDeCreation', descending: true)
-      .limit(10)
-      .snapshots();
+  Stream<List<DocumentSnapshot<Map<String, dynamic>>>>
+      getAllSubcollectionDocuments() {
+    return FirebaseFirestore.instance
+        .collection('tickets')
+        .orderBy('createdAt', descending: true)
+        .limit(5)
+        .snapshots()
+        .asyncMap((ticketsSnapshot) async {
+      List<DocumentSnapshot<Map<String, dynamic>>> allDocuments = [];
+      for (var ticketDoc in ticketsSnapshot.docs) {
+        try {
+          var subcollectionSnapshot = await ticketDoc.reference
+              .collection('sousCollectionTickets')
+              .where('idUtilisateur', isEqualTo: widget.idUtilisateur)
+              .orderBy('dateDeCreation', descending: true)
+              .get();
+          allDocuments.addAll(subcollectionSnapshot.docs);
+        } catch (e) {
+          print('Error fetching subcollection for ticket ${ticketDoc.id}: $e');
+        }
+      }
+      return allDocuments;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,28 +72,34 @@ class _MesTicketsState extends State<MesTickets> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _listeDesTickets,
-            builder:
-                (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          child: StreamBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
+            stream: getAllSubcollectionDocuments(),
+            builder: (BuildContext context,
+                AsyncSnapshot<List<DocumentSnapshot<Map<String, dynamic>>>>
+                    snapshot) {
               if (snapshot.hasError) {
-                return Text('Une erreur est survenue');
+                return Center(child: Text('Une erreur est survenue'));
               }
 
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
               }
 
-              if (snapshot.data!.docs.isEmpty) {
+              if (snapshot.data == null || snapshot.data!.isEmpty) {
                 return Center(child: Text("Vous n'avez aucun ticket"));
               }
 
               return ListView.builder(
-                itemCount: snapshot.data!.docs.length,
+                itemCount: snapshot.data!.length,
                 itemBuilder: (BuildContext context, int index) {
-                  DocumentSnapshot document = snapshot.data!.docs[index];
-                  Map<String, dynamic> ticket =
-                      document.data() as Map<String, dynamic>;
+                  DocumentSnapshot<Map<String, dynamic>> document =
+                      snapshot.data![index];
+                  Map<String, dynamic>? ticket = document.data();
+                  if (ticket == null) {
+                    return Center(
+                        child:
+                            Text('Erreur de chargement des données du ticket'));
+                  }
                   var idTicket = document.id;
                   var verifDate = ticket['date'];
                   if (verifDate == dateDAujourdhui ||

@@ -11,6 +11,7 @@ int? tailleEcran;
 class Tickets extends StatefulWidget {
   const Tickets(
       {super.key,
+      required this.idDate,
       required this.nombreDeTicket,
       required this.place,
       required this.id,
@@ -21,6 +22,7 @@ class Tickets extends StatefulWidget {
       required this.destination,
       required this.depart,
       required this.prixDuTicket});
+  final String idDate;
   final String id;
   final int nombreDeTicket;
   final List<int> place;
@@ -123,6 +125,7 @@ class _TicketsState extends State<Tickets> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChoixPaiement(
+                      idDate: widget.idDate,
                       nombreDeTicket: widget.nombreDeTicket,
                       prixUnitaire: widget.prixDuTicket,
                       id: widget.id,
@@ -142,6 +145,7 @@ class _TicketsState extends State<Tickets> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChoixPaiement2(
+                      idDate: widget.idDate,
                       nombreDeTicket: widget.nombreDeTicket,
                       prixUnitaire: widget.prixDuTicket,
                       id: widget.id,

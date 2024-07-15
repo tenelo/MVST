@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:mvst/admin/parametres.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mvst/authentification/authentification.dart';
 import 'package:mvst/authentification/connection.dart';
+import 'package:mvst/bloc/bloc.dart';
+import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/profil/profil.dart';
 import 'package:mvst/screens/conditionsDutilisation.dart';
@@ -11,6 +13,8 @@ import 'package:mvst/screens/mestickets.dart';
 import 'package:mvst/screens/petitsEcrans.dart/models2.dart';
 import 'package:mvst/screens/suggestions.dart';
 import 'package:mvst/screens/tableauDesTickets.dart';
+
+final user = FirebaseAuth.instance.currentUser!;
 
 class Home2 extends StatefulWidget {
   const Home2({super.key});
@@ -26,6 +30,8 @@ class _Home2State extends State<Home2> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    final BlocCompteur initialiseBloc = BlocProvider.of<BlocCompteur>(context);
+    initialiseBloc.add(EventInitialise());
   }
 
   @override
@@ -190,32 +196,6 @@ class _Home2State extends State<Home2> with SingleTickerProviderStateMixin {
                   ),
                   ListTile(
                     leading: Icon(
-                      Icons.admin_panel_settings_outlined,
-                      color: Config.colors.bleuClaire,
-                    ),
-                    title: Text(
-                      'Admin',
-                      style: TextStyle(
-                        color: Config.colors.bleuClaire,
-                        fontFamily: 'Lobster',
-                      ),
-                    ),
-                    onTap: () {
-                      if (FirebaseAuth.instance.currentUser != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => Parametres(),
-                          ),
-                        );
-                      } else {
-                        Navigator.pop(context);
-                        showIncompleteFieldsSnackBar(context);
-                      }
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(
                       Icons.power_settings_new,
                       color: Config.colors.bleuClaire,
                     ),
@@ -301,11 +281,16 @@ class _Home2State extends State<Home2> with SingleTickerProviderStateMixin {
               ),
             ),
           ),
-          FirebaseAuth.instance.currentUser != null
-              ? const MesTickets()
+          // ignore: unnecessary_null_comparison
+          user != null
+              ? MesTickets(
+                  idUtilisateur: user.uid,
+                )
               : const Login(), // Redirige directement vers la page de connexion
           FirebaseAuth.instance.currentUser != null
-              ? TableauDeTickets()
+              ? TableauDeTickets(
+                  idUtilisateur: user.uid,
+                )
               : const Login(),
           Informations(),
         ],

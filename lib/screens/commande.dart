@@ -5,15 +5,18 @@ import 'package:intl/intl.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/models/listeDesPlaeces.dart';
+import 'package:mvst/models/mesfonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
 import 'package:mvst/screens/home.dart';
 
 DateTime? dateActuelle = DateTime.now();
+DateTime? aujourdhui =
+    DateTime.utc(dateActuelle!.year, dateActuelle!.month, dateActuelle!.day);
 DateTime? dateDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 1);
 DateTime? dateApresDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 2);
+var idDate;
 
 class Commande extends StatefulWidget {
   const Commande(
@@ -60,7 +63,6 @@ class _CommandeState extends State<Commande> {
   }
 
   void _initializeForm() {
-    //_dateController.text = DateFormat('EEEE d MMMM y', 'fr_FR').format(dateDemain!);
     nomController.text = "${widget.nom!} ${widget.prenoms!}";
     contactController.text = widget.telephone!;
   }
@@ -77,7 +79,7 @@ class _CommandeState extends State<Commande> {
                 color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 20),
           ),
           content: Text(
-              "Départ : ${widget.depart}\nDestination : ${widget.destination}"),
+              "Départ : ${widget.depart}\nDestination : ${widget.destination}\nTarif : ${widget.prixDuBillet} f"),
           actions: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -120,6 +122,7 @@ class _CommandeState extends State<Commande> {
           _dateController.text =
               DateFormat('EEEE d MMMM y', 'fr_FR').format(choixDeDate);
         });
+        idDate = DateFormat('EEEE_d_MMMM_y', 'fr_FR').format(choixDeDate);
       }
     } catch (error) {
       print("Erreur lors de la sélection de la date: $error");
@@ -130,7 +133,7 @@ class _CommandeState extends State<Commande> {
 
   @override
   Widget build(BuildContext context) {
-    final BlocCompteur counterBloc = BlocProvider.of<BlocCompteur>(context);
+    final counterBloc = BlocProvider.of<BlocCompteur>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -140,7 +143,7 @@ class _CommandeState extends State<Commande> {
         ),
         centerTitle: true,
         title: Text(
-          "${widget.depart} -> ${widget.destination}",
+          "${widget.depart} -> ${widget.destination} tarif ${widget.prixDuBillet} f",
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color.fromARGB(132, 5, 82, 121),
@@ -188,14 +191,15 @@ class _CommandeState extends State<Commande> {
                             setState(() {
                               _isLoading = true;
                             });
-
                             counterBloc.add(EventInitialise());
-                            ClasseListeDesPlaces.getTicketsStream();
 
+                            await _recupListeDesNummeros(widget.depart,
+                                widget.destination, idDate, heureDeDepart!);
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ChoixPlaces(
+                                  idDate: idDate,
                                   id: widget.idUtilisateur!,
                                   depart: widget.depart,
                                   destination: widget.destination,
@@ -207,7 +211,6 @@ class _CommandeState extends State<Commande> {
                                 ),
                               ),
                             ).then((_) {
-                              // Réinitialiser l'état de chargement une fois que la navigation est terminée
                               setState(() {
                                 _isLoading = false;
                               });
@@ -334,6 +337,12 @@ class _CommandeState extends State<Commande> {
         );
       }).toList(),
     );
+  }
+
+  Future<void> _recupListeDesNummeros(
+      String depart, String destination, String date, String heure) async {
+    await ClasseListeDesPlaces.getTicketsStream(
+        depart, destination, date, heure);
   }
 
   Future<void> _fetchHeuresDeDeparts() async {
