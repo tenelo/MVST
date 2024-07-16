@@ -57,6 +57,7 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
     DocumentSnapshot dateDocSnapshot = await dateDocRef.get();
 
     // Cast les données du document en Map<String, dynamic>
+    // ignore: unused_local_variable
     Map<String, dynamic>? dateData =
         dateDocSnapshot.data() as Map<String, dynamic>?;
 
@@ -67,6 +68,7 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
         'createdAt': FieldValue.serverTimestamp(),
         'dateDeDepart': widget.idDate,
         'heureDeDepart': widget.heure,
+        'placesDejaChoisies': [],
       });
     } else {}
 
@@ -80,6 +82,9 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
     List<int> placesSansDoublons = widget.place.toSet().toList();
 
     for (int place in placesSansDoublons) {
+      await dateDocRef.update({
+        'placesDejaChoisies': FieldValue.arrayUnion([place]),
+      });
       DocumentReference docRef = sousCollectionTickets.doc();
       batch.set(docRef, {
         'idUtilisateur': widget.id,

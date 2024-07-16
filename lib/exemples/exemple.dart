@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mvst/config/config.dart';
 
-class Home2 extends StatefulWidget {
-  const Home2({super.key});
+class Home2B extends StatefulWidget {
+  const Home2B({super.key});
 
   @override
-  State<Home2> createState() => _Home2State();
+  State<Home2B> createState() => _Home2BState();
 }
 
-class _Home2State extends State<Home2> {
+class _Home2BState extends State<Home2B> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

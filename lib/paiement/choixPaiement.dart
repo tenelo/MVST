@@ -66,6 +66,7 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
         'createdAt': FieldValue.serverTimestamp(),
         'dateDeDepart': widget.idDate,
         'heureDeDepart': widget.heure,
+        'placesDejaChoisies': [],
       });
     } else {}
 
@@ -79,6 +80,9 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
     List<int> placesSansDoublons = widget.place.toSet().toList();
 
     for (int place in placesSansDoublons) {
+      await dateDocRef.update({
+        'placesDejaChoisies': FieldValue.arrayUnion([place]),
+      });
       DocumentReference docRef = sousCollectionTickets.doc();
       batch.set(docRef, {
         'idUtilisateur': widget.id,

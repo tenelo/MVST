@@ -73,11 +73,76 @@ void listenForTicketChanges(String _dateDeTri, String _heureTri) {
   // subscription.cancel();
 }
 
-/*
-class ListeDesPlaces {
-  static List<int> listeNummeros = [];
+//::::::::::::::::::::::::::::::
+//COLPILOTE
+
+Future<String> CopilotecheckPlaceAvailability(int number) async {
+  final CollectionReference placesCollection =
+      FirebaseFirestore.instance.collection('placesUtilisees');
+
+  // Utilise une transaction pour gérer la concurrence
+  final String result =
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+    final DocumentSnapshot existingDoc =
+        await transaction.get(placesCollection.doc(number.toString()));
+    final String achatStatus =
+        existingDoc.get('sousCollectionTickets.achat') as String;
+
+    if (achatStatus == null || achatStatus.isEmpty) {
+      // Champ "achat" vide, mettez à jour et renvoyez "place maintenant achetée"
+      transaction.update(
+          existingDoc.reference, {'sousCollectionTickets.achat': 'acheté'});
+      return 'Place maintenant achetée';
+    } else {
+      // Champ "achat" contient déjà "acheté", renvoyez "place occupée"
+      return 'Place occupée';
+    }
+  });
+
+  return result;
 }
-*/
+
+Future<String> verifierPlace(String _depart, String _destination, String _date,
+    String _heure, int numeroDePlace) async {
+  String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
+  try {
+    // Référence à la sous-collection "sousCollectionTickets" d'un document spécifique
+    CollectionReference sousCollectionRef = FirebaseFirestore.instance
+        .collection('tickets')
+        .doc(documentId)
+        .collection('sousCollectionTickets');
+
+    // Exécuter la requête en dehors de la transaction pour obtenir les documents correspondants
+    QuerySnapshot querySnapshot = await sousCollectionRef
+        .where('numeroDePlace', isEqualTo: numeroDePlace)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      DocumentSnapshot document = querySnapshot.docs.first;
+      Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+
+      return await FirebaseFirestore.instance
+          .runTransaction((transaction) async {
+        // Vérifier le champ "achat" et effectuer la mise à jour dans la transaction
+        DocumentSnapshot freshSnap = await transaction.get(document.reference);
+        if ((freshSnap.data() as Map<String, dynamic>)['achat'] == 'acheté') {
+          return 'place occupée';
+        } else {
+          transaction.update(freshSnap.reference, {'achat': 'acheté'});
+          return 'place maintenant achetée';
+        }
+      });
+    } else {
+      return 'place non trouvée';
+    }
+  } catch (e) {
+    print('Erreur lors de la vérification de la place : $e');
+    return 'Erreur lors de la vérification';
+  }
+}
+
+
+
 
 /*
   static Future<void> getTicketsStream(String _date, String _heure) async {

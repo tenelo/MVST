@@ -770,6 +770,7 @@ class _PlacesState extends State<Places> {
 
   void rafraichissement() {
     final collectionRef = FirebaseFirestore.instance.collection('tickets');
+    // ignore: unused_local_variable
     final subscription = collectionRef.snapshots().listen((snapshot) {
       snapshot.docChanges.forEach((change) {
         setState(() {});
