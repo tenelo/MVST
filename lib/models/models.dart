@@ -15,79 +15,84 @@ class Carousel extends StatefulWidget {
 }
 
 class _CarouselState extends State<Carousel> {
-  List<Map<String, String>> imgList = [];
-
-  @override
-  void initState() {
-    super.initState();
-    fetchImages();
-  }
-
-  Future<void> fetchImages() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('images')
-          .orderBy('dateCreation', descending: false)
-          .get();
-      final List<Map<String, String>> urls = snapshot.docs
-          .map((doc) => {
-                'url': doc['url'] as String,
-                'titre': doc['titre'] as String,
-                'description': doc['description'] as String,
-              })
-          .toList();
-      setState(() {
-        imgList = urls;
-      });
-    } catch (e) {
-      print('Error fetching images: $e');
-    }
+  Stream<List<Map<String, String>>> fetchImagesStream() {
+    return FirebaseFirestore.instance
+        .collection('images')
+        .orderBy('dateCreation', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      try {
+        return snapshot.docs.map((doc) {
+          return {
+            'url': doc['url'] as String,
+            'titre': doc['titre'] as String,
+            'description': doc['description'] as String,
+          };
+        }).toList();
+      } catch (e) {
+        print('Error fetching images: $e');
+        return [];
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 300,
-      child: imgList.isEmpty
-          ? Center(child: CircularProgressIndicator())
-          : CarouselSlider.builder(
-              itemCount: imgList.length,
-              itemBuilder: (BuildContext context, int index, int realIndex) {
-                final String url = imgList[index]['url']!;
-                final String titre = imgList[index]['titre']!;
-                final String description = imgList[index]['description']!;
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DetailsImages(
-                          imageUrl: url,
-                          titre: titre,
-                          description: description,
-                        ),
+    return StreamBuilder<List<Map<String, String>>>(
+      stream: fetchImagesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('ERREUR DE CHARGEMENT DE L\'IMAGE'));
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(child: Text(''));
+        }
+
+        final imgList = snapshot.data!;
+
+        return SizedBox(
+          width: double.infinity,
+          height: 300,
+          child: CarouselSlider.builder(
+            itemCount: imgList.length,
+            itemBuilder: (BuildContext context, int index, int realIndex) {
+              final String url = imgList[index]['url']!;
+              final String titre = imgList[index]['titre']!;
+              final String description = imgList[index]['description']!;
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DetailsImages(
+                        imageUrl: url,
+                        titre: titre,
+                        description: description,
                       ),
-                    );
-                  },
-                  child: Image.network(
-                    url,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                  ),
-                );
-              },
-              options: CarouselOptions(
-                autoPlay: true,
-                pauseAutoPlayOnTouch: true,
-                viewportFraction: 1.0,
-                aspectRatio: 16 / 9,
-                autoPlayInterval: const Duration(seconds: 3),
-                autoPlayAnimationDuration: const Duration(milliseconds: 940),
-                autoPlayCurve: Curves.fastOutSlowIn,
-                scrollDirection: Axis.horizontal,
-              ),
+                    ),
+                  );
+                },
+                child: Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                ),
+              );
+            },
+            options: CarouselOptions(
+              autoPlay: true,
+              pauseAutoPlayOnTouch: true,
+              viewportFraction: 1.0,
+              aspectRatio: 16 / 9,
+              autoPlayInterval: const Duration(seconds: 3),
+              autoPlayAnimationDuration: const Duration(milliseconds: 940),
+              autoPlayCurve: Curves.fastOutSlowIn,
+              scrollDirection: Axis.horizontal,
             ),
+          ),
+        );
+      },
     );
   }
 }

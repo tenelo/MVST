@@ -2,8 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/models/mesfonctions.dart';
 import 'package:mvst/paiement/choixPaiement.dart';
-import 'package:mvst/screens/petitsEcrans.dart/choixPaiement2.dart';
+import 'package:mvst/screens/petitsEcrans/choixPaiement2.dart';
 import 'package:ticket_material/ticket_material.dart';
 
 int? tailleEcran;
@@ -40,6 +41,13 @@ class Tickets extends StatefulWidget {
 
 class _TicketsState extends State<Tickets> {
   bool _isLoading = false;
+  bool _isNavigating = false; // Variable d'état pour la navigation
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     tailleEcran = calculeTailleEcran(context).round();
@@ -64,6 +72,8 @@ class _TicketsState extends State<Tickets> {
             itemCount: widget.nombreDeTicket,
             itemBuilder: (BuildContext context, int index) {
               int numDePlace = widget.place[index];
+              listeDeVerification
+                  .add(numDePlace); // Ajoute les places à vérifier
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: TicketMaterial(
@@ -92,14 +102,20 @@ class _TicketsState extends State<Tickets> {
         width: MediaQuery.of(context).size.width * 0.55,
         child: ElevatedButton(
           onPressed: () async {
-            setState(() {
-              _isLoading = true;
-            });
+            if (mounted) {
+              setState(() {
+                _isLoading = true;
+                _isNavigating = true; // Indiquer que la navigation est en cours
+              });
+            }
 
             if (widget.nombreDeTicket == 0) {
-              setState(() {
-                _isLoading = false;
-              });
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                  _isNavigating = false; // Réinitialiser l'état
+                });
+              }
 
               showDialog(
                 context: context,
@@ -121,7 +137,7 @@ class _TicketsState extends State<Tickets> {
               );
             } else {
               if (tailleEcran! >= 6) {
-                await Navigator.pushAndRemoveUntil(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChoixPaiement(
@@ -138,10 +154,9 @@ class _TicketsState extends State<Tickets> {
                       depart: widget.depart,
                     ),
                   ),
-                  (route) => route.isFirst,
                 );
               } else {
-                await Navigator.pushAndRemoveUntil(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChoixPaiement2(
@@ -158,7 +173,6 @@ class _TicketsState extends State<Tickets> {
                       depart: widget.depart,
                     ),
                   ),
-                  (route) => route.isFirst,
                 );
               }
             }
@@ -296,6 +310,304 @@ double calculeTailleEcran(BuildContext ctx) {
   double screenWidth = MediaQuery.of(ctx).size.width;
   double screenHeight = MediaQuery.of(ctx).size.height;
   return sqrt(pow(screenWidth, 2) + pow(screenHeight, 2)) / 160.0;
-  // RECUPERATION
-  // int arrondi = calculateDiagonalInches().round();
 }
+// ::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+/*
+class Places extends StatefulWidget {
+  const Places({super.key, required this.index, required this.clicable});
+  final int index;
+  final String clicable;
+  @override
+  State<Places> createState() => _PlacesState();
+}
+
+class _PlacesState extends State<Places> {
+  Color couleurSelection = const Color.fromARGB(255, 182, 214, 251);
+  Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
+  String control = "true";
+  @override
+  void initState() {
+    super.initState();
+    verification();
+  }
+
+  void verification() {
+    if (ListeDesPlaces.listeNummeros.contains(widget.index)) {
+      couleurInitiale = couleurSelection;
+      control = "false";
+    }
+  }
+
+  // La liste de booléens qui représente la sélection de chaque carte
+  // On crée une liste de 62 booléens
+  List<bool> selection = List.filled(62, false);
+  @override
+  Widget build(BuildContext context) {
+    final BlocCompteur counterBloc = BlocProvider.of<BlocCompteur>(context);
+    return GestureDetector(
+      onTap: () {
+        if (control == "true") {
+          setState(() {
+            selection[widget.index] = !selection[widget.index];
+            if (selection[widget.index]) {
+              counterBloc.add(EventIcrement());
+              ClasseListeDesPlaces.getTicketsStream();
+              verification();
+              listeDesPlacesChoisies.add(widget.index);
+            } else {
+              counterBloc.add(EventDecrement());
+              ClasseListeDesPlaces.getTicketsStream();
+              verification();
+              listeDesPlacesChoisies.remove(widget.index);
+            }
+          });
+        } else {}
+      },
+      child: Container(
+        // Espaces entre les sièges
+        margin: const EdgeInsets.all(0.5),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // CARTE PRINCIPALE
+            Card(
+              color: selection[
+                      widget.index % 62] // On utilise l'index modulo 25
+                  ? couleurSelection
+                  : couleurInitiale, // On utilise la couleur selon la sélection
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SizedBox(
+                height: 35,
+                width: 35,
+                child: Center(
+                  child: Text(
+                    (widget.index)
+                        .toString(), // On convertit l'index en chaîne de caractères
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+            // CARTE GAUCHE
+            Positioned(
+              left: -3,
+              child: Card(
+                color: const Color.fromARGB(255, 182, 214, 251),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const SizedBox(
+                  height: 19,
+                  width: 6,
+                ),
+              ),
+            ), // CARTE DROITE
+            Positioned(
+              right: -3,
+              child: Card(
+                color: const Color.fromARGB(255, 182, 214, 251),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const SizedBox(
+                  height: 19,
+                  width: 6,
+                ),
+              ),
+            ),
+            //CARTE DU HAUT
+            Positioned(
+              top: -4,
+              child: Card(
+                color: const Color.fromARGB(255, 182, 214, 251),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const SizedBox(
+                  height: 6,
+                  width: 26,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PlacesVide extends StatefulWidget {
+  const PlacesVide({
+    super.key,
+  });
+
+  @override
+  State<PlacesVide> createState() => _PlacesVideState();
+}
+
+class _PlacesVideState extends State<PlacesVide> {
+  Color couleurSelection = const Color.fromARGB(255, 182, 214, 251);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      // Espaces entre les sièges
+      margin: const EdgeInsets.all(0.5),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // CARTE PRINCIPALE
+          Card(
+            color: couleurSelection,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const SizedBox(
+              height: 35,
+              width: 35,
+              child: Center(
+                child: Text(
+                  (""), // On convertit l'index en chaîne de caractères
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+          // CARTE GAUCHE
+          Positioned(
+            left: -3,
+            child: Card(
+              color: const Color.fromARGB(255, 182, 214, 251),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const SizedBox(
+                height: 19,
+                width: 6,
+              ),
+            ),
+          ), // CARTE DROITE
+          Positioned(
+            right: -3,
+            child: Card(
+              color: const Color.fromARGB(255, 182, 214, 251),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const SizedBox(
+                height: 19,
+                width: 6,
+              ),
+            ),
+          ),
+          //CARTE DU HAUT
+          Positioned(
+            top: -4,
+            child: Card(
+              color: const Color.fromARGB(255, 182, 214, 251),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const SizedBox(
+                height: 6,
+                width: 26,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PlacesChauffeur extends StatefulWidget {
+  const PlacesChauffeur({
+    super.key,
+  });
+
+  @override
+  State<PlacesChauffeur> createState() => _PlacesChauffeurState();
+}
+
+class _PlacesChauffeurState extends State<PlacesChauffeur> {
+  Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      // Espaces entre les sièges
+      margin: const EdgeInsets.all(0.5),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // CARTE PRINCIPALE
+          Card(
+            color: Config.colors.vertB,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const SizedBox(
+              height: 35,
+              width: 35,
+              child: Center(
+                child: Text(
+                  (""), // On convertit l'index en chaîne de caractères
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+          // CARTE GAUCHE
+          Positioned(
+            left: -3,
+            child: Card(
+              color: const Color.fromARGB(255, 182, 214, 251),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const SizedBox(
+                height: 19,
+                width: 6,
+              ),
+            ),
+          ), // CARTE DROITE
+          Positioned(
+            right: -3,
+            child: Card(
+              color: const Color.fromARGB(255, 182, 214, 251),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const SizedBox(
+                height: 19,
+                width: 6,
+              ),
+            ),
+          ),
+          //CARTE DU HAUT
+          Positioned(
+            top: -4,
+            child: Card(
+              color: const Color.fromARGB(255, 182, 214, 251),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const SizedBox(
+                height: 6,
+                width: 26,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+*/

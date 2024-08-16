@@ -17,6 +17,8 @@ DateTime? dateDemain = DateTime.utc(
 DateTime? dateApresDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 2);
 var idDate;
+var idMoisAnnee;
+var idAnnee;
 
 class Commande extends StatefulWidget {
   const Commande(
@@ -123,6 +125,8 @@ class _CommandeState extends State<Commande> {
               DateFormat('EEEE d MMMM y', 'fr_FR').format(choixDeDate);
         });
         idDate = DateFormat('EEEE_d_MMMM_y', 'fr_FR').format(choixDeDate);
+        idMoisAnnee = DateFormat('MMMM_y', 'fr_FR').format(choixDeDate);
+        idAnnee = DateFormat('y', 'fr_FR').format(choixDeDate);
       }
     } catch (error) {
       print("Erreur lors de la sélection de la date: $error");
@@ -195,6 +199,7 @@ class _CommandeState extends State<Commande> {
 
                             await _recupListeDesNummeros(widget.depart,
                                 widget.destination, idDate, heureDeDepart!);
+                            listeDesPlacesChoisies.clear();
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -208,6 +213,8 @@ class _CommandeState extends State<Commande> {
                                   date: _dateController.text,
                                   heure: heureDeDepart!,
                                   prixDuBillet: widget.prixDuBillet,
+                                  moisAnnee: idMoisAnnee,
+                                  annee: idAnnee,
                                 ),
                               ),
                             ).then((_) {

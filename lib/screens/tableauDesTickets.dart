@@ -36,6 +36,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
       QuerySnapshot<Map<String, dynamic>> ticketsSnapshot =
           await FirebaseFirestore.instance
               .collection('tickets')
+              .where('idUtilisateur', arrayContains: widget.idUtilisateur)
               .orderBy('createdAt', descending: true)
               .get();
 

@@ -6,8 +6,8 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesfonctions.dart';
-import 'package:mvst/screens/petitsEcrans.dart/choixPlace2.dart';
-import 'package:mvst/screens/petitsEcrans.dart/home2.dart';
+import 'package:mvst/screens/petitsEcrans/choixPlace2.dart';
+import 'package:mvst/screens/petitsEcrans/home2.dart';
 
 DateTime? dateActuelle = DateTime.now();
 DateTime? dateDemain = DateTime.utc(

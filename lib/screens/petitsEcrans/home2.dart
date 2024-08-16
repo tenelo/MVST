@@ -10,7 +10,7 @@ import 'package:mvst/profil/profil.dart';
 import 'package:mvst/screens/conditionsDutilisation.dart';
 import 'package:mvst/screens/infos.dart';
 import 'package:mvst/screens/mestickets.dart';
-import 'package:mvst/screens/petitsEcrans.dart/models2.dart';
+import 'package:mvst/screens/petitsEcrans/models2.dart';
 import 'package:mvst/screens/suggestions.dart';
 import 'package:mvst/screens/tableauDesTickets.dart';
 

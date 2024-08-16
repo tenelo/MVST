@@ -72,7 +72,7 @@ class DetailsImages extends StatelessWidget {
                               child: Text(
                                 description,
                                 overflow: TextOverflow.ellipsis,
-                                maxLines: 22,
+                                maxLines: 20,
                               ),
                             ),
                           )

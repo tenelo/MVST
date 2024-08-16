@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/screens/petitsEcrans.dart/commande2.dart';
+import 'package:mvst/screens/petitsEcrans/commande2.dart';
 
 class Carousel2 extends StatefulWidget {
   const Carousel2({super.key});

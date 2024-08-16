@@ -9,14 +9,15 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
-import 'package:mvst/profil/profil.dart';
 import 'package:mvst/screens/conditionsDutilisation.dart';
 import 'package:mvst/screens/infos.dart';
 import 'package:mvst/screens/mestickets.dart';
 import 'package:mvst/screens/suggestions.dart';
 import 'package:mvst/screens/tableauDesTickets.dart';
 
-final user = FirebaseAuth.instance.currentUser!;
+import '../exemples/test.dart';
+
+final user = FirebaseAuth.instance.currentUser;
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -109,11 +110,12 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => Profil(
+                              builder: (context) =>
+                                  AjouterTicketsPage() /*Profil(
                               idUtilisateur: userId,
                               userProfil: userProfil!,
-                            ),
-                          ),
+                            ),*/
+                              ),
                         );
                       } else {
                         Navigator.pushReplacement(
@@ -285,35 +287,37 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           ),
           user != null
               ? MesTickets(
-                  idUtilisateur: user.uid,
+                  idUtilisateur: user!.uid,
                 )
               : const Login(), // Redirige directement vers la page de connexion
 
           user != null
               ? TableauDeTickets(
-                  idUtilisateur: user.uid,
+                  idUtilisateur: user!.uid,
                 )
               : const Login(),
           Informations(),
         ],
       ),
       bottomNavigationBar: BottomAppBar(
-        child: TabBar(
-          tabAlignment: TabAlignment.center,
-          labelStyle: TextStyle(fontSize: 13),
-          controller: _tabController,
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.dashboard),
-              text: 'Accueil',
-            ),
-            Tab(icon: Icon(Icons.receipt_outlined), text: 'Mes Tickets'),
-            Tab(icon: Icon(Icons.list), text: 'Tous mes Tickets'),
-            Tab(icon: Icon(Icons.info_outlined), text: 'Infos'),
-          ],
-          labelColor: Colors.lightBlue,
-          indicatorColor: Colors.lightBlueAccent,
-          unselectedLabelColor: Color.fromARGB(255, 119, 156, 172),
+        child: Center(
+          child: TabBar(
+            tabAlignment: TabAlignment.center,
+            labelStyle: TextStyle(fontSize: 13),
+            controller: _tabController,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.dashboard),
+                text: 'Accueil',
+              ),
+              Tab(icon: Icon(Icons.receipt_outlined), text: 'Mes Tickets'),
+              Tab(icon: Icon(Icons.list), text: 'Tous mes Tickets'),
+              Tab(icon: Icon(Icons.info_outlined), text: 'Infos'),
+            ],
+            labelColor: Colors.lightBlue,
+            indicatorColor: Colors.lightBlueAccent,
+            unselectedLabelColor: Color.fromARGB(255, 119, 156, 172),
+          ),
         ),
       ),
     );

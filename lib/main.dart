@@ -9,12 +9,12 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/firebase_options.dart';
 import 'package:mvst/screens/home.dart';
-import 'package:mvst/screens/petitsEcrans.dart/home2.dart';
+import 'package:mvst/screens/petitsEcrans/home2.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 int? tailleEcran;
-void main() async {
+/* void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -48,6 +48,93 @@ class MyApp extends StatelessWidget {
         home: const MonSplashScreen(),
       ),
     );
+  }
+} */
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(const MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      // L'application est en arrière-plan ou fermée
+      _handleAppClosed();
+    }
+  }
+
+  void _handleAppClosed() {
+    // Exécuter ta fonction de nettoyage ici
+    maFonction();
+  }
+
+  void maFonction() {
+    // Ton code ici
+    print("L'application est en train de se fermer.");
+    // Ajoutez le code nécessaire pour annuler l'opération de paiement ici
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    tailleEcran = calculeTailleEcran(context).round();
+
+    return BlocProvider(
+      create: (context) => BlocCompteur(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Config.colors.bleuFonce),
+          useMaterial3: true,
+        ),
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('fr', ''),
+        ],
+        navigatorObservers: [CustomNavigatorObserver(onPageChange: () {})],
+        home: const MonSplashScreen(),
+      ),
+    );
+  }
+}
+
+class CustomNavigatorObserver extends NavigatorObserver {
+  final VoidCallback onPageChange;
+
+  CustomNavigatorObserver({required this.onPageChange});
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    onPageChange();
   }
 }
 

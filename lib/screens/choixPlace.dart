@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:badges/badges.dart' as badges;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mvst/bloc/bloc.dart';
@@ -17,7 +16,7 @@ DateTime? dateDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 1);
 
 List<int> listeDesPlacesChoisies = [];
-String? _depart, _destination, _date, _heure;
+String? _id, _depart, _destination, _date, _moisAnnee, _annee, _heure;
 
 class ChoixPlaces extends StatefulWidget {
   const ChoixPlaces(
@@ -29,6 +28,8 @@ class ChoixPlaces extends StatefulWidget {
       required this.nom,
       required this.contact,
       required this.date,
+      required this.moisAnnee,
+      required this.annee,
       required this.heure,
       required this.prixDuBillet});
   final String idDate;
@@ -36,6 +37,8 @@ class ChoixPlaces extends StatefulWidget {
   final String nom;
   final String contact;
   final String date;
+  final String moisAnnee;
+  final String annee;
   final String heure;
   final String depart;
   final String destination;
@@ -55,18 +58,21 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
   @override
   void initState() {
     super.initState();
+    _id = widget.id;
     _date = widget.idDate;
+    _moisAnnee = widget.moisAnnee;
+    _annee = widget.annee;
     _heure = widget.heure;
     _depart = widget.depart;
     _destination = widget.destination;
     _loadData();
     startCountdown();
-    listeDesPlacesChoisies.clear();
   }
 
   @override
   void dispose() {
     _timer.cancel();
+
     super.dispose();
   }
 
@@ -218,22 +224,22 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     PlacesReservees(
-                                      index: 61,
+                                      numero: 61,
                                     ),
                                     PlacesReservees(
-                                      index: 60,
+                                      numero: 60,
                                     ),
                                     PlacesReservees(
-                                      index: 59,
+                                      numero: 59,
                                     ),
                                     PlacesReservees(
-                                      index: 58,
+                                      numero: 58,
                                     ),
                                     PlacesReservees(
-                                      index: 57,
+                                      numero: 57,
                                     ),
                                     PlacesReservees(
-                                      index: 56,
+                                      numero: 56,
                                     ),
                                   ],
                                 ),
@@ -249,23 +255,11 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         const Row(
                                           children: [
                                             Places(
-                                              index: 55,
+                                              numero: 55,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 54,
-                                              clicable: "true",
-                                            ),
-                                          ],
-                                        ),
-                                        const Row(
-                                          children: [
-                                            Places(
-                                              index: 50,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 49,
+                                              numero: 54,
                                               clicable: "true",
                                             ),
                                           ],
@@ -273,11 +267,11 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         const Row(
                                           children: [
                                             Places(
-                                              index: 45,
+                                              numero: 50,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 44,
+                                              numero: 49,
                                               clicable: "true",
                                             ),
                                           ],
@@ -285,11 +279,23 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         const Row(
                                           children: [
                                             Places(
-                                              index: 40,
+                                              numero: 45,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 39,
+                                              numero: 44,
+                                              clicable: "true",
+                                            ),
+                                          ],
+                                        ),
+                                        const Row(
+                                          children: [
+                                            Places(
+                                              numero: 40,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 39,
                                               clicable: "true",
                                             ),
                                           ],
@@ -302,23 +308,11 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         const Row(
                                           children: [
                                             Places(
-                                              index: 35,
+                                              numero: 35,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 34,
-                                              clicable: "true",
-                                            ),
-                                          ],
-                                        ),
-                                        const Row(
-                                          children: [
-                                            Places(
-                                              index: 30,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 29,
+                                              numero: 34,
                                               clicable: "true",
                                             ),
                                           ],
@@ -326,23 +320,11 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         const Row(
                                           children: [
                                             Places(
-                                              index: 25,
+                                              numero: 30,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 24,
-                                              clicable: "true",
-                                            ),
-                                          ],
-                                        ),
-                                        const Row(
-                                          children: [
-                                            Places(
-                                              index: 20,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 19,
+                                              numero: 29,
                                               clicable: "true",
                                             ),
                                           ],
@@ -350,11 +332,11 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         const Row(
                                           children: [
                                             Places(
-                                              index: 15,
+                                              numero: 25,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 14,
+                                              numero: 24,
                                               clicable: "true",
                                             ),
                                           ],
@@ -362,11 +344,35 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         const Row(
                                           children: [
                                             Places(
-                                              index: 10,
+                                              numero: 20,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 9,
+                                              numero: 19,
+                                              clicable: "true",
+                                            ),
+                                          ],
+                                        ),
+                                        const Row(
+                                          children: [
+                                            Places(
+                                              numero: 15,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 14,
+                                              clicable: "true",
+                                            ),
+                                          ],
+                                        ),
+                                        const Row(
+                                          children: [
+                                            Places(
+                                              numero: 10,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 9,
                                               clicable: "true",
                                             ),
                                           ],
@@ -374,10 +380,10 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         Row(
                                           children: [
                                             PlacesReservees(
-                                              index: 5,
+                                              numero: 5,
                                             ),
                                             PlacesReservees(
-                                              index: 4,
+                                              numero: 4,
                                             ),
                                           ],
                                         ),
@@ -393,31 +399,15 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         Row(
                                           children: [
                                             Places(
-                                              index: 53,
+                                              numero: 53,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 52,
+                                              numero: 52,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 51,
-                                              clicable: "true",
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            Places(
-                                              index: 48,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 47,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 46,
+                                              numero: 51,
                                               clicable: "true",
                                             ),
                                           ],
@@ -425,31 +415,15 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         Row(
                                           children: [
                                             Places(
-                                              index: 43,
+                                              numero: 48,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 42,
+                                              numero: 47,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 41,
-                                              clicable: "true",
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            Places(
-                                              index: 38,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 37,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 36,
+                                              numero: 46,
                                               clicable: "true",
                                             ),
                                           ],
@@ -457,31 +431,15 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         Row(
                                           children: [
                                             Places(
-                                              index: 33,
+                                              numero: 43,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 32,
+                                              numero: 42,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 31,
-                                              clicable: "true",
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            Places(
-                                              index: 28,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 27,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 26,
+                                              numero: 41,
                                               clicable: "true",
                                             ),
                                           ],
@@ -489,31 +447,15 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         Row(
                                           children: [
                                             Places(
-                                              index: 23,
+                                              numero: 38,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 22,
+                                              numero: 37,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 21,
-                                              clicable: "true",
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            Places(
-                                              index: 18,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 17,
-                                              clicable: "true",
-                                            ),
-                                            Places(
-                                              index: 16,
+                                              numero: 36,
                                               clicable: "true",
                                             ),
                                           ],
@@ -521,15 +463,15 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         Row(
                                           children: [
                                             Places(
-                                              index: 13,
+                                              numero: 33,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 12,
+                                              numero: 32,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 11,
+                                              numero: 31,
                                               clicable: "true",
                                             ),
                                           ],
@@ -537,15 +479,79 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         Row(
                                           children: [
                                             Places(
-                                              index: 8,
+                                              numero: 28,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 7,
+                                              numero: 27,
                                               clicable: "true",
                                             ),
                                             Places(
-                                              index: 6,
+                                              numero: 26,
+                                              clicable: "true",
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Places(
+                                              numero: 23,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 22,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 21,
+                                              clicable: "true",
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Places(
+                                              numero: 18,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 17,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 16,
+                                              clicable: "true",
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Places(
+                                              numero: 13,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 12,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 11,
+                                              clicable: "true",
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Places(
+                                              numero: 8,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 7,
+                                              clicable: "true",
+                                            ),
+                                            Places(
+                                              numero: 6,
                                               clicable: "true",
                                             ),
                                           ],
@@ -553,13 +559,13 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                                         Row(
                                           children: [
                                             PlacesReservees(
-                                              index: 3,
+                                              numero: 3,
                                             ),
                                             PlacesReservees(
-                                              index: 2,
+                                              numero: 2,
                                             ),
                                             PlacesReservees(
-                                              index: 1,
+                                              numero: 1,
                                             ),
                                           ],
                                         ),
@@ -744,147 +750,228 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
 }
 
 class Places extends StatefulWidget {
-  const Places({super.key, required this.index, required this.clicable});
-  final int index;
+  const Places({super.key, required this.numero, required this.clicable});
+  final int numero;
   final String clicable;
+
   @override
   State<Places> createState() => _PlacesState();
 }
 
 class _PlacesState extends State<Places> {
   Color couleurSelection = const Color.fromARGB(255, 182, 214, 251);
+  Color couleurDeselect = const Color.fromARGB(226, 10, 41, 66);
   Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
-  String control = "true";
+  String etat = "cliquable";
+  bool isLoading = false;
+
   @override
   void initState() {
     super.initState();
     verification();
   }
 
+  @override
+  void dispose() {
+    // Créer une copie de listeDeVerification avant de l'itérer
+    List<int> tempListe = List.from(listeDeVerification);
+    for (var place in tempListe) {
+      supprimerPlace(_id!, _depart!, _destination!, _date!, _heure!, place);
+    }
+    listeDeVerification.clear();
+    super.dispose();
+  }
+
   void verification() {
-    if (listeDesNumeros.contains(widget.index)) {
+    if (listeDesNumeros.contains(widget.numero)) {
       couleurInitiale = couleurSelection;
-      control = "false";
+      etat = "nonCliquable";
     }
   }
 
-  void rafraichissement() {
-    final collectionRef = FirebaseFirestore.instance.collection('tickets');
-    // ignore: unused_local_variable
-    final subscription = collectionRef.snapshots().listen((snapshot) {
-      snapshot.docChanges.forEach((change) {
-        setState(() {});
-      });
-    });
+  Future<bool> _netoyageEnCasDeFermeture() async {
+    // Créer une copie de listeDeVerification avant de l'itérer
+    List<int> tempListe = List.from(listeDeVerification);
+    // Cette méthode est appelée quand l'utilisateur essaie de quitter la page.
+    for (var place in tempListe) {
+      await supprimerPlace(
+          _id!, _depart!, _destination!, _date!, _heure!, place);
+    }
+    return true; // Renvoie true pour permettre à la page de se fermer.
   }
 
   // La liste de booléens qui représente la sélection de chaque carte
   // On crée une liste de 62 booléens
   List<bool> selection = List.filled(62, false);
+
   @override
   Widget build(BuildContext context) {
     final BlocCompteur counterBloc = BlocProvider.of<BlocCompteur>(context);
-    return GestureDetector(
-      onTap: () {
-        if (control == "true") {
-          setState(() {
-            selection[widget.index] = !selection[widget.index];
-            if (selection[widget.index]) {
-              counterBloc.add(EventIcrement());
-              ClasseListeDesPlaces.getTicketsStream(
-                  _depart!, _destination!, _date!, _heure!);
-              verification();
-              listeDesPlacesChoisies.add(widget.index);
+    return WillPopScope(
+      onWillPop: _netoyageEnCasDeFermeture,
+      child: GestureDetector(
+        onTap: () async {
+          if (etat == "cliquable") {
+            setState(() {
+              isLoading = true;
+              selection[widget.numero] = !selection[widget.numero];
+            });
+
+            var resultat = await verifierPlace(
+              _id!,
+              _depart!,
+              _destination!,
+              _date!,
+              _moisAnnee!,
+              _annee!,
+              _heure!,
+              widget.numero,
+            );
+
+            if (selection[widget.numero]) {
+              if (resultat == 'succès') {
+                counterBloc.add(EventIcrement());
+                ClasseListeDesPlaces.getTicketsStream(
+                  _depart!,
+                  _destination!,
+                  _date!,
+                  _heure!,
+                );
+                verification();
+                listeDesPlacesChoisies.add(widget.numero);
+                listeDeVerification.add(widget.numero);
+              } else {
+                showAlertDialog(context);
+              }
             } else {
+              await supprimerPlace(
+                _id!,
+                _depart!,
+                _destination!,
+                _date!,
+                _heure!,
+                widget.numero,
+              );
               counterBloc.add(EventDecrement());
               ClasseListeDesPlaces.getTicketsStream(
-                  _depart!, _destination!, _date!, _heure!);
+                _depart!,
+                _destination!,
+                _date!,
+                _heure!,
+              );
               verification();
-              listeDesPlacesChoisies.remove(widget.index);
+              listeDesPlacesChoisies.remove(widget.numero);
+              listeDeVerification.remove(widget.numero);
             }
-          });
-        } else {}
-      },
-      child: Container(
-        // Espaces entre les sièges
-        margin: const EdgeInsets.all(0.5),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // CARTE PRINCIPALE
-            Card(
-              color: selection[
-                      widget.index % 62] // On utilise l'index modulo 25
-                  ? couleurSelection
-                  : couleurInitiale, // On utilise la couleur selon la sélection
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: SizedBox(
-                height: 35,
-                width: 35,
-                child: Center(
-                  child: Text(
-                    (widget.index)
-                        .toString(), // On convertit l'index en chaîne de caractères
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
+            setState(() {
+              isLoading = false; // Arrête le chargement
+            });
+          }
+        },
+        child: Container(
+          // Espaces entre les sièges
+          margin: const EdgeInsets.all(0.5),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Affiche l'indicateur de chargement si isLoading est vrai
+              if (isLoading)
+                const CircularProgressIndicator()
+              else
+                // CARTE PRINCIPALE
+                Card(
+                  color: selection[widget.numero % 62]
+                      ? couleurSelection
+                      : couleurDeselect, // Change la couleur si la carte est désélectionnée
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SizedBox(
+                    height: 35,
+                    width: 35,
+                    child: Center(
+                      child: Text(
+                        widget.numero.toString(),
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+              // CARTE GAUCHE
+              Positioned(
+                left: -3,
+                child: Card(
+                  color: const Color.fromARGB(255, 182, 214, 251),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const SizedBox(
+                    height: 19,
+                    width: 6,
                   ),
                 ),
               ),
-            ),
-            // CARTE GAUCHE
-            Positioned(
-              left: -3,
-              child: Card(
-                color: const Color.fromARGB(255, 182, 214, 251),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const SizedBox(
-                  height: 19,
-                  width: 6,
-                ),
-              ),
-            ), // CARTE DROITE
-            Positioned(
-              right: -3,
-              child: Card(
-                color: const Color.fromARGB(255, 182, 214, 251),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const SizedBox(
-                  height: 19,
-                  width: 6,
+              // CARTE DROITE
+              Positioned(
+                right: -3,
+                child: Card(
+                  color: const Color.fromARGB(255, 182, 214, 251),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const SizedBox(
+                    height: 19,
+                    width: 6,
+                  ),
                 ),
               ),
-            ),
-            //CARTE DU HAUT
-            Positioned(
-              top: -4,
-              child: Card(
-                color: const Color.fromARGB(255, 182, 214, 251),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const SizedBox(
-                  height: 6,
-                  width: 26,
+              // CARTE DU HAUT
+              Positioned(
+                top: -4,
+                child: Card(
+                  color: const Color.fromARGB(255, 182, 214, 251),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const SizedBox(
+                    height: 6,
+                    width: 26,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+void showAlertDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Place occupée à l\'instant'),
+        content: Text('La place vient d\'être prise par quelqu\'un d\'autre'),
+        actions: [
+          TextButton(
+            child: Text('OK'),
+            onPressed: () {
+              Navigator.of(context).pop(); // Ferme l'alerte
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
 // ignore: must_be_immutable
 class PlacesReservees extends StatelessWidget {
-  PlacesReservees({super.key, required this.index});
-  final int index;
+  PlacesReservees({super.key, required this.numero});
+  final int numero;
   Color couleurSelection = Color.fromARGB(166, 249, 195, 115);
 
   @override
@@ -906,7 +993,7 @@ class PlacesReservees extends StatelessWidget {
               width: 35,
               child: Center(
                 child: Text(
-                  index.toString(),
+                  numero.toString(),
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold),
                 ),
@@ -987,7 +1074,7 @@ class PlacesChauffeur extends StatelessWidget {
               width: 35,
               child: Center(
                 child: Text(
-                  (""), // On convertit l'index en chaîne de caractères
+                  (""), // On convertit l'numero en chaîne de caractères
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold),
                 ),

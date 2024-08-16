@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/screens/detailsTickets.dart';
-import 'package:mvst/screens/petitsEcrans.dart/detailsTickets2.dart';
+import 'package:mvst/screens/petitsEcrans/detailsTickets2.dart';
 import 'package:ticket_material/ticket_material.dart';
 
 int? tailleEcran;
@@ -41,7 +41,35 @@ class _MesTicketsState extends State<MesTickets> {
   }
 
   Stream<List<DocumentSnapshot<Map<String, dynamic>>>>
-      getAllSubcollectionDocuments() {
+      recuperationDeMesTickets() {
+    return FirebaseFirestore.instance
+        .collection('tickets')
+        .where('idUtilisateur', arrayContains: widget.idUtilisateur)
+        .orderBy('createdAt', descending: true)
+        .limit(10)
+        .snapshots()
+        .asyncMap((ticketsSnapshot) async {
+      List<DocumentSnapshot<Map<String, dynamic>>> allDocuments = [];
+      for (var ticketDoc in ticketsSnapshot.docs) {
+        try {
+          var subcollectionSnapshot = await ticketDoc.reference
+              .collection('sousCollectionTickets')
+              .where('idUtilisateur', isEqualTo: widget.idUtilisateur)
+              .orderBy('dateDeCreation', descending: true)
+              .limit(30)
+              .get();
+          allDocuments.addAll(subcollectionSnapshot.docs);
+        } catch (e) {
+          print('Erreur de chargement du ticket ${ticketDoc.id}: $e');
+        }
+      }
+      return allDocuments;
+    });
+  }
+
+/*
+  Stream<List<DocumentSnapshot<Map<String, dynamic>>>>
+      recuperationDeMesTickets() {
     return FirebaseFirestore.instance
         .collection('tickets')
         .orderBy('createdAt', descending: true)
@@ -58,13 +86,13 @@ class _MesTicketsState extends State<MesTickets> {
               .get();
           allDocuments.addAll(subcollectionSnapshot.docs);
         } catch (e) {
-          print('Error fetching subcollection for ticket ${ticketDoc.id}: $e');
+          print('Erreur de chargement du ticket ${ticketDoc.id}: $e');
         }
       }
       return allDocuments;
     });
   }
-
+*/
   @override
   Widget build(BuildContext context) {
     tailleEcran = calculeTailleEcran(context).round();
@@ -73,7 +101,7 @@ class _MesTicketsState extends State<MesTickets> {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: StreamBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
-            stream: getAllSubcollectionDocuments(),
+            stream: recuperationDeMesTickets(),
             builder: (BuildContext context,
                 AsyncSnapshot<List<DocumentSnapshot<Map<String, dynamic>>>>
                     snapshot) {
@@ -86,7 +114,13 @@ class _MesTicketsState extends State<MesTickets> {
               }
 
               if (snapshot.data == null || snapshot.data!.isEmpty) {
-                return Center(child: Text("Vous n'avez aucun ticket"));
+                return Center(
+                    child: Text(
+                  "Vous n'avez aucun ticket",
+                  style: TextStyle(
+                      color: Config.colors.bleuFonce2,
+                      fontWeight: FontWeight.bold),
+                ));
               }
 
               return ListView.builder(
