@@ -14,42 +14,6 @@ import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 int? tailleEcran;
-/* void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    tailleEcran = calculeTailleEcran(context).round();
-
-    return BlocProvider(
-      create: (context) => BlocCompteur(),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Config.colors.bleuFonce),
-          useMaterial3: true,
-        ),
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [
-          Locale('fr', ''),
-        ],
-        home: const MonSplashScreen(),
-      ),
-    );
-  }
-} */
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -93,11 +57,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     maFonction();
   }
 
-  void maFonction() {
-    // Ton code ici
-    print("L'application est en train de se fermer.");
-    // Ajoutez le code nécessaire pour annuler l'opération de paiement ici
-  }
+  void maFonction() {}
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +66,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return BlocProvider(
       create: (context) => BlocCompteur(),
       child: MaterialApp(
+        title: 'MVST',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Config.colors.bleuFonce),

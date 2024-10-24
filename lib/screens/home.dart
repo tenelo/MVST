@@ -9,13 +9,12 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
+import 'package:mvst/profil/profil.dart';
 import 'package:mvst/screens/conditionsDutilisation.dart';
 import 'package:mvst/screens/infos.dart';
 import 'package:mvst/screens/mestickets.dart';
 import 'package:mvst/screens/suggestions.dart';
 import 'package:mvst/screens/tableauDesTickets.dart';
-
-import '../exemples/test.dart';
 
 final user = FirebaseAuth.instance.currentUser;
 
@@ -56,7 +55,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       ),
       drawer: Drawer(
         child: Column(
-          children: <Widget>[
+          children: [
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
@@ -110,12 +109,11 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) =>
-                                  AjouterTicketsPage() /*Profil(
+                            builder: (context) => Profil(
                               idUtilisateur: userId,
                               userProfil: userProfil!,
-                            ),*/
-                              ),
+                            ),
+                          ),
                         );
                       } else {
                         Navigator.pushReplacement(

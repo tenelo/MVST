@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/screens/detailsImages.dart';
 import 'package:mvst/screens/petitsEcrans/commande2.dart';
 
 class Carousel2 extends StatefulWidget {
@@ -14,41 +15,83 @@ class Carousel2 extends StatefulWidget {
 }
 
 class _Carousel2State extends State<Carousel2> {
-  final List<String> imgList = [
-    'assets/images/MVST_pt_Sf.png',
-    'assets/images/dame1.png',
-    'assets/images/dame2.png',
-    'assets/images/MVST_pt_Sf.png',
-    'assets/images/dame3.png',
-  ];
+  Stream<List<Map<String, String>>> chargerImagesStream() {
+    return FirebaseFirestore.instance
+        .collection('images')
+        .orderBy('dateCreation', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      try {
+        return snapshot.docs.map((doc) {
+          return {
+            'url': doc['url'] as String,
+            'titre': doc['titre'] as String,
+            'description': doc['description'] as String,
+          };
+        }).toList();
+      } catch (e) {
+        return [];
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 300,
-      child: CarouselSlider.builder(
-        itemCount: imgList.length,
-        itemBuilder: (BuildContext context, int index, int realIndex) {
-          final String assetName = imgList[index];
-          return Image.asset(
-            assetName,
-            fit: BoxFit.cover,
-            width: double.infinity,
-          );
-        },
-        options: CarouselOptions(
-          autoPlay: true,
-          pauseAutoPlayOnTouch: true,
-          viewportFraction: 1.0,
-          //enlargeCenterPage: true,
-          aspectRatio: 16 / 9,
-          autoPlayInterval: const Duration(seconds: 3),
-          autoPlayAnimationDuration: const Duration(milliseconds: 940),
-          autoPlayCurve: Curves.fastOutSlowIn,
-          scrollDirection: Axis.horizontal,
-        ),
-      ),
+    return StreamBuilder<List<Map<String, String>>>(
+      stream: chargerImagesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('IMAGE NON CHARGEE'));
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(child: Text(''));
+        }
+
+        final imgList = snapshot.data!;
+
+        return SizedBox(
+          width: double.infinity,
+          height: 300,
+          child: CarouselSlider.builder(
+            itemCount: imgList.length,
+            itemBuilder: (BuildContext context, int index, int realIndex) {
+              final String url = imgList[index]['url']!;
+              final String titre = imgList[index]['titre']!;
+              final String description = imgList[index]['description']!;
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DetailsImages(
+                        imageUrl: url,
+                        titre: titre,
+                        description: description,
+                      ),
+                    ),
+                  );
+                },
+                child: Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                ),
+              );
+            },
+            options: CarouselOptions(
+              autoPlay: true,
+              pauseAutoPlayOnTouch: true,
+              viewportFraction: 1.0,
+              aspectRatio: 16 / 9,
+              autoPlayInterval: const Duration(seconds: 3),
+              autoPlayAnimationDuration: const Duration(milliseconds: 940),
+              autoPlayCurve: Curves.fastOutSlowIn,
+              scrollDirection: Axis.horizontal,
+            ),
+          ),
+        );
+      },
     );
   }
 }

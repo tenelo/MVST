@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
@@ -15,10 +14,13 @@ Color? couleurTicket;
 DateTime? dateActuelle = DateTime.now();
 DateTime? dateDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 1);
+DateTime? dateApresDemain = DateTime.utc(
+    dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 2);
 DateTime? dateAujourdhui =
     DateTime.utc(dateActuelle!.year, dateActuelle!.month, dateActuelle!.day);
 String? dateDAujourdhui;
 String? dateDeDemain;
+String? dateDapresDemain;
 
 class MesTickets extends StatefulWidget {
   const MesTickets({
@@ -38,61 +40,47 @@ class _MesTicketsState extends State<MesTickets> {
     dateDAujourdhui =
         DateFormat('EEEE d MMMM y', 'fr_FR').format(dateAujourdhui!);
     dateDeDemain = DateFormat('EEEE d MMMM y', 'fr_FR').format(dateDemain!);
+    dateDapresDemain =
+        DateFormat('EEEE d MMMM y', 'fr_FR').format(dateApresDemain!);
   }
 
-  Stream<List<DocumentSnapshot<Map<String, dynamic>>>>
-      recuperationDeMesTickets() {
-    return FirebaseFirestore.instance
-        .collection('tickets')
-        .where('idUtilisateur', arrayContains: widget.idUtilisateur)
-        .orderBy('createdAt', descending: true)
-        .limit(10)
-        .snapshots()
-        .asyncMap((ticketsSnapshot) async {
-      List<DocumentSnapshot<Map<String, dynamic>>> allDocuments = [];
-      for (var ticketDoc in ticketsSnapshot.docs) {
-        try {
-          var subcollectionSnapshot = await ticketDoc.reference
-              .collection('sousCollectionTickets')
-              .where('idUtilisateur', isEqualTo: widget.idUtilisateur)
-              .orderBy('dateDeCreation', descending: true)
-              .limit(30)
-              .get();
-          allDocuments.addAll(subcollectionSnapshot.docs);
-        } catch (e) {
-          print('Erreur de chargement du ticket ${ticketDoc.id}: $e');
-        }
+  Stream<List<Map<String, dynamic>>> recuperationDeMesTickets() async* {
+    final conn = await Connexion.connexionDB();
+    try {
+      var results = await conn.query(
+          'SELECT * FROM Tickets WHERE idUtilisateur = ? ORDER BY dateDeCreation DESC LIMIT 30',
+          [widget.idUtilisateur]);
+
+      List<Map<String, dynamic>> tickets = [];
+      for (var row in results) {
+        tickets.add({
+          'id': row['id'],
+          'documentId': row['documentId'],
+          'idUtilisateur': row['idUtilisateur'],
+          'nom': row['nom'],
+          'telephone': row['telephone'],
+          'date': row['date'],
+          'heure': row['heure'],
+          'depart': row['depart'],
+          'destination': row['destination'],
+          'prixDuTicket': row['prixDuTicket'],
+          'place': row['place'],
+          'etatScanne': row['etatScanne'],
+          'statut': row['statut'],
+          'dateDeCreation': row['dateDeCreation'],
+          'datePourCalcule': row['datePourCalcule'],
+          'scanneDate': row['scanneDate'],
+        });
       }
-      return allDocuments;
-    });
+
+      yield tickets; // émettre les tickets à chaque requête
+    } catch (error) {
+      yield [];
+    } finally {
+      await conn.close();
+    }
   }
 
-/*
-  Stream<List<DocumentSnapshot<Map<String, dynamic>>>>
-      recuperationDeMesTickets() {
-    return FirebaseFirestore.instance
-        .collection('tickets')
-        .orderBy('createdAt', descending: true)
-        .limit(5)
-        .snapshots()
-        .asyncMap((ticketsSnapshot) async {
-      List<DocumentSnapshot<Map<String, dynamic>>> allDocuments = [];
-      for (var ticketDoc in ticketsSnapshot.docs) {
-        try {
-          var subcollectionSnapshot = await ticketDoc.reference
-              .collection('sousCollectionTickets')
-              .where('idUtilisateur', isEqualTo: widget.idUtilisateur)
-              .orderBy('dateDeCreation', descending: true)
-              .get();
-          allDocuments.addAll(subcollectionSnapshot.docs);
-        } catch (e) {
-          print('Erreur de chargement du ticket ${ticketDoc.id}: $e');
-        }
-      }
-      return allDocuments;
-    });
-  }
-*/
   @override
   Widget build(BuildContext context) {
     tailleEcran = calculeTailleEcran(context).round();
@@ -100,13 +88,19 @@ class _MesTicketsState extends State<MesTickets> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: StreamBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
+          child: StreamBuilder<List<Map<String, dynamic>>>(
             stream: recuperationDeMesTickets(),
             builder: (BuildContext context,
-                AsyncSnapshot<List<DocumentSnapshot<Map<String, dynamic>>>>
-                    snapshot) {
+                AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
               if (snapshot.hasError) {
-                return Center(child: Text('Une erreur est survenue'));
+                return Center(
+                  child: Text(
+                    'Problème de connexion',
+                    style: TextStyle(
+                        color: Config.colors.bleuFonce2,
+                        fontWeight: FontWeight.bold),
+                  ),
+                );
               }
 
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -126,18 +120,13 @@ class _MesTicketsState extends State<MesTickets> {
               return ListView.builder(
                 itemCount: snapshot.data!.length,
                 itemBuilder: (BuildContext context, int index) {
-                  DocumentSnapshot<Map<String, dynamic>> document =
-                      snapshot.data![index];
-                  Map<String, dynamic>? ticket = document.data();
-                  if (ticket == null) {
-                    return Center(
-                        child:
-                            Text('Erreur de chargement des données du ticket'));
-                  }
-                  var idTicket = document.id;
+                  Map<String, dynamic> ticket = snapshot.data![index];
+                  var idTicket = ticket['documentId'];
                   var verifDate = ticket['date'];
+
                   if (verifDate == dateDAujourdhui ||
-                      verifDate == dateDeDemain) {
+                      verifDate == dateDeDemain ||
+                      verifDate == dateDapresDemain) {
                     couleurTicket = const Color.fromARGB(210, 48, 196, 222);
                   } else {
                     couleurTicket = const Color.fromARGB(132, 5, 82, 121);
@@ -164,6 +153,7 @@ class _MesTicketsState extends State<MesTickets> {
                         ticket['etatScanne'],
                         ticket['prixDuTicket'].toString(),
                         ticket['statut'],
+                        ticket['datePourCalcule'],
                       ),
                       rightChild: _buildRight(),
                       tapHandler: () {},
@@ -191,7 +181,8 @@ class _MesTicketsState extends State<MesTickets> {
       int numeroDePlace,
       String etatScann,
       String prixTicket,
-      String statut) {
+      String statut,
+      DateTime dateCalcule) {
     return GestureDetector(
       onTap: () {
         if (tailleEcran! >= 6) {
@@ -211,6 +202,7 @@ class _MesTicketsState extends State<MesTickets> {
                 etatScann: etatScann,
                 statut: statut,
                 prixTicket: prixTicket,
+                datePourCalcule: dateCalcule,
               ),
             ),
           );
@@ -231,6 +223,7 @@ class _MesTicketsState extends State<MesTickets> {
                 etatScann: etatScann,
                 statut: statut,
                 prixTicket: prixTicket,
+                datePourCalcule: dateCalcule,
               ),
             ),
           );
@@ -306,7 +299,7 @@ class _MesTicketsState extends State<MesTickets> {
                   height: 32,
                   child: TextButton(
                     style: ButtonStyle(
-                      shape: MaterialStateProperty.all<OutlinedBorder>(
+                      shape: WidgetStateProperty.all<OutlinedBorder>(
                         RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30.0),
                           side: const BorderSide(
@@ -333,6 +326,7 @@ class _MesTicketsState extends State<MesTickets> {
                               etatScann: etatScann,
                               statut: statut,
                               prixTicket: prixTicket,
+                              datePourCalcule: dateCalcule,
                             ),
                           ),
                         );
@@ -353,6 +347,7 @@ class _MesTicketsState extends State<MesTickets> {
                               etatScann: etatScann,
                               statut: statut,
                               prixTicket: prixTicket,
+                              datePourCalcule: dateCalcule,
                             ),
                           ),
                         );

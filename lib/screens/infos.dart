@@ -1,14 +1,40 @@
 // ignore_for_file: unused_local_variable
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:mvst/config/config.dart';
 
-class Informations extends StatelessWidget {
+class Informations extends StatefulWidget {
   Informations({super.key});
-  final CollectionReference itemsCollection =
-      FirebaseFirestore.instance.collection('infosGares');
+
+  @override
+  State<Informations> createState() => _InformationsState();
+}
+
+class _InformationsState extends State<Informations> {
+  Future<List<Map<String, dynamic>>> fetchInfosGares() async {
+    final conn = await Connexion.connexionDB();
+
+    try {
+      var results = await conn
+          .query('SELECT ville, description, telephone FROM InfosGares');
+      List<Map<String, dynamic>> infos = [];
+
+      for (var row in results) {
+        infos.add({
+          'ville': row['ville'],
+          'description': row['description'],
+          'telephone': row['telephone'],
+        });
+      }
+      return infos;
+    } catch (e) {
+      print("Erreur lors de la récupération des infos: $e");
+      return [];
+    } finally {
+      await conn.close();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,23 +61,32 @@ class Informations extends StatelessWidget {
             Card(
               color: const Color.fromARGB(63, 158, 158, 158),
               child: SingleChildScrollView(
-                child: StreamBuilder(
-                  stream: itemsCollection.snapshots(),
-                  builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                    if (!snapshot.hasData) {
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: fetchInfosGares(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
                     }
-                    if (snapshot.data!.docs.isEmpty) {
-                      return Center(child: Text('Aucune donnée'));
+                    if (snapshot.hasError ||
+                        snapshot.data == null ||
+                        snapshot.data!.isEmpty) {
+                      return Center(
+                          child: Text(
+                        'Aucune donnée',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Config.colors.bleuA),
+                      ));
                     }
+
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: snapshot.data!.docs.map((document) {
+                      children: snapshot.data!.map((_infos) {
                         return carteInfos(
                           context,
-                          document['ville'],
-                          document['description'],
-                          document['telephone'],
+                          _infos['ville'],
+                          _infos['description'],
+                          _infos['telephone'],
                         );
                       }).toList(),
                     );
@@ -99,8 +134,7 @@ Widget carteInfos(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromARGB(132, 5, 82, 121),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(10.0), // Rayon des bordures
+                    borderRadius: BorderRadius.circular(10.0),
                   ),
                 ),
                 child: Text(

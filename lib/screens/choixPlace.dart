@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 
 import 'package:badges/badges.dart' as badges;
@@ -16,7 +18,7 @@ DateTime? dateDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 1);
 
 List<int> listeDesPlacesChoisies = [];
-String? _id, _depart, _destination, _date, _moisAnnee, _annee, _heure;
+String? _id, _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
 
 class ChoixPlaces extends StatefulWidget {
   const ChoixPlaces(
@@ -28,6 +30,7 @@ class ChoixPlaces extends StatefulWidget {
       required this.nom,
       required this.contact,
       required this.date,
+      required this.mois,
       required this.moisAnnee,
       required this.annee,
       required this.heure,
@@ -37,6 +40,7 @@ class ChoixPlaces extends StatefulWidget {
   final String nom;
   final String contact;
   final String date;
+  final String mois;
   final String moisAnnee;
   final String annee;
   final String heure;
@@ -60,6 +64,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     super.initState();
     _id = widget.id;
     _date = widget.idDate;
+    _mois = widget.mois;
     _moisAnnee = widget.moisAnnee;
     _annee = widget.annee;
     _heure = widget.heure;
@@ -72,7 +77,6 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
   @override
   void dispose() {
     _timer.cancel();
-
     super.dispose();
   }
 
@@ -95,7 +99,14 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
 
   Future<void> _loadData() async {
     try {
-      await ClasseListeDesPlaces.getTicketsStream;
+      await ClasseListeDesPlaces.verifierEtRecupererPlaces(
+          widget.depart,
+          widget.destination,
+          widget.idDate,
+          widget.heure,
+          widget.mois,
+          widget.moisAnnee,
+          widget.annee);
       setState(() {
         _isLoading = false; // Les données sont chargées
       });
@@ -132,7 +143,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                 onPressed: () {
                   if (listeDesPlacesChoisies.isNotEmpty) {
                     stopCountdown();
-                    Navigator.push(
+                    Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
                         builder: (context) => Tickets(
@@ -143,6 +154,9 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                           nom: widget.nom,
                           contact: widget.contact,
                           date: widget.date,
+                          mois: widget.mois,
+                          moisAnnee: widget.moisAnnee,
+                          annee: widget.annee,
                           heure: widget.heure,
                           depart: widget.depart,
                           destination: widget.destination,
@@ -196,7 +210,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(child: Text('Erreur: $_errorMessage'))
+              ? Center(child: Text('Erreur'))
               : Container(
                   color: const Color.fromARGB(69, 191, 217, 248),
                   child: Center(
@@ -206,8 +220,6 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                       child: Padding(
                         padding: const EdgeInsets.all(1.5),
                         child: Container(
-                          height: double.infinity,
-                          width: double.infinity,
                           decoration: BoxDecoration(
                             border: Border.all(color: Config.colors.jauneBlanc),
                             borderRadius: const BorderRadius.all(
@@ -627,7 +639,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
             onTap: () {
               if (listeDesPlacesChoisies.isNotEmpty) {
                 stopCountdown();
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
                     builder: (context) => Tickets(
@@ -638,6 +650,9 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                       nom: widget.nom,
                       contact: widget.contact,
                       date: widget.date,
+                      mois: widget.mois,
+                      moisAnnee: widget.moisAnnee,
+                      annee: widget.annee,
                       heure: widget.heure,
                       depart: widget.depart,
                       destination: widget.destination,
@@ -675,7 +690,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                     onPressed: () {
                       if (listeDesPlacesChoisies.isNotEmpty) {
                         stopCountdown();
-                        Navigator.push(
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
                             builder: (context) => Tickets(
@@ -686,6 +701,9 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                               nom: widget.nom,
                               contact: widget.contact,
                               date: widget.date,
+                              mois: widget.mois,
+                              moisAnnee: widget.moisAnnee,
+                              annee: widget.annee,
                               heure: widget.heure,
                               depart: widget.depart,
                               destination: widget.destination,
@@ -760,7 +778,6 @@ class Places extends StatefulWidget {
 
 class _PlacesState extends State<Places> {
   Color couleurSelection = const Color.fromARGB(255, 182, 214, 251);
-  Color couleurDeselect = const Color.fromARGB(226, 10, 41, 66);
   Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
   String etat = "cliquable";
   bool isLoading = false;
@@ -773,31 +790,33 @@ class _PlacesState extends State<Places> {
 
   @override
   void dispose() {
-    // Créer une copie de listeDeVerification avant de l'itérer
-    List<int> tempListe = List.from(listeDeVerification);
-    for (var place in tempListe) {
-      supprimerPlace(_id!, _depart!, _destination!, _date!, _heure!, place);
-    }
-    listeDeVerification.clear();
+    _netoyageEnCasDeFermeture();
     super.dispose();
   }
 
   void verification() {
-    if (listeDesNumeros.contains(widget.numero)) {
+    if (listeDesPlacesOccupees.contains(widget.numero)) {
       couleurInitiale = couleurSelection;
       etat = "nonCliquable";
     }
   }
 
   Future<bool> _netoyageEnCasDeFermeture() async {
-    // Créer une copie de listeDeVerification avant de l'itérer
-    List<int> tempListe = List.from(listeDeVerification);
-    // Cette méthode est appelée quand l'utilisateur essaie de quitter la page.
-    for (var place in tempListe) {
-      await supprimerPlace(
-          _id!, _depart!, _destination!, _date!, _heure!, place);
+    if (listeDeVerification.isNotEmpty) {
+      await supprimerPlaces(
+        _depart!,
+        _destination!,
+        _date!,
+        _id!,
+        _mois!,
+        _moisAnnee!,
+        _annee!,
+        _heure!,
+        listeDeVerification,
+      );
     }
-    return true; // Renvoie true pour permettre à la page de se fermer.
+    listeDeVerification.clear();
+    return true;
   }
 
   // La liste de booléens qui représente la sélection de chaque carte
@@ -817,55 +836,52 @@ class _PlacesState extends State<Places> {
               selection[widget.numero] = !selection[widget.numero];
             });
 
-            var resultat = await verifierPlace(
-              _id!,
-              _depart!,
-              _destination!,
-              _date!,
-              _moisAnnee!,
-              _annee!,
-              _heure!,
-              widget.numero,
-            );
-
-            if (selection[widget.numero]) {
-              if (resultat == 'succès') {
-                counterBloc.add(EventIcrement());
-                ClasseListeDesPlaces.getTicketsStream(
+            try {
+              if (selection[widget.numero]) {
+                var resultat = await verifierPlace(
                   _depart!,
                   _destination!,
                   _date!,
+                  _id!,
+                  _mois!,
+                  _moisAnnee!,
+                  _annee!,
                   _heure!,
+                  widget.numero,
                 );
-                verification();
-                listeDesPlacesChoisies.add(widget.numero);
-                listeDeVerification.add(widget.numero);
+
+                if (resultat == 'succès') {
+                  counterBloc.add(EventIcrement());
+                  listeDesPlacesChoisies.add(widget.numero);
+                  listeDeVerification.add(widget.numero);
+                } else {
+                  setState(() {
+                    selection[widget.numero] = false;
+                  });
+                  showAlertDialog(context);
+                }
               } else {
-                showAlertDialog(context);
+                await supprimerPlaces(
+                  _depart!,
+                  _destination!,
+                  _date!,
+                  _id!,
+                  _mois!,
+                  _moisAnnee!,
+                  _annee!,
+                  _heure!,
+                  [widget.numero],
+                );
+                counterBloc.add(EventDecrement());
+                listeDesPlacesChoisies.remove(widget.numero);
+                listeDeVerification.remove(widget.numero);
               }
-            } else {
-              await supprimerPlace(
-                _id!,
-                _depart!,
-                _destination!,
-                _date!,
-                _heure!,
-                widget.numero,
-              );
-              counterBloc.add(EventDecrement());
-              ClasseListeDesPlaces.getTicketsStream(
-                _depart!,
-                _destination!,
-                _date!,
-                _heure!,
-              );
-              verification();
-              listeDesPlacesChoisies.remove(widget.numero);
-              listeDeVerification.remove(widget.numero);
+            } catch (error) {
+            } finally {
+              setState(() {
+                isLoading = false;
+              });
             }
-            setState(() {
-              isLoading = false; // Arrête le chargement
-            });
           }
         },
         child: Container(
@@ -874,7 +890,6 @@ class _PlacesState extends State<Places> {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Affiche l'indicateur de chargement si isLoading est vrai
               if (isLoading)
                 const CircularProgressIndicator()
               else
@@ -882,7 +897,7 @@ class _PlacesState extends State<Places> {
                 Card(
                   color: selection[widget.numero % 62]
                       ? couleurSelection
-                      : couleurDeselect, // Change la couleur si la carte est désélectionnée
+                      : couleurInitiale,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),

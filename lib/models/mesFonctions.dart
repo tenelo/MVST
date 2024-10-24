@@ -1,297 +1,223 @@
 // ignore_for_file: unused_local_variable
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-List<int> listeVerifPourSuppression1 = [];
-List<int> listeVerifPourSuppression2 = [];
-List<int> listeDesNumeros = [];
+import 'dart:convert';
+
+import 'package:intl/intl.dart';
+import 'package:mvst/config/config.dart';
+
+List<int> listeDesPlacesOccupees = [];
 List<int> listeDeVerification = [];
-
-class FonctionListeDesPlaces {
-  static Future<void> recup(String date, String heure) async {
-    // Récupérer les documents principaux filtrés par date et heure
-    final ticketsSnapshot = await FirebaseFirestore.instance
-        .collection('tickets')
-        .where('dateDeDepart', isEqualTo: date)
-        .where('heureDeDepart', isEqualTo: heure)
-        .get();
-    for (var ticketDoc in ticketsSnapshot.docs) {
-      // Récupérer la sous-collection 'sousCollectionTickets' pour chaque document
-      var sousCollectionSnapshot =
-          await ticketDoc.reference.collection('sousCollectionTickets').get();
-
-      sousCollectionSnapshot.docs.forEach((doc) {
-        listeDesNumeros.add(doc['place'] as int);
-      });
-    }
-  }
-}
+List<int> listeDeRecherche = [];
 
 class ClasseListeDesPlaces {
-  static Future<void> getTicketsStream(
-      String _depart, String _destination, String _date, String _heure) async {
-    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-    // Construire l'ID du document à partir des paramètres de date et heure
+// récupérer la liste des places dejà occupées
+  static Future<void> verifierEtRecupererPlaces(
+      String _depart,
+      String _destination,
+      String _date,
+      String _heure,
+      String _mois,
+      String _moisAnnee,
+      String _annee) async {
+    final conn = await Connexion.connexionDB();
     String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
-
-    // Récupérer le document par son ID
-    DocumentSnapshot<Map<String, dynamic>> ticketsSnapshot =
-        await _firestore.collection('tickets').doc(documentId).get();
-
-    // Vider la liste avant de la remplir
-    listeDesNumeros.clear();
-
-    // Vérifier si le document existe
-    if (ticketsSnapshot.exists) {
-      // Extraire les 'placesChoisies' du document
-      final data = ticketsSnapshot.data();
-      if (data != null && data['placesChoisies'] != null) {
-        List<dynamic> placesChoisies = data['placesChoisies'];
-        for (var place in placesChoisies) {
-          // Assurer que chaque élément de la liste est du type attendu
-          if (place is Map<String, dynamic> && place['place'] != null) {
-            listeDesNumeros.add(place['place'] as int);
-          }
-        }
-      }
-    } else {
-      print("Document with ID $documentId does not exist");
-    }
-  }
-
-  ////////////////////////////////////
-  static Future<void> _getTicketsStream(
-      String _depart, String _destination, String _date, String _heure) async {
-    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-    // Construire l'ID du document à partir des paramètres de date et heure
-    String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
-
-    // Récupérer le document par son ID
-    DocumentSnapshot<Map<String, dynamic>> ticketsSnapshot =
-        await _firestore.collection('tickets').doc(documentId).get();
-
-    //remplir liste 1
-    if (ticketsSnapshot.exists) {
-      // Extraire les 'placesChoisies' du document
-      final data = ticketsSnapshot.data();
-      if (data != null && data['placesChoisies'] != null) {
-        List<dynamic> placesChoisies = data['placesChoisies'];
-        for (var place in placesChoisies) {
-          // Assurer que chaque élément de la liste est du type attendu
-          if (place is Map<String, dynamic> && place['place'] != null) {
-            listeVerifPourSuppression1.add(place['place'] as int);
-          }
-        }
-      }
-    } else {}
-
-    // Vérifier si le document existe pour remplir liste 2
-    if (ticketsSnapshot.exists) {
-      var subcollectionSnapshot = await ticketsSnapshot.reference
-          .collection('sousCollectionTickets')
-          .get();
-
-      // Extraire les 'place' de la sous-collection
-      for (var subDoc in subcollectionSnapshot.docs) {
-        final data = subDoc.data();
-        if (data['place'] != null) {
-          listeVerifPourSuppression2.add(data['place'] as int);
-        }
-      }
-    } else {}
-
-    //Vérifier si les id de la liste de la sous collection sont present dans la liste de la collection
-    for (var elmt in listeVerifPourSuppression1) {
-      if (listeVerifPourSuppression2.contains(elmt)) {
+    try {
+      var countResult = await conn.query(
+          'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
+      if (countResult.first[0] == 0) {
+        await conn.query(
+            'INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, dateDeCreation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+            [
+              documentId,
+              _date,
+              _heure,
+              _depart,
+              _destination,
+              _mois,
+              _moisAnnee,
+              _annee,
+              '[]'
+            ]);
       } else {
-        listeDeVerification.add(elmt);
+        var placesResult = await conn.query(
+            'SELECT placesChoisies FROM Departs WHERE documentId = ?',
+            [documentId]);
+        if (placesResult.isNotEmpty) {
+          var placesBlob = placesResult.first[0];
+          var placesJsonString = placesBlob.toString();
+          if (placesJsonString.isNotEmpty) {
+            List<dynamic> placesDynamic = jsonDecode(placesJsonString);
+            // Utiliser un Set temporaire pour éviter les doublons
+            Set<int> placesSet =
+                placesDynamic.map((place) => place as int).toSet();
+
+            // Réinitialiser la liste listeDesPlacesOccupees avant chaque ajout
+            listeDesPlacesOccupees = placesSet.toList();
+          }
+        }
       }
+    } catch (error) {
+    } finally {
+      await conn.close();
     }
   }
 }
 
-// fonction stream pour écouter la collection 'tickets' et lancer la fonction de récupration des places
-void listenForTicketChanges(String _dateDeTri, String _heureTri) {
-  final collectionRef = FirebaseFirestore.instance.collection('tickets');
-
-  // Écoute tous les changements dans la collection 'tickets'
-  final subscription = collectionRef.snapshots().listen((snapshot) {
-    snapshot.docChanges.forEach((change) {
-      ClasseListeDesPlaces.getTicketsStream;
-    });
-  });
-
-  // Pour arrêter l'écoute lorsque nécessaire
-  // subscription.cancel();
-}
+//vérifier si une place est occupée ou non, si non occupée ajouter
+//à la liste des places occupées
 
 Future<String> verifierPlace(
-    String _id,
     String _depart,
     String _destination,
     String _date,
+    String _id,
+    String _mois,
     String _moisAnnee,
     String _annee,
     String _heure,
     int numeroDePlace) async {
+  final conn = await Connexion.connexionDB();
   String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
-
   try {
-    // Obtenir une référence au document avec l'ID spécifié
-    DocumentReference documentRef =
-        FirebaseFirestore.instance.collection('tickets').doc(documentId);
+    // Commencer une transaction
+    await conn.query('START TRANSACTION');
 
-    // Exécuter une transaction pour vérifier et mettre à jour le document atomiquement
-    return await FirebaseFirestore.instance.runTransaction((transaction) async {
-      // Obtenir un instantané du document
-      DocumentSnapshot documentSnapshot = await transaction.get(documentRef);
+    // Récupérer les places choisies
+    var placesResult = await conn.query(
+        'SELECT placesChoisies FROM Departs WHERE documentId = ? FOR UPDATE',
+        [documentId]); // Utilisation de FOR UPDATE pour verrouiller la ligne
 
-      if (!documentSnapshot.exists) {
-        // Si le document n'existe pas, le créer avec les champs initiaux
-        await transaction.set(documentRef, {
-          'createdAt': FieldValue.serverTimestamp(),
-          'dateDeDepart': _date,
-          'heureDeDepart': _heure,
-          'depart': _depart,
-          'destination': _destination,
-          'moisAnnee': _moisAnnee,
-          'annee': _annee,
-          'placesChoisies': [
-            {'place': numeroDePlace, 'id': _id}
-          ], // Initialiser avec le numeroDePlace
-        });
-      } else {
-        // Le document existe
-        Map<String, dynamic> data =
-            documentSnapshot.data() as Map<String, dynamic>;
-        List<dynamic> placesChoisies = data['placesChoisies'] ?? [];
+    if (placesResult.isNotEmpty) {
+      var placesBlob = placesResult.first[0];
+      var placesJsonString = placesBlob.toString();
+      if (placesJsonString.isNotEmpty) {
+        List<dynamic> placesDynamic = jsonDecode(placesJsonString);
+        Set<int> placesSet = placesDynamic.map((place) => place as int).toSet();
+        listeDesPlacesOccupees = placesSet.toList();
 
-        // Vérifier si numeroDePlace est déjà dans la liste
-        bool placeExists =
-            placesChoisies.any((place) => place['place'] == numeroDePlace);
+        // Vérifier si la place existe déjà dans la liste
+        bool placeExists = listeDesPlacesOccupees.contains(numeroDePlace);
 
         if (placeExists) {
-          return 'échec';
+          await conn.query('ROLLBACK'); // Annuler la transaction
+          return 'échec'; // La place est déjà réservée
         } else {
-          // Le numero n'existe pas, ajouter le nouvel élément à la liste
-          placesChoisies.add({'id': _id, 'place': numeroDePlace});
-          transaction.update(documentRef, {
-            'placesChoisies': placesChoisies,
-          });
-        }
-      }
-      return 'succès';
-    });
-  } catch (e) {
-    return 'Erreur lors de la vérification';
-  }
-}
+          // Ajouter la place choisie
+          await conn.query(
+              'UPDATE Departs SET placesChoisies = JSON_ARRAY_APPEND(placesChoisies, ?, ?) WHERE documentId = ?',
+              ['\$', numeroDePlace, documentId]);
 
-/*
-Future<String> supprimerPlaceEnDebut(String _date, int numeroDePlace) async {
-
-  try {
-    // Obtenir une référence au document avec l'ID spécifié
-    QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-    .collection('tickets')
-    .where('dateDeDepart', isEqualTo: _date)
-    .get();
-
-   
-      DocumentSnapshot documentSnapshot = await transaction.get(documentRef);
-
-      if (querySnapshot.docs) {
-        // Le document existe
-        Map<String, dynamic> data =
-            documentSnapshot.data() as Map<String, dynamic>;
-        List<dynamic> placesChoisies = data['placesChoisies'] ?? [];
-
-        // Trouver l'élément à supprimer
-        List<dynamic> updatedPlacesChoisies = placesChoisies.where((place) {
-          // Conserver les éléments qui ne correspondent pas au numeroDePlace
-          return !(place['place'] == numeroDePlace && place['id'] == _id);
-        }).toList();
-
-        if (updatedPlacesChoisies.length < placesChoisies.length) {
-          // Si la longueur de la liste a changé, cela signifie qu'un élément a été supprimé
-          // Mettre à jour le document avec la nouvelle liste
-          transaction.update(querySnapshot, {
-            'placesChoisies': updatedPlacesChoisies,
-          });
+          // Valider la transaction
+          await conn.query('COMMIT');
           return 'succès';
-        } else {
-          // Aucun élément à supprimer
-          return 'échec';
         }
-      } else {
-        // Le document n'existe pas
-        return 'échec';
       }
-
-  } catch (e) {
-    print('Erreur lors de la suppression de la place : $e');
-    return 'Erreur lors de la suppression';
+    } else {
+      // Si aucune ligne n'est trouvée, rollback et signaler une erreur
+      await conn.query('ROLLBACK');
+      return 'Erreur : Document non trouvé';
+    }
+  } catch (error) {
+    await conn.query('ROLLBACK'); // Annuler la transaction en cas d'erreur
+    print('Erreur : $error');
+    return 'Erreur inattendue';
+  } finally {
+    await conn.close(); // Toujours fermer la connexion
   }
+  return '';
 }
-*/
-Future<String> supprimerPlace(String _id, String _depart, String _destination,
-    String _date, String _heure, int numeroDePlace) async {
+
+// supprimer une place desélectionnée
+Future<String> supprimerPlaces(
+    String _depart,
+    String _destination,
+    String _date,
+    String _id,
+    String _mois,
+    String _moisAnnee,
+    String _annee,
+    String _heure,
+    List<int> numerosDePlace) async {
+  // Connexion à la base de données
+  final conn = await Connexion.connexionDB();
+
+  // Création du documentId basé sur les paramètres fournis
   String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
 
   try {
-    // Obtenir une référence au document avec l'ID spécifié
-    DocumentReference documentRef =
-        FirebaseFirestore.instance.collection('tickets').doc(documentId);
+    // Récupérer l'enregistrement correspondant à documentId
+    var result = await conn.query(
+        'SELECT placesChoisies FROM Departs WHERE documentId = ?',
+        [documentId]);
 
-    // Exécuter une transaction pour vérifier et mettre à jour le document atomiquement
-    return await FirebaseFirestore.instance.runTransaction((transaction) async {
-      // Obtenir un instantané du document
-      DocumentSnapshot documentSnapshot = await transaction.get(documentRef);
+    // Si aucun enregistrement n'est trouvé, retourner une erreur
+    if (result.isEmpty) {
+      return 'Erreur: document introuvable';
+    }
 
-      if (documentSnapshot.exists) {
-        // Le document existe
-        Map<String, dynamic> data =
-            documentSnapshot.data() as Map<String, dynamic>;
-        List<dynamic> placesChoisies = data['placesChoisies'] ?? [];
+    // Récupérer la valeur JSON du champ `placesChoisies`
+    var placesBlob = result.first[0];
+    var placesJsonString = placesBlob.toString();
 
-        // Trouver l'élément à supprimer
-        List<dynamic> updatedPlacesChoisies = placesChoisies.where((place) {
-          // Conserver les éléments qui ne correspondent pas au numeroDePlace
-          return !(place['place'] == numeroDePlace && place['id'] == _id);
-        }).toList();
+    // Si la liste est vide ou n'existe pas, retourner une erreur
+    if (placesJsonString.isEmpty) {
+      return 'Erreur: aucune place enregistrée';
+    }
 
-        if (updatedPlacesChoisies.length < placesChoisies.length) {
-          // Si la longueur de la liste a changé, cela signifie qu'un élément a été supprimé
-          // Mettre à jour le document avec la nouvelle liste
-          transaction.update(documentRef, {
-            'placesChoisies': updatedPlacesChoisies,
-          });
-          return 'succès';
-        } else {
-          // Aucun élément à supprimer
-          return 'échec';
-        }
+    // Convertir la chaîne JSON en une liste dynamique de numéros de places
+    List<dynamic> placesDynamic = jsonDecode(placesJsonString);
+
+    // Boucle pour supprimer chaque numéro de place de la liste
+    for (int numeroDePlace in numerosDePlace) {
+      // Vérifier si le numéro de place à supprimer existe dans la liste
+      bool placeExists = placesDynamic.contains(numeroDePlace);
+      if (placeExists) {
+        // Supprimer le numéro de place de la liste
+        placesDynamic.remove(numeroDePlace);
       } else {
-        // Le document n'existe pas
-        return 'échec';
+        return 'Erreur: la place n\'existe pas';
       }
-    });
-  } catch (e) {
-    print('Erreur lors de la suppression de la place : $e');
+    }
+
+    // Mettre à jour la base de données après suppression
+    if (placesDynamic.isEmpty) {
+      await conn.query(
+          'UPDATE Departs SET placesChoisies = ? WHERE documentId = ?',
+          [jsonEncode([]), documentId]);
+    } else {
+      String placesJsonUpdated = jsonEncode(placesDynamic);
+      await conn.query(
+          'UPDATE Departs SET placesChoisies = ? WHERE documentId = ?',
+          [placesJsonUpdated, documentId]);
+    }
+
+    // Retourner succès après suppression
+    return 'succès';
+  } catch (error) {
+    // En cas d'erreur, afficher l'erreur et retourner un message d'erreur
     return 'Erreur lors de la suppression';
+  } finally {
+    // Fermer la connexion à la base de données
+    await conn.close();
   }
 }
 
-/*
+class ConvertirHeure {
+  static String formatDate(String date) {
+    DateTime parsedDate;
 
-  Future<bool> _netoyageEnCasDeFermeture() async {
-    // Cette méthode est appelée quand l'utilisateur essaie de quitter la page.
-    for (var place in listeDeVerification) {
-      await supprimerPlace(_depart!, _destination!, _date!, _heure!, place);
-    }
-    return true; // Renvoie true pour permettre à la page de se fermer.
+    DateFormat inputFormat = DateFormat('EEEE d MMMM yyyy', 'fr_FR');
+    parsedDate = inputFormat.parse(date);
+
+    return DateFormat('EEEE d MMMM yyyy', 'fr_FR').format(parsedDate);
   }
 
-*/
+  static String formatDatePourCalcule(String date) {
+    DateTime parsedDate;
 
+    DateFormat inputFormat = DateFormat('EEEE d MMMM yyyy', 'fr_FR');
+    parsedDate = inputFormat.parse(date);
+
+    return DateFormat('yyyy-MM-dd', 'fr_FR').format(parsedDate);
+  }
+}

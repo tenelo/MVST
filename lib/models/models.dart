@@ -15,7 +15,7 @@ class Carousel extends StatefulWidget {
 }
 
 class _CarouselState extends State<Carousel> {
-  Stream<List<Map<String, String>>> fetchImagesStream() {
+  Stream<List<Map<String, String>>> chargerImagesStream() {
     return FirebaseFirestore.instance
         .collection('images')
         .orderBy('dateCreation', descending: false)
@@ -30,7 +30,6 @@ class _CarouselState extends State<Carousel> {
           };
         }).toList();
       } catch (e) {
-        print('Error fetching images: $e');
         return [];
       }
     });
@@ -39,12 +38,12 @@ class _CarouselState extends State<Carousel> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Map<String, String>>>(
-      stream: fetchImagesStream(),
+      stream: chargerImagesStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
-          return Center(child: Text('ERREUR DE CHARGEMENT DE L\'IMAGE'));
+          return Center(child: Text('IMAGE NON CHARGEE'));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Center(child: Text(''));
         }
@@ -96,55 +95,6 @@ class _CarouselState extends State<Carousel> {
     );
   }
 }
-
-/*
-class Carousel extends StatefulWidget {
-  const Carousel({super.key});
-
-  @override
-  _CarouselState createState() => _CarouselState();
-}
-
-class _CarouselState extends State<Carousel> {
-  final List<String> imgList = [
-    'assets/images/MVST_pt_Sf.png',
-    'assets/images/dame1.png',
-    'assets/images/dame2.png',
-    'assets/images/MVST_pt_Sf.png',
-    'assets/images/dame3.png',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 300,
-      child: CarouselSlider.builder(
-        itemCount: imgList.length,
-        itemBuilder: (BuildContext context, int index, int realIndex) {
-          final String assetName = imgList[index];
-          return Image.asset(
-            assetName,
-            fit: BoxFit.cover,
-            width: double.infinity,
-          );
-        },
-        options: CarouselOptions(
-          autoPlay: true,
-          pauseAutoPlayOnTouch: true,
-          viewportFraction: 1.0,
-          //enlargeCenterPage: true,
-          aspectRatio: 16 / 9,
-          autoPlayInterval: const Duration(seconds: 3),
-          autoPlayAnimationDuration: const Duration(milliseconds: 940),
-          autoPlayCurve: Curves.fastOutSlowIn,
-          scrollDirection: Axis.horizontal,
-        ),
-      ),
-    );
-  }
-}
-*/
 
 ////////////////////////////
 
@@ -224,7 +174,6 @@ class _PetitesCartesState extends State<PetitesCartes> {
             .collection('utilisateurs')
             .doc(user.uid)
             .get();
-
         if (documentSnapshot.exists) {
           // Extraire les informations du document
           Map<String, dynamic> userData =
@@ -251,14 +200,19 @@ class _PetitesCartesState extends State<PetitesCartes> {
   }
 
   Future<List<Map<String, dynamic>>> getPrixDesTickets() async {
-    final QuerySnapshot querySnapshot =
-        await FirebaseFirestore.instance.collection('prixDesTickets').get();
+    // Établir la connexion
+    final conn = await Connexion.connexionDB();
 
-    final List<Map<String, dynamic>> data = querySnapshot.docs.map((doc) {
-      final axe = doc.get('axe');
-      final prix = doc.get('prix');
-      return {'axe': axe, 'prix': prix};
+    // Exécuter la requête
+    final results = await conn.query('SELECT axe, prix FROM PrixDesTickets');
+
+    // Transformer les résultats en une liste de maps
+    final List<Map<String, dynamic>> data = results.map((_prix) {
+      return {'axe': _prix['axe'], 'prix': _prix['prix']};
     }).toList();
+
+    // Fermer la connexion
+    await conn.close();
 
     return data;
   }
@@ -282,7 +236,6 @@ class _PetitesCartesState extends State<PetitesCartes> {
             setState(() {
               _isLoading = true;
             });
-            //listenForTicketChanges();
             // Récupérer les données utilisateur
             Map<String, dynamic>? data = await InformationsUtilisateur();
             setState(() {
@@ -324,10 +277,10 @@ class _PetitesCartesState extends State<PetitesCartes> {
             );
           }
         } catch (e) {
-          print('Erreur lors de la récupération des données : $e');
+          print('Vérifiez votre connexion');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Erreur: Impossible de récupérer les données.'),
+              content: Text('Vérifiez la connexion internet'),
             ),
           );
         } finally {

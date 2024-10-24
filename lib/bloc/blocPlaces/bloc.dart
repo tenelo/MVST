@@ -32,12 +32,12 @@ class ListePlaceBloc extends Bloc<ListePlaceEvent, ListePlaceState> {
         for (var subDoc in subcollectionSnapshot.docs) {
           final data = subDoc.data();
           if (data['place'] != null) {
-            listeDesNumeros.add(data['place'] as int);
+            listeDesPlacesOccupees.add(data['place'] as int);
           }
         }
       }
 
-      emit(ListePlaceChargees(listeDesNumeros));
+      emit(ListePlaceChargees(listeDesPlacesOccupees));
     } catch (e) {
       emit(PlaceError(e.toString()));
     }

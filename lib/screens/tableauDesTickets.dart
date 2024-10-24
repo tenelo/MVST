@@ -1,21 +1,28 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:mvst/config/config.dart';
+import 'package:mvst/models/mesfonctions.dart';
 import 'package:mvst/screens/detailsTickets.dart';
+import 'package:mvst/screens/petitsEcrans/detailsTickets2.dart';
+
+int? tailleEcran;
 
 class TableauDeTickets extends StatefulWidget {
   const TableauDeTickets({Key? key, required this.idUtilisateur})
       : super(key: key);
   final String idUtilisateur;
+
   @override
   State<TableauDeTickets> createState() => _TableauDeTicketsState();
 }
 
 class _TableauDeTicketsState extends State<TableauDeTickets> {
-  int _rowsPerPage = 8;
+  int _rowsPerPage = 10;
   bool _isLoading = true;
-  List<DocumentSnapshot> donnees = [];
-  List<DocumentSnapshot> _filtre = [];
+  List<Map<String, dynamic>> donnees = [];
+  List<Map<String, dynamic>> _filtre = [];
   final TextEditingController _rechercheParDate = TextEditingController();
   final TextEditingController _rechercheParDestination =
       TextEditingController();
@@ -23,49 +30,59 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
   @override
   void initState() {
     super.initState();
-    _getDonnees();
+    recuperationDeMesTickets();
   }
 
-  void _getDonnees() async {
+  Future<List<Map<String, dynamic>>> recuperationDeMesTickets() async {
+    final conn = await Connexion.connexionDB();
     setState(() {
       _isLoading = true;
     });
-
     try {
-      // Récupérer les documents de la collection 'tickets' avec filtrage et tri
-      QuerySnapshot<Map<String, dynamic>> ticketsSnapshot =
-          await FirebaseFirestore.instance
-              .collection('tickets')
-              .where('idUtilisateur', arrayContains: widget.idUtilisateur)
-              .orderBy('createdAt', descending: true)
-              .get();
+      var results = await conn.query(
+          'SELECT * FROM Tickets WHERE idUtilisateur = ? ORDER BY dateDeCreation DESC LIMIT 150',
+          [widget.idUtilisateur]);
 
-      // Récupérer les sous-collections pour chaque document
-      List<DocumentSnapshot<Map<String, dynamic>>> allDocuments = [];
-      for (var ticketDoc in ticketsSnapshot.docs) {
-        var subcollectionSnapshot = await ticketDoc.reference
-            .collection('sousCollectionTickets')
-            .where('idUtilisateur', isEqualTo: widget.idUtilisateur)
-            .orderBy('dateDeCreation', descending: true)
-            .get();
-        allDocuments.addAll(subcollectionSnapshot.docs);
+      List<Map<String, dynamic>> listeDesTickets = [];
+      for (var row in results) {
+        listeDesTickets.add({
+          'id': row['id'],
+          'documentId': row['documentId'],
+          'idUtilisateur': row['idUtilisateur'],
+          'nom': row['nom'],
+          'telephone': row['telephone'],
+          'date': row['date'],
+          'heure': row['heure'],
+          'depart': row['depart'],
+          'destination': row['destination'],
+          'prixDuTicket': row['prixDuTicket'],
+          'place': row['place'],
+          'etatScanne': row['etatScanne'],
+          'statut': row['statut'],
+          'datePourCalcule': row['datePourCalcule'],
+          'dateDeCreation': row['dateDeCreation'],
+        });
       }
-
       setState(() {
-        donnees = allDocuments;
-        _filtre = allDocuments;
+        donnees = listeDesTickets;
+        _filtre = listeDesTickets;
         _isLoading = false;
       });
+      return listeDesTickets;
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      print("Erreur lors de la récupération des tickets : $e");
+      print("Erreur lors de la récupération des ticket ");
+      return [];
+    } finally {
+      await conn.close();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    tailleEcran = calculeTailleEcran(context).round();
     return Scaffold(
       body: Container(
         height: MediaQuery.of(context).size.height * 1,
@@ -93,12 +110,13 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                     ),
                     onChanged: (value) {
                       setState(() {
-                        donnees = _filtre
-                            .where((data) => data['date']
-                                .toString()
-                                .toLowerCase()
-                                .contains(value.toLowerCase()))
-                            .toList();
+                        donnees = _filtre.where((data) {
+                          final date = data['date'].toString().toLowerCase();
+                          final jourMois = DateFormat('dd MMMM yyyy', 'fr_FR')
+                              .format(DateTime.parse(data['date']));
+                          return date.contains(value.toLowerCase()) ||
+                              jourMois.contains(value.toLowerCase());
+                        }).toList();
                       });
                     },
                   ),
@@ -140,7 +158,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                           data: ThemeData.light().copyWith(
                               cardColor: Theme.of(context).canvasColor),
                           child: PaginatedDataTable(
-                            horizontalMargin: 5,
+                            horizontalMargin: 10,
                             columnSpacing: 20,
                             showFirstLastButtons: true,
                             columns: const [
@@ -194,7 +212,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                               ),
                             ],
                             rowsPerPage: _rowsPerPage,
-                            availableRowsPerPage: const [5, 8, 10],
+                            availableRowsPerPage: const [5, 10, 20],
                             onRowsPerPageChanged: (int? value) {
                               if (value != null) {
                                 setState(() {
@@ -216,23 +234,24 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
 }
 
 class TicketDataSource extends DataTableSource {
-  final List<DocumentSnapshot> tickets;
+  final List<Map<String, dynamic>> tickets;
   final BuildContext context;
 
   TicketDataSource(this.tickets, this.context);
 
   DateTime parseDate(String dateStr) {
-    DateFormat format = DateFormat('EEEE d MMMM yyyy', 'fr_FR');
-    return format.parse(dateStr);
+    DateFormat dateFormatFr = DateFormat('EEEE d MMMM yyyy', 'fr_FR');
+    DateTime dateTime = dateFormatFr.parse(dateStr);
+    return dateTime;
   }
 
   @override
   DataRow? getRow(int index) {
     if (index >= tickets.length) return null;
     final ticketSnapshot = tickets[index];
-    final ticket = tickets[index].data() as Map<String, dynamic>;
-    final String idDuTicket = ticketSnapshot.id;
-    DateTime date = parseDate(ticket['date']);
+    final ticket = ticketSnapshot;
+    var idDuTicket = ticket['documentId'];
+    DateTime date = parseDate(ticket['date'].toString());
     String formattedDate = DateFormat('dd MMMM yyyy', 'fr_FR').format(date);
 
     return DataRow.byIndex(
@@ -258,25 +277,49 @@ class TicketDataSource extends DataTableSource {
   }
 
   void _onTapRow(Map<String, dynamic> ticket, String id) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DetailsTickets(
-          idTicket: id,
-          idUtilisateur: ticket['idUtilisateur'],
-          nom: ticket['nom'],
-          contact: ticket['telephone'],
-          date: ticket['date'],
-          heure: ticket['heure'],
-          depart: ticket['depart'],
-          destination: ticket['destination'],
-          place: ticket['place'],
-          etatScann: ticket['etatScanne'],
-          statut: ticket['statut'],
-          prixTicket: ticket['prixDuTicket'].toString(),
+    if (tailleEcran! >= 6) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DetailsTickets(
+            idTicket: id,
+            idUtilisateur: ticket['idUtilisateur'].toString(),
+            nom: ticket['nom'].toString(),
+            contact: ticket['telephone'].toString(),
+            date: ConvertirHeure.formatDate((ticket['date'].toString())),
+            heure: ticket['heure'].toString(),
+            depart: ticket['depart'].toString(),
+            destination: ticket['destination'].toString(),
+            place: ticket['place'],
+            etatScann: ticket['etatScanne'].toString(),
+            statut: ticket['statut'].toString(),
+            prixTicket: ticket['prixDuTicket'].toString(),
+            datePourCalcule: ticket['datePourCalcule'],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DetailsTickets2(
+            idTicket: id,
+            idUtilisateur: ticket['idUtilisateur'].toString(),
+            nom: ticket['nom'].toString(),
+            contact: ticket['telephone'].toString(),
+            date: ConvertirHeure.formatDate((ticket['date'].toString())),
+            heure: ticket['heure'].toString(),
+            depart: ticket['depart'].toString(),
+            destination: ticket['destination'].toString(),
+            place: ticket['place'],
+            etatScann: ticket['etatScanne'].toString(),
+            statut: ticket['statut'].toString(),
+            prixTicket: ticket['prixDuTicket'].toString(),
+            datePourCalcule: ticket['datePourCalcule'],
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -287,4 +330,10 @@ class TicketDataSource extends DataTableSource {
 
   @override
   int get selectedRowCount => 0;
+}
+
+double calculeTailleEcran(BuildContext ctx) {
+  double screenWidth = MediaQuery.of(ctx).size.width;
+  double screenHeight = MediaQuery.of(ctx).size.height;
+  return sqrt(pow(screenWidth, 2) + pow(screenHeight, 2)) / 160.0;
 }

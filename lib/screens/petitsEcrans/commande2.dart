@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -10,11 +9,13 @@ import 'package:mvst/screens/petitsEcrans/choixPlace2.dart';
 import 'package:mvst/screens/petitsEcrans/home2.dart';
 
 DateTime? dateActuelle = DateTime.now();
+DateTime? aujourdhui =
+    DateTime.utc(dateActuelle!.year, dateActuelle!.month, dateActuelle!.day);
 DateTime? dateDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 1);
 DateTime? dateApresDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 2);
-var idDate;
+String? dateFormatee, idMois, idMoisAnnee, idAnnee;
 
 class Commande2 extends StatefulWidget {
   const Commande2(
@@ -54,18 +55,19 @@ class _Commande2State extends State<Commande2> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showConfirmationDialog();
+      _afficherConfirmation();
     });
-    _initializeForm();
-    _fetchHeuresDeDeparts();
+    _initialiserForm();
+    _recupHeuresDeDeparts();
   }
 
-  void _initializeForm() {
+  void _initialiserForm() {
     nomController.text = "${widget.nom!} ${widget.prenoms!}";
     contactController.text = widget.telephone!;
+    listeDeVerification.clear();
   }
 
-  void _showConfirmationDialog() {
+  void _afficherConfirmation() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -111,20 +113,19 @@ class _Commande2State extends State<Commande2> {
     try {
       DateTime? choixDeDate = await showDatePicker(
         context: context,
-        //initialDate: dateDemain!,
+        //initialDate: dateDemain!,EEEE d MMMM y
         firstDate: dateDemain!,
         lastDate: dateApresDemain!,
       );
-      if (choixDeDate != null) {
-        setState(() {
-          _dateController.text =
-              DateFormat('EEEE d MMMM y', 'fr_FR').format(choixDeDate);
-        });
-        idDate = DateFormat('EEEE_d_MMMM_y', 'fr_FR').format(choixDeDate);
-      }
-    } catch (error) {
-      print("Erreur lors de la sélection de la date: $error");
-    }
+      setState(() {
+        _dateController.text =
+            DateFormat('EEEE d MMMM y', 'fr_FR').format(choixDeDate!);
+      });
+      dateFormatee = DateFormat('EEEE_d_MMMM_y', 'fr_FR').format(choixDeDate!);
+      idMois = DateFormat('MMMM', 'fr_FR').format(choixDeDate);
+      idMoisAnnee = DateFormat('MMMM_y', 'fr_FR').format(choixDeDate);
+      idAnnee = DateFormat('y', 'fr_FR').format(choixDeDate);
+    } catch (error) {}
   }
 
   final formKey = GlobalKey<FormState>();
@@ -152,7 +153,7 @@ class _Commande2State extends State<Commande2> {
           key: formKey,
           child: ListView(
             children: [
-              _buildTextField(
+              _construireTextField(
                 controller: nomController,
                 labelText: 'Nom et Prenoms',
                 validator: (value) {
@@ -163,7 +164,7 @@ class _Commande2State extends State<Commande2> {
                 },
               ),
               const SizedBox(height: 10),
-              _buildTextField(
+              _construireTextField(
                 controller: contactController,
                 labelText: 'Contact',
                 keyboardType: TextInputType.phone,
@@ -175,9 +176,9 @@ class _Commande2State extends State<Commande2> {
                 },
               ),
               const SizedBox(height: 10),
-              _buildDatePickerField(),
+              _construireDatePickerField(),
               const SizedBox(height: 10),
-              _buildDropdownButtonFormField(),
+              _construireDropdownButtonFormField(),
               const SizedBox(height: 10),
               SizedBox(
                 height: 50,
@@ -191,14 +192,24 @@ class _Commande2State extends State<Commande2> {
                             });
 
                             counterBloc.add(EventInitialise());
-                            await _recupListeDesNummeros(widget.depart,
-                                widget.destination, idDate, heureDeDepart!);
+
+                            await ClasseListeDesPlaces
+                                .verifierEtRecupererPlaces(
+                                    widget.depart,
+                                    widget.destination,
+                                    dateFormatee!,
+                                    heureDeDepart!,
+                                    idMois!,
+                                    idMoisAnnee!,
+                                    idAnnee!);
+
+                            listeDesPlacesChoisies.clear();
 
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ChoixPlaces2(
-                                  idDate: idDate,
+                                  idDate: dateFormatee!,
                                   id: widget.idUtilisateur!,
                                   depart: widget.depart,
                                   destination: widget.destination,
@@ -207,10 +218,12 @@ class _Commande2State extends State<Commande2> {
                                   date: _dateController.text,
                                   heure: heureDeDepart!,
                                   prixDuBillet: widget.prixDuBillet,
+                                  mois: idMois!,
+                                  moisAnnee: idMoisAnnee!,
+                                  annee: idAnnee!,
                                 ),
                               ),
                             ).then((_) {
-                              // Réinitialiser l'état de chargement une fois que la navigation est terminée
                               setState(() {
                                 _isLoading = false;
                               });
@@ -244,7 +257,7 @@ class _Commande2State extends State<Commande2> {
     );
   }
 
-  TextFormField _buildTextField({
+  TextFormField _construireTextField({
     required TextEditingController controller,
     required String labelText,
     TextInputType keyboardType = TextInputType.text,
@@ -271,7 +284,7 @@ class _Commande2State extends State<Commande2> {
     );
   }
 
-  TextFormField _buildDatePickerField() {
+  TextFormField _construireDatePickerField() {
     return TextFormField(
       controller: _dateController,
       readOnly: true,
@@ -303,7 +316,7 @@ class _Commande2State extends State<Commande2> {
     );
   }
 
-  DropdownButtonFormField<String> _buildDropdownButtonFormField() {
+  DropdownButtonFormField<String> _construireDropdownButtonFormField() {
     return DropdownButtonFormField<String>(
       iconEnabledColor: Colors.blue,
       value: heureDeDepart,
@@ -339,24 +352,25 @@ class _Commande2State extends State<Commande2> {
     );
   }
 
-  Future<void> _recupListeDesNummeros(
-      String depart, String destination, String date, String heure) async {
-    await ClasseListeDesPlaces.getTicketsStream(
-        depart, destination, date, heure);
-  }
-
-  Future<void> _fetchHeuresDeDeparts() async {
+  Future<void> _recupHeuresDeDeparts() async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('heuresDeDeparts')
-          .orderBy('dateCreation', descending: true)
-          .get();
-      final heures = snapshot.docs.map((doc) => doc['heure']).toList();
+      // Établir la connexion
+      final conn = await Connexion.connexionDB();
+
+      // Exécuter la requête
+      final results = await conn.query(
+          'SELECT heure FROM HeuresDeDeparts ORDER BY dateCreation DESC');
+
+      // Transformer les résultats en une liste
+      final heures = results.map((row) => row['heure'] as String).toList();
+
+      // Mettre à jour l'état
       setState(() {
-        listeHeures = heures.cast<String>();
+        listeHeures = heures;
       });
-    } catch (e) {
-      print('Erreur lors de la récupération des heures : $e');
-    }
+
+      // Fermer la connexion
+      await conn.close();
+    } catch (e) {}
   }
 }

@@ -26,6 +26,7 @@ class DetailsTickets2 extends StatefulWidget {
   final String etatScann;
   final String statut;
   final String prixTicket;
+  final DateTime datePourCalcule;
 
   const DetailsTickets2(
       {super.key,
@@ -40,7 +41,8 @@ class DetailsTickets2 extends StatefulWidget {
       required this.destination,
       required this.etatScann,
       required this.statut,
-      required this.prixTicket});
+      required this.prixTicket,
+      required this.datePourCalcule});
   @override
   _DetailsTickets2State createState() => _DetailsTickets2State();
 }
@@ -408,6 +410,7 @@ class _DetailsTickets2State extends State<DetailsTickets2> {
                   destination: widget.destination,
                   prixTicket: widget.prixTicket,
                   etatScann: widget.etatScann,
+                  dateCalcule: widget.datePourCalcule,
                 ),
               ),
             ),
@@ -416,7 +419,13 @@ class _DetailsTickets2State extends State<DetailsTickets2> {
       ),
       floatingActionButton: ElevatedButton(
         onPressed: () => genererPDF(context),
-        child: const Text('Imprimer'),
+        child: const Text(
+          'Imprimer',
+          style: TextStyle(
+            color: Color.fromARGB(255, 10, 127, 229),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
@@ -436,6 +445,7 @@ class TicketData extends StatelessWidget {
     required this.destination,
     required this.etatScann,
     required this.prixTicket,
+    required this.dateCalcule,
   });
   final String idUtilisateur;
   final String idTicket;
@@ -448,6 +458,7 @@ class TicketData extends StatelessWidget {
   final String destination;
   final String prixTicket;
   final String etatScann;
+  final DateTime dateCalcule;
 
   @override
   Widget build(BuildContext context) {
@@ -488,13 +499,14 @@ class TicketData extends StatelessWidget {
             )
           ],
         ),
+        // deuxième ligne
         Padding(
           padding: EdgeInsets.all(8.0),
           child: Row(
             children: [
               Text(
-                "Ticket N° ${idTicket.toUpperCase()}",
-                style: TextStyle(fontSize: 9, color: Colors.grey),
+                "Ticket Ref ${idTicket.toUpperCase()}",
+                style: TextStyle(fontSize: 7, color: Colors.grey),
               )
             ],
           ),
@@ -564,10 +576,8 @@ class TicketData extends StatelessWidget {
               padding: EdgeInsets.only(top: 16.0),
               child: Text(
                 'Heure',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey),
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
               ),
             ),
           ],
@@ -578,16 +588,12 @@ class TicketData extends StatelessWidget {
             Text(
               date,
               style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Colors.black),
+                  fontWeight: FontWeight.bold, color: Colors.black),
             ),
             Text(
               heure,
               style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Colors.black),
+                  fontWeight: FontWeight.bold, color: Colors.black),
             ),
           ],
         ),
@@ -598,20 +604,16 @@ class TicketData extends StatelessWidget {
               padding: EdgeInsets.only(left: 8, top: 16.0),
               child: Text(
                 'Tarif : $prixTicket f',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey),
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
               ),
             ),
             Padding(
               padding: EdgeInsets.only(top: 16.0, right: 10),
               child: Text(
                 'Siège',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey),
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
               ),
             ),
           ],
@@ -624,9 +626,7 @@ class TicketData extends StatelessWidget {
               child: Text(
                 "$place",
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
-                    color: Colors.black),
+                    fontWeight: FontWeight.bold, color: Colors.black),
               ),
             ),
           ],
@@ -640,21 +640,22 @@ class TicketData extends StatelessWidget {
               top: 1.0,
             ),
             child: SizedBox(
-              width: 160,
-              height: 160,
+              width: 180,
+              height: 180,
               child: FittedBox(
                 child: CreationQrCode.buildQrCode(
-                  idUtilisateur,
-                  idTicket,
-                  place,
-                  nom,
-                  contact,
-                  date,
-                  heure,
-                  depart,
-                  destination,
-                  etatScann,
-                ),
+                    idUtilisateur,
+                    idTicket,
+                    place,
+                    nom,
+                    contact,
+                    date,
+                    heure,
+                    depart,
+                    destination,
+                    prixTicket,
+                    etatScann,
+                    dateCalcule),
               ),
             ),
           ),

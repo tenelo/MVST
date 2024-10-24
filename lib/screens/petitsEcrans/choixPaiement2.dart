@@ -1,10 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/screens/petitsEcrans/home2.dart';
+import 'package:mvst/models/mesfonctions.dart';
 
 class ChoixPaiement2 extends StatefulWidget {
   const ChoixPaiement2({
@@ -17,6 +16,10 @@ class ChoixPaiement2 extends StatefulWidget {
     required this.nom,
     required this.contact,
     required this.date,
+    required this.datePourCalcule,
+    required this.mois,
+    required this.moisAnnee,
+    required this.annee,
     required this.heure,
     required this.destination,
     required this.depart,
@@ -29,89 +32,220 @@ class ChoixPaiement2 extends StatefulWidget {
   final String nom;
   final String contact;
   final String date;
+  final String datePourCalcule;
   final String heure;
   final String destination;
   final String depart;
-
+  final String mois;
+  final String moisAnnee;
+  final String annee;
   @override
   State<ChoixPaiement2> createState() => _ChoixPaiement2State();
 }
 
 class _ChoixPaiement2State extends State<ChoixPaiement2> {
   bool _isLoading = false;
+  bool _isNavigating = false;
+  @override
+  void dispose() {
+    if (!_isNavigating) {
+      _netoyageEnCasDeFermeture();
+    }
+    super.dispose();
+  }
 
-  Future<void> _ajouterTicketsFirestore() async {
-    // Désactiver le bouton ou la fonctionnalité pendant l'exécution
+  Future<void> ___ajouterTicketsMySQL() async {
+    final conn = await Connexion.connexionDB();
     if (_isLoading) return;
 
     setState(() {
       _isLoading = true;
     });
 
-    FirebaseFirestore firestore = FirebaseFirestore.instance;
-    // Référence du document 'date' dans la collection 'tickets'
-    DocumentReference dateDocRef = firestore.collection('tickets').doc(
-        "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h");
+    // Construction de l'identifiant de document basé sur les paramètres fournis
+    String documentId =
+        "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h";
+    try {
+      await conn.query('BEGIN'); // Début de la transaction
 
-    // Vérifier si le document parent existe
-    DocumentSnapshot dateDocSnapshot = await dateDocRef.get();
+      // Vérifie si le document parent existe déjà
+      var result = await conn.query(
+          'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
 
-    // Cast les données du document en Map<String, dynamic>
-    // ignore: unused_local_variable
-    Map<String, dynamic>? dateData =
-        dateDocSnapshot.data() as Map<String, dynamic>?;
+      // Si le document parent n'existe pas, on le crée
+      if (result.first[0] == 0) {
+        await conn.query(
+            'INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, dateDeCreation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+            [
+              documentId,
+              widget.idDate,
+              widget.heure,
+              widget.depart,
+              widget.destination,
+              widget.mois,
+              widget.moisAnnee,
+              widget.annee,
+              '[]'
+            ]);
+      }
 
-    if (!dateDocSnapshot.exists) {
-      // Si aucun document avec pour id widget.idDate n'existe dans la collection 'tickets'
-      // Créer un nouveau document avec ces trois champs ('createdAt', 'dateDeDepart', 'heureDeDepart')
-      await dateDocRef.set({
-        'createdAt': FieldValue.serverTimestamp(),
-        'dateDeDepart': widget.idDate,
-        'heureDeDepart': widget.heure,
-        'placesDejaChoisies': [],
-      });
-    } else {}
+      // Crée la table 'Tickets' si elle n'existe pas
+      await conn.query('''
+      CREATE TABLE IF NOT EXISTS Tickets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        idUtilisateur VARCHAR(255),
+        nom VARCHAR(255),
+        telephone VARCHAR(255),
+        date VARCHAR(100),
+        heure VARCHAR(255),
+        depart VARCHAR(255),
+        destination VARCHAR(255),
+        prixDuTicket INT,
+        place INT,
+        etatScanne VARCHAR(255),
+        statut VARCHAR(255),
+        scanneDate VARCHAR(50),
+        dateDeCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (documentId) REFERENCES Departs(documentId)
+      )
+    ''');
 
-    // Référence de la sous-collection 'sousCollectionTickets' du document 'date'
-    CollectionReference sousCollectionTickets =
-        dateDocRef.collection('sousCollectionTickets');
+      // Ajoute les tickets
+      for (var _place in widget.place) {
+        await conn.query(
+            'INSERT INTO Tickets (documentId, idUtilisateur, nom, telephone, date, heure, depart, destination, prixDuTicket, place,scanneDate, etatScanne, statut, heureDeScanne, dateDeCreation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+            [
+              documentId,
+              widget.id,
+              widget.nom,
+              widget.contact,
+              widget.date,
+              widget.heure,
+              widget.depart,
+              widget.destination,
+              widget.prixUnitaire,
+              _place,
+              '',
+              'nonScanné',
+              'valide',
+              ''
+            ]);
+      }
 
-    WriteBatch batch = firestore.batch();
-
-    // Éliminer les doublons dans la liste 'place'
-    List<int> placesSansDoublons = widget.place.toSet().toList();
-
-    for (int place in placesSansDoublons) {
-      await dateDocRef.update({
-        'placesDejaChoisies': FieldValue.arrayUnion([place]),
-      });
-      DocumentReference docRef = sousCollectionTickets.doc();
-      batch.set(docRef, {
-        'idUtilisateur': widget.id,
-        'nom': widget.nom,
-        'telephone': widget.contact,
-        'date': widget.date,
-        'heure': widget.heure,
-        'depart': widget.depart,
-        'destination': widget.destination,
-        'prixDuTicket': widget.prixUnitaire,
-        'place': place,
-        'etatScanne': 'non',
-        'statut': 'valide',
-        'achat': '',
-        'dateDeCreation': FieldValue.serverTimestamp(),
-      });
+      try {
+        listeDeVerification.clear();
+        messageEnCasDeSucces(context);
+      } catch (error) {
+        listeDeVerification.clear();
+        messageEnCasDecheque(context);
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      // Fin de la transaction
+      await conn.query('COMMIT');
+    } catch (error) {
+      // Annule la transaction en cas d'erreur
+      await conn.query('ROLLBACK');
+      print("Erreur lors de l'ajout des tickets : $error");
+    } finally {
+      await conn.close();
     }
+  }
+
+  Future<void> _ajouterTicketsMySQL() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final conn = await Connexion.connexionDB();
+    String documentId =
+        "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h";
 
     try {
-      await batch.commit();
+      // Démarrer une transaction
+      await conn.query('BEGIN');
+
+      // Vérifier l'existence du document et l'insérer si nécessaire
+      var result = await conn.query(
+          'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
+
+      if (result.first[0] == 0) {
+        await conn.query(
+            '''INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, dateDeCreation) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())''',
+            [
+              documentId,
+              widget.idDate,
+              widget.heure,
+              widget.depart,
+              widget.destination,
+              widget.mois,
+              widget.moisAnnee,
+              widget.annee,
+              '[]',
+            ]);
+      }
+
+      // Créer la table 'Tickets' si elle n'existe pas (à déplacer hors de la boucle si possible)
+      await conn.query('''
+      CREATE TABLE IF NOT EXISTS Tickets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        idUtilisateur VARCHAR(255),
+        nom VARCHAR(255),
+        telephone VARCHAR(255),
+        date VARCHAR(100),
+        heure VARCHAR(255),
+        depart VARCHAR(255),
+        destination VARCHAR(255),
+        prixDuTicket INT,
+        place INT,
+        etatScanne VARCHAR(255),
+        statut VARCHAR(255),
+        scanneDate VARCHAR(50),
+        dateDeCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (documentId) REFERENCES Departs(documentId)
+      )
+    ''');
+
+// Insérer les tickets dans la table 'Tickets' en une seule transaction
+      for (var _place in widget.place) {
+        await conn.query(
+            '''INSERT INTO Tickets (documentId, idUtilisateur, nom, telephone, date, heure, depart, destination, prixDuTicket, place, etatScanne, statut, datePourCalcule, scanneDate, dateDeCreation) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nonScanné', 'valide', ?, '', NOW())''',
+            [
+              documentId,
+              widget.id,
+              widget.nom,
+              widget.contact,
+              widget.date,
+              widget.heure,
+              widget.depart,
+              widget.destination,
+              widget.prixUnitaire,
+              _place,
+              widget.datePourCalcule,
+            ]);
+      }
+
+      // Finaliser la transaction
+      await conn.query('COMMIT');
+
+      // Nettoyer et afficher un message en cas de succès
+      listeDeVerification.clear();
       messageEnCasDeSucces(context);
     } catch (error) {
+      // Annuler la transaction en cas d'erreur
+      await conn.query('ROLLBACK');
       messageEnCasDecheque(context);
     } finally {
       setState(() {
         _isLoading = false;
       });
+      await conn.close();
     }
   }
 
@@ -144,409 +278,405 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
   @override
   Widget build(BuildContext context) {
     final BlocCompteur initialiseBloc = BlocProvider.of<BlocCompteur>(context);
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Container(
-            color: const Color.fromARGB(199, 252, 246, 229),
-            height: MediaQuery.of(context).size.height,
-            width: MediaQuery.of(context).size.width,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                left: 35,
-                top: 22,
-                right: 35,
-                bottom: 22,
-              ),
-              child: Card(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 20.0),
-                      child: SizedBox(
-                        height: MediaQuery.of(context).size.height * .22,
-                        width: double.infinity,
-                        child: Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Container(
-                            height: double.infinity,
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('assets/images/credAA.png'),
-                                fit: BoxFit.cover,
+    return WillPopScope(
+      onWillPop: () async {
+        if (!_isNavigating) {
+          // Si l'utilisateur revient en arrière, lancer la fonction de nettoyage
+          await _netoyageEnCasDeFermeture();
+        }
+        return true;
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Container(
+              color: const Color.fromARGB(199, 252, 246, 229),
+              height: MediaQuery.of(context).size.height,
+              width: MediaQuery.of(context).size.width,
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: 35,
+                  top: 22,
+                  right: 35,
+                  bottom: 22,
+                ),
+                child: Card(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Image carte de paiement
+                      Padding(
+                        padding: const EdgeInsets.only(top: 14.0),
+                        child: SizedBox(
+                          height: MediaQuery.of(context).size.height * .22,
+                          width: double.infinity,
+                          child: Card(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Container(
+                              height: double.infinity,
+                              width: double.infinity,
+                              decoration: const BoxDecoration(
+                                image: DecorationImage(
+                                  image: AssetImage('assets/images/credAA.png'),
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 70,
-                      child: Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(1.0),
+                      //Boite des informations
+                      SizedBox(
+                        width: double.infinity,
+                        height: 68,
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(1.0),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      "2% un ticket de 8.000 coûtera 8.160",
+                                      style: TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.bold),
+                                    )
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "2.5% un ticket de 8.000 coûtera 8.200",
+                                      style: TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.bold),
+                                    )
+                                  ],
+                                )
+                              ],
+                            ),
+                          ),
                         ),
-                        child: const Padding(
-                          padding: EdgeInsets.all(8.0),
+                      ),
+                      // Choix des paiements
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * .5,
+                        width: double.infinity,
+                        child: Card(
+                          color: Colors.white70,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    "2% un ticket de 8.000 coûtera 8.160",
-                                    style: TextStyle(
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.bold),
-                                  )
-                                ],
+                              //WAVE
+                              GestureDetector(
+                                child: Card(
+                                  shadowColor: Colors.lightBlueAccent,
+                                  elevation: 4,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Card(
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8.0),
+                                          child: Image.asset(
+                                            'assets/images/wave.png',
+                                            width: 70,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: Text(
+                                          "frais 2%",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                onTap: () async {
+                                  var prixAvecPorcentage = widget.prixUnitaire +
+                                      (widget.prixUnitaire * (2 / 100)).toInt();
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: const Text('Paiement par WAVE'),
+                                        content: Text(
+                                            'Vous avez commandé ${widget.nombreDeTicket} ticket(s)\nmontant total à payer : ${prixAvecPorcentage * widget.nombreDeTicket} fcfa'),
+                                        actions: <Widget>[
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.popUntil(context,
+                                                      (route) => route.isFirst);
+                                                },
+                                                child: const Text('Annuler'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () async {
+                                                  await _ajouterTicketsMySQL();
+                                                  initialiseBloc
+                                                      .add(EventInitialise());
+                                                  Navigator.popUntil(context,
+                                                      (route) => route.isFirst);
+                                                },
+                                                child: const Text('Valider'),
+                                              ),
+                                            ],
+                                          )
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
                               ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "2.5% un ticket de 8.000 coûtera 8.200",
-                                    style: TextStyle(
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.bold),
-                                  )
-                                ],
-                              )
+                              //MTN
+                              GestureDetector(
+                                child: Card(
+                                  shadowColor: Colors.yellowAccent,
+                                  elevation: 4,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Card(
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8.0),
+                                          child: Image.asset(
+                                            'assets/images/mtn.png',
+                                            width: 70,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: Text(
+                                          "frais 2.5%",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                onTap: () async {
+                                  var prixAvecPorcentage = widget.prixUnitaire +
+                                      (widget.prixUnitaire * (2.5 / 100))
+                                          .toInt();
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: const Text('Paiement par MTN'),
+                                        content: Text(
+                                            'Vous avez commandé ${widget.nombreDeTicket} ticket(s)\nmontant total à payer : ${prixAvecPorcentage * widget.nombreDeTicket} fcfa'),
+                                        actions: <Widget>[
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.popUntil(context,
+                                                      (route) => route.isFirst);
+                                                },
+                                                child: const Text('Annuler'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () async {
+                                                  await _ajouterTicketsMySQL();
+                                                  initialiseBloc
+                                                      .add(EventInitialise());
+                                                  Navigator.popUntil(context,
+                                                      (route) => route.isFirst);
+                                                },
+                                                child: const Text('Valider'),
+                                              ),
+                                            ],
+                                          )
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                              //ORANGE
+                              GestureDetector(
+                                child: Card(
+                                  shadowColor: Colors.deepOrangeAccent,
+                                  elevation: 4,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Card(
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8.0),
+                                          child: Image.asset(
+                                            'assets/images/orange.png',
+                                            width: 70,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: Text(
+                                          "frais 2.5%",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                onTap: () async {
+                                  var prixAvecPorcentage = widget.prixUnitaire +
+                                      (widget.prixUnitaire * (2.5 / 100))
+                                          .toInt();
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title:
+                                            const Text('Paiement par Orange'),
+                                        content: Text(
+                                            'Vous avez commandé ${widget.nombreDeTicket} ticket(s)\nmontant total à payer : ${prixAvecPorcentage * widget.nombreDeTicket} fcfa'),
+                                        actions: <Widget>[
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.popUntil(context,
+                                                      (route) => route.isFirst);
+                                                },
+                                                child: const Text('Annuler'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () async {
+                                                  await _ajouterTicketsMySQL();
+                                                  initialiseBloc
+                                                      .add(EventInitialise());
+                                                  Navigator.popUntil(context,
+                                                      (route) => route.isFirst);
+                                                },
+                                                child: const Text('Valider'),
+                                              ),
+                                            ],
+                                          )
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                              //MOOV
+                              GestureDetector(
+                                child: Card(
+                                  shadowColor:
+                                      const Color.fromARGB(255, 12, 92, 196),
+                                  elevation: 4,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Card(
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8.0),
+                                          child: Image.asset(
+                                            'assets/images/moov.png',
+                                            width: 70,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: Text(
+                                          "frais 2.5%",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                onTap: () async {
+                                  var prixAvecPorcentage = widget.prixUnitaire +
+                                      (widget.prixUnitaire * (2.5 / 100))
+                                          .toInt();
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: const Text('Paiement par MooV'),
+                                        content: Text(
+                                            'Vous avez commandé ${widget.nombreDeTicket} ticket(s)\nmontant total à payer : ${prixAvecPorcentage * widget.nombreDeTicket} fcfa'),
+                                        actions: <Widget>[
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.popUntil(context,
+                                                      (route) => route.isFirst);
+                                                },
+                                                child: const Text('Annuler'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () async {
+                                                  await _ajouterTicketsMySQL();
+                                                  initialiseBloc
+                                                      .add(EventInitialise());
+                                                  Navigator.popUntil(context,
+                                                      (route) => route.isFirst);
+                                                },
+                                                child: const Text('Valider'),
+                                              ),
+                                            ],
+                                          )
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * .5,
-                      width: double.infinity,
-                      child: Card(
-                        color: Colors.white70,
-                        child: Column(
-                          children: [
-                            GestureDetector(
-                              child: Card(
-                                shadowColor: Colors.lightBlueAccent,
-                                elevation: 4,
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Card(
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Image.asset(
-                                          'assets/images/wave.png',
-                                          width: 70,
-                                          height: 60,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                    const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text(
-                                        "frais 2%",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              onTap: () async {
-                                var prixAvecPorcentage = widget.prixUnitaire +
-                                    (widget.prixUnitaire * (2 / 100)).toInt();
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Paiement par WAVE'),
-                                      content: Text(
-                                          'Vous avez commandé ${widget.nombreDeTicket} ticket(s)\nmontant total à payer : ${prixAvecPorcentage * widget.nombreDeTicket} fcfa'),
-                                      actions: <Widget>[
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.popUntil(context,
-                                                    (route) => route.isFirst);
-                                              },
-                                              child: const Text('Annuler'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () async {
-                                                await _ajouterTicketsFirestore();
-                                                Navigator.of(context).pop();
-                                                initialiseBloc
-                                                    .add(EventInitialise());
-                                                Navigator.of(context)
-                                                    .pushReplacement(
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        const Home2(),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text('Valider'),
-                                            ),
-                                          ],
-                                        )
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                            GestureDetector(
-                              child: Card(
-                                shadowColor: Colors.yellowAccent,
-                                elevation: 4,
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Card(
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Image.asset(
-                                          'assets/images/mtn.png',
-                                          width: 70,
-                                          height: 60,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                    const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text(
-                                        "frais 2.5%",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              onTap: () async {
-                                var prixAvecPorcentage = widget.prixUnitaire +
-                                    (widget.prixUnitaire * (2.5 / 100)).toInt();
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Paiement par MTN'),
-                                      content: Text(
-                                          'Vous avez commandé ${widget.nombreDeTicket} ticket(s)\nmontant total à payer : ${prixAvecPorcentage * widget.nombreDeTicket} fcfa'),
-                                      actions: <Widget>[
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.popUntil(context,
-                                                    (route) => route.isFirst);
-                                              },
-                                              child: const Text('Annuler'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () async {
-                                                await _ajouterTicketsFirestore();
-                                                Navigator.of(context).pop();
-                                                initialiseBloc
-                                                    .add(EventInitialise());
-                                                Navigator.of(context)
-                                                    .pushReplacement(
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        const Home2(),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text('Valider'),
-                                            ),
-                                          ],
-                                        )
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                            GestureDetector(
-                              child: Card(
-                                shadowColor: Colors.deepOrangeAccent,
-                                elevation: 4,
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Card(
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Image.asset(
-                                          'assets/images/orange.png',
-                                          width: 70,
-                                          height: 60,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                    const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text(
-                                        "frais 2.5%",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              onTap: () async {
-                                var prixAvecPorcentage = widget.prixUnitaire +
-                                    (widget.prixUnitaire * (2.5 / 100)).toInt();
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Paiement par Orange'),
-                                      content: Text(
-                                          'Vous avez commandé ${widget.nombreDeTicket} ticket(s)\nmontant total à payer : ${prixAvecPorcentage * widget.nombreDeTicket} fcfa'),
-                                      actions: <Widget>[
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.popUntil(context,
-                                                    (route) => route.isFirst);
-                                              },
-                                              child: const Text('Annuler'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () async {
-                                                await _ajouterTicketsFirestore();
-                                                Navigator.of(context).pop();
-                                                initialiseBloc
-                                                    .add(EventInitialise());
-                                                Navigator.of(context)
-                                                    .pushReplacement(
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        const Home2(),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text('Valider'),
-                                            ),
-                                          ],
-                                        )
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                            GestureDetector(
-                              child: Card(
-                                shadowColor:
-                                    const Color.fromARGB(255, 12, 92, 196),
-                                elevation: 4,
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Card(
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Image.asset(
-                                          'assets/images/moov.png',
-                                          width: 70,
-                                          height: 60,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                    const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text(
-                                        "frais 2.5%",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              onTap: () async {
-                                var prixAvecPorcentage = widget.prixUnitaire +
-                                    (widget.prixUnitaire * (2.5 / 100)).toInt();
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Paiement par MooV'),
-                                      content: Text(
-                                          'Vous avez commandé ${widget.nombreDeTicket} ticket(s)\nmontant total à payer : ${prixAvecPorcentage * widget.nombreDeTicket} fcfa'),
-                                      actions: <Widget>[
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.popUntil(context,
-                                                    (route) => route.isFirst);
-                                              },
-                                              child: const Text('Annuler'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () async {
-                                                await _ajouterTicketsFirestore();
-                                                Navigator.of(context).pop();
-                                                initialiseBloc
-                                                    .add(EventInitialise());
-                                                Navigator.of(context)
-                                                    .pushReplacement(
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        const Home2(),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text('Valider'),
-                                            ),
-                                          ],
-                                        )
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ],
+                      if (_isLoading)
+                        const Center(
+                          child: CircularProgressIndicator(),
                         ),
-                      ),
-                    ),
-                    if (_isLoading)
-                      const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -554,5 +684,23 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
         ),
       ),
     );
+  }
+
+  Future<bool> _netoyageEnCasDeFermeture() async {
+    if (listeDeVerification.isNotEmpty) {
+      await supprimerPlaces(
+        widget.depart,
+        widget.destination,
+        widget.idDate,
+        widget.id,
+        widget.mois,
+        widget.moisAnnee,
+        widget.annee,
+        widget.heure,
+        listeDeVerification,
+      );
+    }
+    listeDeVerification.clear();
+    return true;
   }
 }

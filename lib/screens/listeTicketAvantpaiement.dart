@@ -19,10 +19,13 @@ class Tickets extends StatefulWidget {
       required this.nom,
       required this.contact,
       required this.date,
+      required this.mois,
       required this.heure,
       required this.destination,
       required this.depart,
-      required this.prixDuTicket});
+      required this.prixDuTicket,
+      required this.moisAnnee,
+      required this.annee});
   final String idDate;
   final String id;
   final int nombreDeTicket;
@@ -30,6 +33,9 @@ class Tickets extends StatefulWidget {
   final String nom;
   final String contact;
   final String date;
+  final String mois;
+  final String moisAnnee;
+  final String annee;
   final String heure;
   final String destination;
   final String depart;
@@ -41,159 +47,177 @@ class Tickets extends StatefulWidget {
 
 class _TicketsState extends State<Tickets> {
   bool _isLoading = false;
-  bool _isNavigating = false; // Variable d'état pour la navigation
+  bool _isNavigating = false;
 
   @override
-  void initState() {
-    super.initState();
+  void dispose() {
+    // Ne pas nettoyer si l'utilisateur navigue vers une autre page
+    if (!_isNavigating) {
+      _netoyageEnCasDeFermeture();
+    }
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     tailleEcran = calculeTailleEcran(context).round();
-    return Scaffold(
-      backgroundColor: Config.colors.bleuFonce,
-      appBar: AppBar(
-        toolbarHeight: 40,
-        centerTitle: true,
-        title: const Text(
-          'Ticket(s) commandé(s)',
-          style: TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+    return WillPopScope(
+      onWillPop: () async {
+        if (!_isNavigating) {
+          // Si l'utilisateur revient en arrière, lancer la fonction de nettoyage
+          await _netoyageEnCasDeFermeture();
+        }
+        return true;
+      },
+      child: Scaffold(
         backgroundColor: Config.colors.bleuFonce,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ListView.builder(
-            itemCount: widget.nombreDeTicket,
-            itemBuilder: (BuildContext context, int index) {
-              int numDePlace = widget.place[index];
-              listeDeVerification
-                  .add(numDePlace); // Ajoute les places à vérifier
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: TicketMaterial(
-                  height: 100,
-                  colorBackground: const Color.fromARGB(210, 48, 196, 222),
-                  colorShadow: Colors.white,
-                  shadowSize: 2,
-                  radiusBorder: 8,
-                  leftChild: _buildLeft(
-                    widget.id,
-                    widget.nom,
-                    widget.contact,
-                    widget.date,
-                    widget.heure,
-                    numDePlace,
+        appBar: AppBar(
+          toolbarHeight: 40,
+          centerTitle: true,
+          title: const Text(
+            'Ticket(s) commandé(s)',
+            style: TextStyle(color: Colors.white),
+          ),
+          iconTheme: const IconThemeData(
+            color: Colors.white,
+          ),
+          backgroundColor: Config.colors.bleuFonce,
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ListView.builder(
+              itemCount: widget.nombreDeTicket,
+              itemBuilder: (BuildContext context, int index) {
+                int numDePlace = widget.place[index];
+                listeDeVerification
+                    .add(numDePlace); // Ajoute les places à vérifier
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: TicketMaterial(
+                    height: 100,
+                    colorBackground: const Color.fromARGB(210, 48, 196, 222),
+                    colorShadow: Colors.white,
+                    shadowSize: 2,
+                    radiusBorder: 8,
+                    leftChild: _buildLeft(
+                      widget.id,
+                      widget.nom,
+                      widget.contact,
+                      widget.date,
+                      widget.heure,
+                      numDePlace,
+                    ),
+                    rightChild: _buildRight(),
                   ),
-                  rightChild: _buildRight(),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
-      ),
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 20.0),
-        width: MediaQuery.of(context).size.width * 0.55,
-        child: ElevatedButton(
-          onPressed: () async {
-            if (mounted) {
-              setState(() {
-                _isLoading = true;
-                _isNavigating = true; // Indiquer que la navigation est en cours
-              });
-            }
-
-            if (widget.nombreDeTicket == 0) {
+        floatingActionButton: Container(
+          margin: const EdgeInsets.only(bottom: 20.0),
+          width: MediaQuery.of(context).size.width * 0.55,
+          child: ElevatedButton(
+            onPressed: () async {
+              var _dateCalcule =
+                  await ConvertirHeure.formatDatePourCalcule(widget.date);
               if (mounted) {
                 setState(() {
-                  _isLoading = false;
-                  _isNavigating = false; // Réinitialiser l'état
+                  _isLoading = true;
+                  _isNavigating = true; // Indique que l'utilisateur avance
                 });
               }
 
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text(''),
-                    content: const Text('Aucun ticket en cours'),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            } else {
-              if (tailleEcran! >= 6) {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChoixPaiement(
-                      idDate: widget.idDate,
-                      nombreDeTicket: widget.nombreDeTicket,
-                      prixUnitaire: widget.prixDuTicket,
-                      id: widget.id,
-                      place: widget.place,
-                      nom: widget.nom,
-                      contact: widget.contact,
-                      date: widget.date,
-                      heure: widget.heure,
-                      destination: widget.destination,
-                      depart: widget.depart,
-                    ),
-                  ),
+              if (widget.nombreDeTicket == 0) {
+                if (mounted) {
+                  setState(() {
+                    _isLoading = false;
+                    _isNavigating = false;
+                  });
+                }
+
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      content: const Text('Aucun ticket en cours'),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    );
+                  },
                 );
               } else {
-                await Navigator.push(
+                // Navigation vers les pages suivantes
+                Widget page = tailleEcran! >= 6
+                    ? // Grands écrants
+                    ChoixPaiement(
+                        idDate: widget.idDate,
+                        nombreDeTicket: widget.nombreDeTicket,
+                        prixUnitaire: widget.prixDuTicket,
+                        id: widget.id,
+                        place: widget.place,
+                        nom: widget.nom,
+                        contact: widget.contact,
+                        date: widget.date,
+                        heure: widget.heure,
+                        destination: widget.destination,
+                        depart: widget.depart,
+                        mois: widget.mois,
+                        moisAnnee: widget.moisAnnee,
+                        annee: widget.annee,
+                        datePourCalcule: _dateCalcule,
+                      )
+                    : // Petits écrants
+                    ChoixPaiement2(
+                        idDate: widget.idDate,
+                        nombreDeTicket: widget.nombreDeTicket,
+                        prixUnitaire: widget.prixDuTicket,
+                        id: widget.id,
+                        place: widget.place,
+                        nom: widget.nom,
+                        contact: widget.contact,
+                        date: widget.date,
+                        heure: widget.heure,
+                        destination: widget.destination,
+                        depart: widget.depart,
+                        mois: widget.mois,
+                        moisAnnee: widget.moisAnnee,
+                        annee: widget.annee,
+                        datePourCalcule: _dateCalcule,
+                      );
+
+                await Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => ChoixPaiement2(
-                      idDate: widget.idDate,
-                      nombreDeTicket: widget.nombreDeTicket,
-                      prixUnitaire: widget.prixDuTicket,
-                      id: widget.id,
-                      place: widget.place,
-                      nom: widget.nom,
-                      contact: widget.contact,
-                      date: widget.date,
-                      heure: widget.heure,
-                      destination: widget.destination,
-                      depart: widget.depart,
-                    ),
-                  ),
+                  MaterialPageRoute(builder: (context) => page),
                 );
               }
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Config.colors.jauneBlanc,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30.0),
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Config.colors.jauneBlanc,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30.0),
+              ),
             ),
+            child: _isLoading
+                ? const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  )
+                : const Text(
+                    "Passer au paiement",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
           ),
-          child: _isLoading
-              ? const CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                )
-              : const Text(
-                  "Passer au paiement",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
         ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -304,6 +328,24 @@ class _TicketsState extends State<Tickets> {
       ),
     );
   }
+
+  Future<bool> _netoyageEnCasDeFermeture() async {
+    if (listeDeVerification.isNotEmpty) {
+      await supprimerPlaces(
+        widget.depart,
+        widget.destination,
+        widget.idDate,
+        widget.id,
+        widget.mois,
+        widget.moisAnnee,
+        widget.annee,
+        widget.heure,
+        listeDeVerification,
+      );
+    }
+    listeDeVerification.clear();
+    return true;
+  }
 }
 
 double calculeTailleEcran(BuildContext ctx) {
@@ -311,303 +353,3 @@ double calculeTailleEcran(BuildContext ctx) {
   double screenHeight = MediaQuery.of(ctx).size.height;
   return sqrt(pow(screenWidth, 2) + pow(screenHeight, 2)) / 160.0;
 }
-// ::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-/*
-class Places extends StatefulWidget {
-  const Places({super.key, required this.index, required this.clicable});
-  final int index;
-  final String clicable;
-  @override
-  State<Places> createState() => _PlacesState();
-}
-
-class _PlacesState extends State<Places> {
-  Color couleurSelection = const Color.fromARGB(255, 182, 214, 251);
-  Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
-  String control = "true";
-  @override
-  void initState() {
-    super.initState();
-    verification();
-  }
-
-  void verification() {
-    if (ListeDesPlaces.listeNummeros.contains(widget.index)) {
-      couleurInitiale = couleurSelection;
-      control = "false";
-    }
-  }
-
-  // La liste de booléens qui représente la sélection de chaque carte
-  // On crée une liste de 62 booléens
-  List<bool> selection = List.filled(62, false);
-  @override
-  Widget build(BuildContext context) {
-    final BlocCompteur counterBloc = BlocProvider.of<BlocCompteur>(context);
-    return GestureDetector(
-      onTap: () {
-        if (control == "true") {
-          setState(() {
-            selection[widget.index] = !selection[widget.index];
-            if (selection[widget.index]) {
-              counterBloc.add(EventIcrement());
-              ClasseListeDesPlaces.getTicketsStream();
-              verification();
-              listeDesPlacesChoisies.add(widget.index);
-            } else {
-              counterBloc.add(EventDecrement());
-              ClasseListeDesPlaces.getTicketsStream();
-              verification();
-              listeDesPlacesChoisies.remove(widget.index);
-            }
-          });
-        } else {}
-      },
-      child: Container(
-        // Espaces entre les sièges
-        margin: const EdgeInsets.all(0.5),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // CARTE PRINCIPALE
-            Card(
-              color: selection[
-                      widget.index % 62] // On utilise l'index modulo 25
-                  ? couleurSelection
-                  : couleurInitiale, // On utilise la couleur selon la sélection
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: SizedBox(
-                height: 35,
-                width: 35,
-                child: Center(
-                  child: Text(
-                    (widget.index)
-                        .toString(), // On convertit l'index en chaîne de caractères
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ),
-            // CARTE GAUCHE
-            Positioned(
-              left: -3,
-              child: Card(
-                color: const Color.fromARGB(255, 182, 214, 251),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const SizedBox(
-                  height: 19,
-                  width: 6,
-                ),
-              ),
-            ), // CARTE DROITE
-            Positioned(
-              right: -3,
-              child: Card(
-                color: const Color.fromARGB(255, 182, 214, 251),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const SizedBox(
-                  height: 19,
-                  width: 6,
-                ),
-              ),
-            ),
-            //CARTE DU HAUT
-            Positioned(
-              top: -4,
-              child: Card(
-                color: const Color.fromARGB(255, 182, 214, 251),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const SizedBox(
-                  height: 6,
-                  width: 26,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class PlacesVide extends StatefulWidget {
-  const PlacesVide({
-    super.key,
-  });
-
-  @override
-  State<PlacesVide> createState() => _PlacesVideState();
-}
-
-class _PlacesVideState extends State<PlacesVide> {
-  Color couleurSelection = const Color.fromARGB(255, 182, 214, 251);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      // Espaces entre les sièges
-      margin: const EdgeInsets.all(0.5),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // CARTE PRINCIPALE
-          Card(
-            color: couleurSelection,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const SizedBox(
-              height: 35,
-              width: 35,
-              child: Center(
-                child: Text(
-                  (""), // On convertit l'index en chaîne de caractères
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ),
-          // CARTE GAUCHE
-          Positioned(
-            left: -3,
-            child: Card(
-              color: const Color.fromARGB(255, 182, 214, 251),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const SizedBox(
-                height: 19,
-                width: 6,
-              ),
-            ),
-          ), // CARTE DROITE
-          Positioned(
-            right: -3,
-            child: Card(
-              color: const Color.fromARGB(255, 182, 214, 251),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const SizedBox(
-                height: 19,
-                width: 6,
-              ),
-            ),
-          ),
-          //CARTE DU HAUT
-          Positioned(
-            top: -4,
-            child: Card(
-              color: const Color.fromARGB(255, 182, 214, 251),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const SizedBox(
-                height: 6,
-                width: 26,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PlacesChauffeur extends StatefulWidget {
-  const PlacesChauffeur({
-    super.key,
-  });
-
-  @override
-  State<PlacesChauffeur> createState() => _PlacesChauffeurState();
-}
-
-class _PlacesChauffeurState extends State<PlacesChauffeur> {
-  Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      // Espaces entre les sièges
-      margin: const EdgeInsets.all(0.5),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // CARTE PRINCIPALE
-          Card(
-            color: Config.colors.vertB,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const SizedBox(
-              height: 35,
-              width: 35,
-              child: Center(
-                child: Text(
-                  (""), // On convertit l'index en chaîne de caractères
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ),
-          // CARTE GAUCHE
-          Positioned(
-            left: -3,
-            child: Card(
-              color: const Color.fromARGB(255, 182, 214, 251),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const SizedBox(
-                height: 19,
-                width: 6,
-              ),
-            ),
-          ), // CARTE DROITE
-          Positioned(
-            right: -3,
-            child: Card(
-              color: const Color.fromARGB(255, 182, 214, 251),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const SizedBox(
-                height: 19,
-                width: 6,
-              ),
-            ),
-          ),
-          //CARTE DU HAUT
-          Positioned(
-            top: -4,
-            child: Card(
-              color: const Color.fromARGB(255, 182, 214, 251),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const SizedBox(
-                height: 6,
-                width: 26,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-*/
