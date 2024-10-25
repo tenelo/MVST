@@ -32,7 +32,7 @@ class ChoixPaiement extends StatefulWidget {
   final String nom;
   final String contact;
   final String date;
-  final String datePourCalcule;
+  final DateTime datePourCalcule;
   final String heure;
   final String destination;
   final String depart;
@@ -53,106 +53,6 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       _netoyageEnCasDeFermeture();
     }
     super.dispose();
-  }
-
-  Future<void> ___ajouterTicketsMySQL() async {
-    final conn = await Connexion.connexionDB();
-    if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Construction de l'identifiant de document basé sur les paramètres fournis
-    String documentId =
-        "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h";
-    try {
-      await conn.query('BEGIN'); // Début de la transaction
-
-      // Vérifie si le document parent existe déjà
-      var result = await conn.query(
-          'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
-
-      // Si le document parent n'existe pas, on le crée
-      if (result.first[0] == 0) {
-        await conn.query(
-            'INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, dateDeCreation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
-            [
-              documentId,
-              widget.idDate,
-              widget.heure,
-              widget.depart,
-              widget.destination,
-              widget.mois,
-              widget.moisAnnee,
-              widget.annee,
-              '[]'
-            ]);
-      }
-
-      // Crée la table 'Tickets' si elle n'existe pas
-      await conn.query('''
-      CREATE TABLE IF NOT EXISTS Tickets (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        idUtilisateur VARCHAR(255),
-        nom VARCHAR(255),
-        telephone VARCHAR(255),
-        date VARCHAR(100),
-        heure VARCHAR(255),
-        depart VARCHAR(255),
-        destination VARCHAR(255),
-        prixDuTicket INT,
-        place INT,
-        etatScanne VARCHAR(255),
-        statut VARCHAR(255),
-        scanneDate VARCHAR(50),
-        dateDeCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (documentId) REFERENCES Departs(documentId)
-      )
-    ''');
-
-      // Ajoute les tickets
-      for (var _place in widget.place) {
-        await conn.query(
-            'INSERT INTO Tickets (documentId, idUtilisateur, nom, telephone, date, heure, depart, destination, prixDuTicket, place,scanneDate, etatScanne, statut, heureDeScanne, dateDeCreation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
-            [
-              documentId,
-              widget.id,
-              widget.nom,
-              widget.contact,
-              widget.date,
-              widget.heure,
-              widget.depart,
-              widget.destination,
-              widget.prixUnitaire,
-              _place,
-              '',
-              'nonScanné',
-              'valide',
-              ''
-            ]);
-      }
-
-      try {
-        listeDeVerification.clear();
-        messageEnCasDeSucces(context);
-      } catch (error) {
-        listeDeVerification.clear();
-        messageEnCasDecheque(context);
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-      // Fin de la transaction
-      await conn.query('COMMIT');
-    } catch (error) {
-      // Annule la transaction en cas d'erreur
-      await conn.query('ROLLBACK');
-      print("Erreur lors de l'ajout des tickets : $error");
-    } finally {
-      await conn.close();
-    }
   }
 
   Future<void> _ajouterTicketsMySQL() async {
@@ -239,7 +139,8 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       // Nettoyer et afficher un message en cas de succès
       listeDeVerification.clear();
       messageEnCasDeSucces(context);
-    } catch (error) {
+    } catch (e) {
+      print(" ERREUR D'ENREGISTREMENT $e");
       // Annuler la transaction en cas d'erreur
       await conn.query('ROLLBACK');
       messageEnCasDecheque(context);

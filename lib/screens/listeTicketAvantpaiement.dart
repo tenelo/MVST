@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesfonctions.dart';
 import 'package:mvst/paiement/choixPaiement.dart';
@@ -120,8 +121,18 @@ class _TicketsState extends State<Tickets> {
           width: MediaQuery.of(context).size.width * 0.55,
           child: ElevatedButton(
             onPressed: () async {
-              var _dateCalcule =
-                  await ConvertirHeure.formatDatePourCalcule(widget.date);
+              DateFormat formatInitiale =
+                  DateFormat('EEEE d MMMM yyyy', 'fr_FR');
+              DateTime _dateCalcule = formatInitiale.parse(widget.date);
+              String _dateformatee =
+                  DateFormat('yyyy-MM-dd HH:mm:ss').format(_dateCalcule);
+              DateTime dateFormatee = DateTime.parse(_dateformatee).toUtc();
+              print(
+                  "%%%%%%%%%%%%%%%%%  TYPE DE LA DATE ${dateFormatee.runtimeType}  %%%%%%%%%%%%%%%%");
+              print(
+                  "%%%%%%%%%%%%%%%%%  DATE FORMATEE $dateFormatee  %%%%%%%%%%%%%%%%");
+              //await ConvertirHeure.formatDatePourCalcule(widget.date);
+
               if (mounted) {
                 setState(() {
                   _isLoading = true;
@@ -173,7 +184,7 @@ class _TicketsState extends State<Tickets> {
                         mois: widget.mois,
                         moisAnnee: widget.moisAnnee,
                         annee: widget.annee,
-                        datePourCalcule: _dateCalcule,
+                        datePourCalcule: dateFormatee,
                       )
                     : // Petits écrants
                     ChoixPaiement2(
@@ -191,7 +202,7 @@ class _TicketsState extends State<Tickets> {
                         mois: widget.mois,
                         moisAnnee: widget.moisAnnee,
                         annee: widget.annee,
-                        datePourCalcule: _dateCalcule,
+                        datePourCalcule: dateFormatee,
                       );
 
                 await Navigator.pushReplacement(
