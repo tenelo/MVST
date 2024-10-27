@@ -117,17 +117,19 @@ class _CommandeState extends State<Commande> {
         firstDate: dateDemain!,
         lastDate: dateApresDemain!,
       );
-      setState(() {
-        _dateController.text =
-            DateFormat('EEEE d MMMM y', 'fr_FR').format(choixDeDate!);
-      });
-      dateFormatee = DateFormat('EEEE_d_MMMM_y', 'fr_FR').format(choixDeDate!);
-      idMois = DateFormat('MMMM', 'fr_FR').format(choixDeDate);
-      idMoisAnnee = DateFormat('MMMM_y', 'fr_FR').format(choixDeDate);
-      idAnnee = DateFormat('y', 'fr_FR').format(choixDeDate);
-    } catch (error) {
-      print("Erreur lors de la sélection de la date ");
-    }
+
+      if (choixDeDate != null) {
+        setState(() {
+          _dateController.text =
+              DateFormat('EEEE d MMMM y', 'fr_FR').format(choixDeDate);
+          dateFormatee =
+              DateFormat('EEEE_d_MMMM_y', 'fr_FR').format(choixDeDate);
+          idMois = DateFormat('MMMM', 'fr_FR').format(choixDeDate);
+          idMoisAnnee = DateFormat('MMMM_y', 'fr_FR').format(choixDeDate);
+          idAnnee = DateFormat('y', 'fr_FR').format(choixDeDate);
+        });
+      }
+    } catch (error) {}
   }
 
   final formKey = GlobalKey<FormState>();

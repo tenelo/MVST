@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -16,6 +17,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 int? tailleEcran;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Désactive la rotation de l'écran en mode paysage
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -53,7 +59,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   void _handleAppClosed() {
-    // Exécuter ta fonction de nettoyage ici
+    // Exécuter  fonction de nettoyage
     maFonction();
   }
 

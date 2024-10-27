@@ -838,7 +838,7 @@ class _PlacesState extends State<Places> {
 
             try {
               if (selection[widget.numero]) {
-                var resultat = await verifierPlace(
+                var resultat = await verifierEtAjouterPlace(
                   _depart!,
                   _destination!,
                   _date!,

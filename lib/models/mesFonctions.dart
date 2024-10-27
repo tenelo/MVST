@@ -5,9 +5,10 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 
+// reuperer la liste des places dejà occupée dans la liste listeDesPlacesOccupees
 List<int> listeDesPlacesOccupees = [];
 List<int> listeDeVerification = [];
-List<int> listeDeRecherche = [];
+String? idDocPourNetoyage;
 
 class ClasseListeDesPlaces {
 // récupérer la liste des places dejà occupées
@@ -66,7 +67,7 @@ class ClasseListeDesPlaces {
 //vérifier si une place est occupée ou non, si non occupée ajouter
 //à la liste des places occupées
 
-Future<String> verifierPlace(
+Future<String> verifierEtAjouterPlace(
     String _depart,
     String _destination,
     String _date,
@@ -103,6 +104,7 @@ Future<String> verifierPlace(
           return 'échec'; // La place est déjà réservée
         } else {
           // Ajouter la place choisie
+          idDocPourNetoyage = documentId;
           await conn.query(
               'UPDATE Departs SET placesChoisies = JSON_ARRAY_APPEND(placesChoisies, ?, ?) WHERE documentId = ?',
               ['\$', numeroDePlace, documentId]);
@@ -119,7 +121,6 @@ Future<String> verifierPlace(
     }
   } catch (error) {
     await conn.query('ROLLBACK'); // Annuler la transaction en cas d'erreur
-    print('Erreur : $error');
     return 'Erreur inattendue';
   } finally {
     await conn.close(); // Toujours fermer la connexion

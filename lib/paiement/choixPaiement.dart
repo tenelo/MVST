@@ -132,7 +132,6 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
               widget.datePourCalcule,
             ]);
       }
-
       // Finaliser la transaction
       await conn.query('COMMIT');
 
@@ -140,7 +139,6 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       listeDeVerification.clear();
       messageEnCasDeSucces(context);
     } catch (e) {
-      print(" ERREUR D'ENREGISTREMENT $e");
       // Annuler la transaction en cas d'erreur
       await conn.query('ROLLBACK');
       messageEnCasDecheque(context);

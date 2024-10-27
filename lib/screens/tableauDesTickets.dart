@@ -39,12 +39,12 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
       _isLoading = true;
     });
     try {
-      var results = await conn.query(
+      var resultat = await conn.query(
           'SELECT * FROM Tickets WHERE idUtilisateur = ? ORDER BY dateDeCreation DESC LIMIT 150',
           [widget.idUtilisateur]);
 
       List<Map<String, dynamic>> listeDesTickets = [];
-      for (var row in results) {
+      for (var row in resultat) {
         listeDesTickets.add({
           'id': row['id'],
           'documentId': row['documentId'],
@@ -158,6 +158,15 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                           data: ThemeData.light().copyWith(
                               cardColor: Theme.of(context).canvasColor),
                           child: PaginatedDataTable(
+                            header: Center(
+                              child: Text(
+                                "NOMBRE TOTAL DE TICKETS : ${donnees.length}",
+                                style: TextStyle(
+                                    color: Config.colors.bleuFonce2,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16),
+                              ),
+                            ),
                             horizontalMargin: 10,
                             columnSpacing: 20,
                             showFirstLastButtons: true,

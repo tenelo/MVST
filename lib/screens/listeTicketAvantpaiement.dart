@@ -127,11 +127,6 @@ class _TicketsState extends State<Tickets> {
               String _dateformatee =
                   DateFormat('yyyy-MM-dd HH:mm:ss').format(_dateCalcule);
               DateTime dateFormatee = DateTime.parse(_dateformatee).toUtc();
-              print(
-                  "%%%%%%%%%%%%%%%%%  TYPE DE LA DATE ${dateFormatee.runtimeType}  %%%%%%%%%%%%%%%%");
-              print(
-                  "%%%%%%%%%%%%%%%%%  DATE FORMATEE $dateFormatee  %%%%%%%%%%%%%%%%");
-              //await ConvertirHeure.formatDatePourCalcule(widget.date);
 
               if (mounted) {
                 setState(() {
