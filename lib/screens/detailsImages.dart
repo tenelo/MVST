@@ -57,6 +57,7 @@ class DetailsImages extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
+                              textAlign: TextAlign.center,
                               titre,
                               style: TextStyle(
                                 fontFamily: 'Lobster',
@@ -76,6 +77,7 @@ class DetailsImages extends StatelessWidget {
                           Expanded(
                             child: SingleChildScrollView(
                               child: Text(
+                                textAlign: TextAlign.justify,
                                 description,
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 20,

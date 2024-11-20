@@ -21,39 +21,91 @@ class ClasseListeDesPlaces {
       String _moisAnnee,
       String _annee) async {
     final conn = await Connexion.connexionDB();
-    String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
+    final String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
+    final String idDesDepartsParLigne = "${_depart}_${_date}_${_heure}";
+
     try {
-      var countResult = await conn.query(
-          'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
-      if (countResult.first[0] == 0) {
-        await conn.query(
-            'INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, dateDeCreation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
-            [
-              documentId,
-              _date,
-              _heure,
-              _depart,
-              _destination,
-              _mois,
-              _moisAnnee,
-              _annee,
-              '[]'
-            ]);
-      } else {
-        var placesResult = await conn.query(
-            'SELECT placesChoisies FROM Departs WHERE documentId = ?',
-            [documentId]);
-        if (placesResult.isNotEmpty) {
-          var placesBlob = placesResult.first[0];
-          var placesJsonString = placesBlob.toString();
-          if (placesJsonString.isNotEmpty) {
-            List<dynamic> placesDynamic = jsonDecode(placesJsonString);
-            // Utiliser un Set temporaire pour éviter les doublons
-            Set<int> placesSet =
-                placesDynamic.map((place) => place as int).toSet();
+      // pour tous les lieux de départ sauf Bouaké
+      if (_depart != 'Bouaké') {
+        var countResult = await conn.query(
+            'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
+
+        if (countResult.first[0] == 0) {
+          await conn.query(
+              'INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, idDesDepartsParLigne, dateDeCreation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+              [
+                documentId,
+                _date,
+                _heure,
+                _depart,
+                _destination,
+                _mois,
+                _moisAnnee,
+                _annee,
+                '[]',
+                idDesDepartsParLigne
+              ]);
+        } else {
+          var placesResult = await conn.query(
+              'SELECT placesChoisies FROM Departs WHERE idDesDepartsParLigne = ?',
+              [idDesDepartsParLigne]);
+
+          if (placesResult.isNotEmpty) {
+            List<int> allPlacesChoisies = [];
+
+            // Extraire et concaténer les places choisies en entiers
+            for (var row in placesResult) {
+              String placesJsonString = row['placesChoisies'].toString();
+              if (placesJsonString.isNotEmpty) {
+                List<dynamic> placesDynamic = jsonDecode(placesJsonString);
+                List<int> placesList =
+                    placesDynamic.map((place) => place as int).toList();
+                allPlacesChoisies.addAll(placesList);
+              }
+            }
+
+            // Supprimer les doublons si nécessaire
+            allPlacesChoisies = allPlacesChoisies.toSet().toList();
 
             // Réinitialiser la liste listeDesPlacesOccupees avant chaque ajout
-            listeDesPlacesOccupees = placesSet.toList();
+            listeDesPlacesOccupees = allPlacesChoisies;
+          }
+        }
+      } else {
+        // Pour les gares de Bouaké
+        var countResult = await conn.query(
+            'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
+        if (countResult.first[0] == 0) {
+          await conn.query(
+              'INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, idDesDepartsParLigne, dateDeCreation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+              [
+                documentId,
+                _date,
+                _heure,
+                _depart,
+                _destination,
+                _mois,
+                _moisAnnee,
+                _annee,
+                '[]',
+                idDesDepartsParLigne
+              ]);
+        } else {
+          var placesResult = await conn.query(
+              'SELECT placesChoisies FROM Departs WHERE documentId = ?',
+              [documentId]);
+          if (placesResult.isNotEmpty) {
+            var placesBlob = placesResult.first[0];
+            var placesJsonString = placesBlob.toString();
+            if (placesJsonString.isNotEmpty) {
+              List<dynamic> placesDynamic = jsonDecode(placesJsonString);
+              // Utiliser un Set temporaire pour éviter les doublons
+              Set<int> placesSet =
+                  placesDynamic.map((place) => place as int).toSet();
+
+              // Réinitialiser la liste listeDesPlacesOccupees avant chaque ajout
+              listeDesPlacesOccupees = placesSet.toList();
+            }
           }
         }
       }
@@ -78,23 +130,39 @@ Future<String> verifierEtAjouterPlace(
     String _heure,
     int numeroDePlace) async {
   final conn = await Connexion.connexionDB();
-  String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
+  final String documentId = "${_depart}-${_destination}_${_date}_${_heure}_h";
+  final String idDesDepartsParLigne = "${_depart}_${_date}_${_heure}";
   try {
     // Commencer une transaction
     await conn.query('START TRANSACTION');
 
-    // Récupérer les places choisies
-    var placesResult = await conn.query(
-        'SELECT placesChoisies FROM Departs WHERE documentId = ? FOR UPDATE',
-        [documentId]); // Utilisation de FOR UPDATE pour verrouiller la ligne
+    // pour tous les lieux de départ sauf Bouaké
+    if (_depart != 'Bouaké') {
+      // Récupérer les places choisies
+      var placesResult = await conn.query(
+          'SELECT placesChoisies FROM Departs WHERE idDesDepartsParLigne = ? FOR UPDATE',
+          [
+            idDesDepartsParLigne
+          ]); // Utilisation de FOR UPDATE pour verrouiller la ligne
 
-    if (placesResult.isNotEmpty) {
-      var placesBlob = placesResult.first[0];
-      var placesJsonString = placesBlob.toString();
-      if (placesJsonString.isNotEmpty) {
-        List<dynamic> placesDynamic = jsonDecode(placesJsonString);
-        Set<int> placesSet = placesDynamic.map((place) => place as int).toSet();
-        listeDesPlacesOccupees = placesSet.toList();
+      if (placesResult.isNotEmpty) {
+        List<int> allPlacesChoisies = [];
+
+        // Extraire et concaténer les places choisies en entiers
+        for (var row in placesResult) {
+          String placesJsonString = row['placesChoisies'].toString();
+          if (placesJsonString.isNotEmpty) {
+            List<dynamic> placesDynamic = jsonDecode(placesJsonString);
+            List<int> placesList =
+                placesDynamic.map((place) => place as int).toList();
+            allPlacesChoisies.addAll(placesList);
+          }
+        }
+        // Supprimer les doublons si nécessaire
+        allPlacesChoisies = allPlacesChoisies.toSet().toList();
+
+        // Réinitialiser la liste listeDesPlacesOccupees avant chaque ajout
+        listeDesPlacesOccupees = allPlacesChoisies;
 
         // Vérifier si la place existe déjà dans la liste
         bool placeExists = listeDesPlacesOccupees.contains(numeroDePlace);
@@ -113,11 +181,51 @@ Future<String> verifierEtAjouterPlace(
           await conn.query('COMMIT');
           return 'succès';
         }
+      } else {
+        // Si aucune ligne n'est trouvée, rollback et signaler une erreur
+        await conn.query('ROLLBACK');
+        return 'Erreur : Document non trouvé';
       }
     } else {
-      // Si aucune ligne n'est trouvée, rollback et signaler une erreur
-      await conn.query('ROLLBACK');
-      return 'Erreur : Document non trouvé';
+      // Pour les gares de Bouaké
+
+      // Récupérer les places choisies
+      var placesResult = await conn.query(
+          'SELECT placesChoisies FROM Departs WHERE documentId = ? FOR UPDATE',
+          [documentId]); // Utilisation de FOR UPDATE pour verrouiller la ligne
+
+      if (placesResult.isNotEmpty) {
+        var placesBlob = placesResult.first[0];
+        var placesJsonString = placesBlob.toString();
+        if (placesJsonString.isNotEmpty) {
+          List<dynamic> placesDynamic = jsonDecode(placesJsonString);
+          Set<int> placesSet =
+              placesDynamic.map((place) => place as int).toSet();
+          listeDesPlacesOccupees = placesSet.toList();
+
+          // Vérifier si la place existe déjà dans la liste
+          bool placeExists = listeDesPlacesOccupees.contains(numeroDePlace);
+
+          if (placeExists) {
+            await conn.query('ROLLBACK'); // Annuler la transaction
+            return 'échec'; // La place est déjà réservée
+          } else {
+            // Ajouter la place choisie
+            idDocPourNetoyage = documentId;
+            await conn.query(
+                'UPDATE Departs SET placesChoisies = JSON_ARRAY_APPEND(placesChoisies, ?, ?) WHERE documentId = ?',
+                ['\$', numeroDePlace, documentId]);
+
+            // Valider la transaction
+            await conn.query('COMMIT');
+            return 'succès';
+          }
+        }
+      } else {
+        // Si aucune ligne n'est trouvée, rollback et signaler une erreur
+        await conn.query('ROLLBACK');
+        return 'Erreur : Document non trouvé';
+      }
     }
   } catch (error) {
     await conn.query('ROLLBACK'); // Annuler la transaction en cas d'erreur
@@ -125,7 +233,7 @@ Future<String> verifierEtAjouterPlace(
   } finally {
     await conn.close(); // Toujours fermer la connexion
   }
-  return '';
+  return 'Erreur inattendue';
 }
 
 // supprimer une place desélectionnée
