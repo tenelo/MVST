@@ -301,7 +301,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         child: Center(
           child: TabBar(
             tabAlignment: TabAlignment.center,
-            labelStyle: TextStyle(fontSize: 13),
+            labelStyle: TextStyle(fontSize: 12),
             controller: _tabController,
             tabs: const [
               Tab(

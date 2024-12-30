@@ -87,7 +87,7 @@ class _MesTicketsState extends State<MesTickets> {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(8.0),
           child: StreamBuilder<List<Map<String, dynamic>>>(
             stream: recuperationDeMesTickets(),
             builder: (BuildContext context,
@@ -132,7 +132,7 @@ class _MesTicketsState extends State<MesTickets> {
                     couleurTicket = const Color.fromARGB(132, 5, 82, 121);
                   }
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
+                    padding: const EdgeInsets.only(bottom: 4.0),
                     child: TicketMaterial(
                       height: 115,
                       colorBackground: couleurTicket!,

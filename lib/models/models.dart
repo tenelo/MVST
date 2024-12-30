@@ -200,35 +200,85 @@ class _PetitesCartesState extends State<PetitesCartes> {
 
   Future<Map<String, dynamic>?> InformationsUtilisateur() async {
     User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        // Récupérer le document de l'utilisateur à partir de Firestore
-        DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
-            .collection('utilisateurs')
-            .doc(user.uid)
-            .get();
-        if (documentSnapshot.exists) {
-          // Extraire les informations du document
-          Map<String, dynamic> userData =
-              documentSnapshot.data() as Map<String, dynamic>;
-          String nom = userData['nom'] ?? '';
-          String prenoms = userData['prenoms'] ?? '';
-          String telephone = userData['telephone'] ?? '';
 
-          // Retourner les informations récupérées
-          return {
-            'nom': nom,
-            'prenoms': prenoms,
-            'telephone': telephone,
-          };
-        } else {
-          return null; // Document non trouvé
-        }
-      } catch (e) {
-        return null; // Erreur lors de la récupération des informations
+    // Vérifier si l'utilisateur est null
+    if (user == null) {
+      return null; // Arrêter l'exécution si l'utilisateur est null
+    }
+
+    try {
+      // Récupérer le document de l'utilisateur depuis Firestore
+      DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
+          .collection('utilisateurs')
+          .doc(user.uid)
+          .get();
+
+      // Vérifier si le document existe
+      if (!documentSnapshot.exists) {
+        return null; // Arrêter l'exécution si le document n'existe pas
       }
-    } else {
-      return null; // Utilisateur non connecté
+
+      // Extraire les informations du document
+      Map<String, dynamic> userData =
+          documentSnapshot.data() as Map<String, dynamic>;
+      int points = userData['points'] ?? 0;
+
+      // Vérifier si les points de l'utilisateur sont égaux à 0
+      if (points == 0) {
+        // Afficher une alerte et retourner null
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.warning,
+                    color: Colors.orange,
+                  ),
+                  SizedBox(width: 8), // Espacement entre l'icône et le texte
+                  Text(
+                    'Alerte',
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                'Votre profil est soumis à une restriction, \nveuillez contacter l\'administrateur MVST Mobile.',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Ferme l'alerte
+                  },
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+
+        return null; // Arrêter l'exécution si les points sont à 0
+      }
+
+      // Retourner les informations utilisateur
+      return {
+        'nom': userData['nom'] ?? '',
+        'prenoms': userData['prenoms'] ?? '',
+        'telephone': userData['telephone'] ?? '',
+      };
+    } catch (e) {
+      return null; // Arrêter l'exécution en cas d'erreur
     }
   }
 
@@ -269,8 +319,13 @@ class _PetitesCartesState extends State<PetitesCartes> {
             setState(() {
               _isLoading = true;
             });
+
             // Récupérer les données utilisateur
             Map<String, dynamic>? data = await InformationsUtilisateur();
+            if (data == null) {
+              return; // Arrêter ici si les données utilisateur ne sont pas valides
+            }
+
             setState(() {
               userData = data;
             });
@@ -282,6 +337,7 @@ class _PetitesCartesState extends State<PetitesCartes> {
             // Vérifier si le prix est disponible
             if (prixDesBillets.containsKey(cle)) {
               prix = prixDesBillets[cle];
+
               // Navigation vers la page de commande
               Navigator.push(
                 context,
@@ -310,10 +366,9 @@ class _PetitesCartesState extends State<PetitesCartes> {
             );
           }
         } catch (e) {
-          print('Vérifiez votre connexion');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Vérifiez la connexion internet'),
+              content: Text('Erreur...'),
             ),
           );
         } finally {
@@ -458,3 +513,75 @@ class ImageModel {
     );
   }
 }
+
+
+/*
+
+
+  Future<Map<String, dynamic>?> _InformationsUtilisateur() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        // Récupérer le document de l'utilisateur à partir de Firestore
+        DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
+            .collection('utilisateurs')
+            .doc(user.uid)
+            .get();
+        if (documentSnapshot.exists) {
+          // Extraire les informations du document
+          Map<String, dynamic> userData =
+              documentSnapshot.data() as Map<String, dynamic>;
+          String nom = userData['nom'] ?? '';
+          String prenoms = userData['prenoms'] ?? '';
+          String telephone = userData['telephone'] ?? '';
+          int points = userData['points'] ?? 0;
+          if (points > 0) {
+            // Retourner les informations récupérées
+            return {
+              'nom': nom,
+              'prenoms': prenoms,
+              'telephone': telephone,
+            };
+          } else {
+            // Si l'utilisateur n'a pas de points
+            await showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Center(
+                      child: Text(
+                    'Alerte',
+                    style: TextStyle(
+                        color: Colors.yellow, fontWeight: FontWeight.bold),
+                  )),
+                  content: Text(
+                      'Votre profil est soumis à une restriction, \nveuillez contacter l\'administrateur MVST Mobile.'),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Ferme l'alerte
+                      },
+                      child: Text(
+                        'OK',
+                        style: TextStyle(
+                            color: Colors.yellow, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        } else {
+          return null; // Document non trouvé
+        }
+      } catch (e) {
+        return null; // Erreur lors de la récupération des informations
+      }
+    } else {
+      return null; // Utilisateur non connecté
+    }
+  }
+
+
+*/
