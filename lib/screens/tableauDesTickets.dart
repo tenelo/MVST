@@ -19,7 +19,7 @@ class TableauDeTickets extends StatefulWidget {
 }
 
 class _TableauDeTicketsState extends State<TableauDeTickets> {
-  int _rowsPerPage = 10;
+  int _rowsPerPage = 20;
   bool _isLoading = true;
   List<Map<String, dynamic>> donnees = [];
   List<Map<String, dynamic>> _filtre = [];
@@ -92,61 +92,64 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
         ),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                SizedBox(
-                  width: 170,
-                  height: 40,
-                  child: TextField(
-                    controller: _rechercheParDate,
-                    decoration: const InputDecoration(
-                      hintText: 'Recherche par date',
-                      hintStyle: TextStyle(fontSize: 11),
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12.0)),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  SizedBox(
+                    width: 170,
+                    height: 40,
+                    child: TextField(
+                      controller: _rechercheParDate,
+                      decoration: const InputDecoration(
+                        hintText: 'Recherche par date',
+                        hintStyle: TextStyle(fontSize: 11),
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12.0)),
+                        ),
                       ),
+                      onChanged: (value) {
+                        setState(() {
+                          donnees = _filtre.where((data) {
+                            final date = data['date'].toString().toLowerCase();
+                            final jourMois = DateFormat('dd MMMM yyyy', 'fr_FR')
+                                .format(DateTime.parse(data['date']));
+                            return date.contains(value.toLowerCase()) ||
+                                jourMois.contains(value.toLowerCase());
+                          }).toList();
+                        });
+                      },
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        donnees = _filtre.where((data) {
-                          final date = data['date'].toString().toLowerCase();
-                          final jourMois = DateFormat('dd MMMM yyyy', 'fr_FR')
-                              .format(DateTime.parse(data['date']));
-                          return date.contains(value.toLowerCase()) ||
-                              jourMois.contains(value.toLowerCase());
-                        }).toList();
-                      });
-                    },
                   ),
-                ),
-                SizedBox(
-                  width: 198,
-                  height: 40,
-                  child: TextField(
-                    controller: _rechercheParDestination,
-                    decoration: const InputDecoration(
-                      hintText: 'Recherche par destination',
-                      hintStyle: TextStyle(fontSize: 11),
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12.0)),
+                  SizedBox(
+                    width: 198,
+                    height: 40,
+                    child: TextField(
+                      controller: _rechercheParDestination,
+                      decoration: const InputDecoration(
+                        hintText: 'Recherche par destination',
+                        hintStyle: TextStyle(fontSize: 11),
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12.0)),
+                        ),
                       ),
+                      onChanged: (value) {
+                        setState(() {
+                          donnees = _filtre
+                              .where((data) => data['destination']
+                                  .toString()
+                                  .toLowerCase()
+                                  .contains(value.toLowerCase()))
+                              .toList();
+                        });
+                      },
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        donnees = _filtre
-                            .where((data) => data['destination']
-                                .toString()
-                                .toLowerCase()
-                                .contains(value.toLowerCase()))
-                            .toList();
-                      });
-                    },
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             Expanded(
               child: _isLoading

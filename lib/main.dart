@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/firebase_options.dart';
+import 'package:mvst/models/mesfonctions.dart';
 import 'package:mvst/screens/home.dart';
 import 'package:mvst/screens/petitsEcrans/home2.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
@@ -17,6 +19,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 int? tailleEcran;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Configurer le logger d'erreurs global
+  FlutterError.onError = (FlutterErrorDetails details) {};
   // Désactive la rotation de l'écran en mode paysage
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -36,16 +41,29 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  late ReceivePort receivePort;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Lancer la fonction en arrière-plan
+    // Lancer la tâche lourde dans un Isolate
+    _runIsolateTask();
+  }
+
+  Future<void> _runIsolateTask() async {
+    receivePort = ReceivePort();
+    try {
+      await Isolate.spawn(_backgroundTask, receivePort.sendPort);
+    } catch (e, stackTrace) {}
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+    // Fermer le ReceivePort pour éviter des fuites de ressources
+    receivePort.close();
   }
 
   @override
@@ -188,6 +206,18 @@ Future<void> _checkTermsAcceptance(BuildContext ctx) async {
       MaterialPageRoute(
           builder: (context) => const AccepterTermesDutilisations()),
     );
+  }
+}
+
+// Fonction exécutée dans un Isolate
+void _backgroundTask(SendPort sendPort) async {
+  //sendPort.send('Traitement en arrière-plan commencé');
+  try {
+    // Votre logique de traitement
+    await processPlacesTemporaires();
+//sendPort.send('Traitement terminé avec succès');
+  } catch (e) {
+    // sendPort.send('Erreur');
   }
 }
 

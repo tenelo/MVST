@@ -515,7 +515,7 @@ class TicketData extends StatelessWidget {
             children: [
               Text(
                 "Ticket Ref ${idTicket.toUpperCase()}",
-                style: TextStyle(fontSize: 7, color: Colors.grey),
+                style: TextStyle(fontSize: 6, color: Colors.grey),
               )
             ],
           ),
@@ -528,7 +528,7 @@ class TicketData extends StatelessWidget {
               '$depart -> $destination',
               style: const TextStyle(
                   color: Color.fromARGB(255, 9, 15, 123),
-                  fontSize: 20.0,
+                  fontSize: 18.0,
                   fontWeight: FontWeight.bold),
             ),
           ),

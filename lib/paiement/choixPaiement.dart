@@ -70,50 +70,7 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       // Démarrer une transaction
       await conn.query('BEGIN');
 
-      // Vérifier l'existence du document et l'insérer si nécessaire
-      var result = await conn.query(
-          'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
-
-      if (result.first[0] == 0) {
-        await conn.query(
-            '''INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, dateDeCreation) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())''',
-            [
-              documentId,
-              widget.idDate,
-              widget.heure,
-              widget.depart,
-              widget.destination,
-              widget.mois,
-              widget.moisAnnee,
-              widget.annee,
-              '[]',
-            ]);
-      }
-
-      // Créer la table 'Tickets' si elle n'existe pas (à déplacer hors de la boucle si possible)
-      await conn.query('''
-      CREATE TABLE IF NOT EXISTS Tickets (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        idUtilisateur VARCHAR(255),
-        nom VARCHAR(255),
-        telephone VARCHAR(255),
-        date VARCHAR(100),
-        heure VARCHAR(255),
-        depart VARCHAR(255),
-        destination VARCHAR(255),
-        prixDuTicket INT,
-        place INT,
-        etatScanne VARCHAR(255),
-        statut VARCHAR(255),
-        scanneDate VARCHAR(50),
-        datePourCalcule DATE,
-        dateDeCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (documentId) REFERENCES Departs(documentId)
-      )
-    ''');
-
-// Insérer les tickets dans la table 'Tickets' en une seule transaction
+      // Insérer les tickets dans la table 'Tickets' en une seule transaction
       for (var _place in widget.place) {
         await conn.query(
             '''INSERT INTO Tickets (documentId, idUtilisateur, nom, telephone, date, heure, depart, destination, prixDuTicket, place, etatScanne, statut, datePourCalcule, scanneDate, dateDeCreation) 
@@ -132,6 +89,7 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
               widget.datePourCalcule,
             ]);
       }
+
       // Finaliser la transaction
       await conn.query('COMMIT');
 

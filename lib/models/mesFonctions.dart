@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mysql1/mysql1.dart';
 
 // reuperer la liste des places dejà occupée dans la liste listeDesPlacesOccupees
 List<int> listeDesPlacesOccupees = [];
@@ -117,8 +118,7 @@ class ClasseListeDesPlaces {
 }
 
 //vérifier si une place est occupée ou non, si non occupée ajouter
-//à la liste des places occupées
-
+//à la liste des places occupées si oui retourné 'échèc'
 Future<String> verifierEtAjouterPlace(
     String _depart,
     String _destination,
@@ -177,6 +177,12 @@ Future<String> verifierEtAjouterPlace(
               'UPDATE Departs SET placesChoisies = JSON_ARRAY_APPEND(placesChoisies, ?, ?) WHERE documentId = ?',
               ['\$', numeroDePlace, documentId]);
 
+          // Ajouter l'enregistrement dans PlacesTemporaires
+          await conn.query(
+            'INSERT INTO PlacesTemporaires (documentId, places, dateDeCreation) VALUES (?, ?, NOW())',
+            [documentId, numeroDePlace],
+          );
+
           // Valider la transaction
           await conn.query('COMMIT');
           return 'succès';
@@ -215,6 +221,12 @@ Future<String> verifierEtAjouterPlace(
             await conn.query(
                 'UPDATE Departs SET placesChoisies = JSON_ARRAY_APPEND(placesChoisies, ?, ?) WHERE documentId = ?',
                 ['\$', numeroDePlace, documentId]);
+
+            // Ajouter l'enregistrement dans PlacesTemporaires
+            await conn.query(
+              'INSERT INTO PlacesTemporaires (documentId, places, dateDeCreation) VALUES (?, ?, NOW())',
+              [documentId, numeroDePlace],
+            );
 
             // Valider la transaction
             await conn.query('COMMIT');
@@ -328,5 +340,88 @@ class ConvertirHeure {
     parsedDate = inputFormat.parse(date);
 
     return DateFormat('yyyy-MM-dd', 'fr_FR').format(parsedDate);
+  }
+}
+
+/*Cette fonction permet de supprimer au lencement da l'application,les places choisies
+pour lequels l'utilisateur n'est allé au terme du procecus
+cela crée des places occupée dans la table 'Departs' pourtant n'appartenant à aucun
+utilisateur.  
+*/
+Future<void> processPlacesTemporaires() async {
+  final conn = await Connexion.connexionDB();
+
+  try {
+    final checkOperation = await conn.query(
+      'SELECT operation_en_cours FROM EtatOperations WHERE nom_operation = ?',
+      ['processPlacesTemporaires'],
+    );
+
+    if (checkOperation.isNotEmpty &&
+        checkOperation.first['operation_en_cours'] == 1) {
+      return;
+    }
+
+    await conn.query(
+      'UPDATE EtatOperations SET operation_en_cours = 1 WHERE nom_operation = ?',
+      ['processPlacesTemporaires'],
+    );
+
+    final results = await conn.query(
+      'SELECT id, documentId, places FROM PlacesTemporaires',
+    );
+
+    if (results.isNotEmpty) {
+      for (var row in results) {
+        final int id = row['id'] as int;
+        final String idDocument = row['documentId'] is Blob
+            ? String.fromCharCodes((row['documentId'] as Blob).toBytes())
+            : row['documentId'] as String;
+        final int place = row['places'] as int;
+
+        final matchingTickets = await conn.query(
+          'SELECT * FROM Tickets WHERE documentId = ? AND place = ?',
+          [idDocument, place],
+        );
+
+        if (matchingTickets.isNotEmpty) {
+          await conn.query('DELETE FROM PlacesTemporaires WHERE id = ?', [id]);
+        } else {
+          final matchingDeparts = await conn.query(
+            'SELECT placesChoisies FROM Departs WHERE documentId = ?',
+            [idDocument],
+          );
+
+          if (matchingDeparts.isNotEmpty) {
+            String placesChoisies = matchingDeparts.first['placesChoisies']
+                    is Blob
+                ? String.fromCharCodes(
+                    (matchingDeparts.first['placesChoisies'] as Blob).toBytes())
+                : matchingDeparts.first['placesChoisies'] as String;
+
+            final List<String> placesList = placesChoisies.split(',');
+            placesList.remove(place.toString());
+
+            final updatedPlaces = placesList.join(',');
+            await conn.query(
+              'UPDATE Departs SET placesChoisies = ? WHERE documentId = ?',
+              [updatedPlaces, idDocument],
+            );
+
+            await conn
+                .query('DELETE FROM PlacesTemporaires WHERE id = ?', [id]);
+          }
+        }
+      }
+    }
+
+    print('Traitement terminé.');
+  } catch (e) {
+    print("Erreur lors du traitement : $e");
+  } finally {
+    await conn.query(
+      'UPDATE EtatOperations SET operation_en_cours = 0 WHERE nom_operation = ?',
+      ['processPlacesTemporaires'],
+    );
   }
 }

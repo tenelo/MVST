@@ -216,10 +216,10 @@ class _ChoixPlaces2State extends State<ChoixPlaces2> {
                   child: Center(
                     child: SingleChildScrollView(
                       child: SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.95,
-                        width: MediaQuery.of(context).size.width * 0.70,
+                        height: MediaQuery.of(context).size.height * 0.92,
+                        width: MediaQuery.of(context).size.width * 0.78,
                         child: Padding(
-                          padding: const EdgeInsets.all(1.5),
+                          padding: const EdgeInsets.all(1),
                           child: Container(
                             decoration: BoxDecoration(
                               border:

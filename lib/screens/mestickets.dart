@@ -231,65 +231,74 @@ class _MesTicketsState extends State<MesTickets> {
       },
       child: Padding(
         padding: const EdgeInsets.only(
-          left: 8,
+          left: 2,
           top: 8,
           right: 2,
           bottom: 2,
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Départ du : ",
-                  style: TextStyle(
-                    decorationColor: Colors.white,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Départ du : ",
+                        style: TextStyle(
+                          decorationColor: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Text(
-                  date,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Heure de départ : ",
+                        style: TextStyle(
+                          decorationColor: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        heure,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    ],
                   ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Heure de départ : ",
-                  style: TextStyle(
-                    decorationColor: Colors.white,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Siège : ",
+                        style: TextStyle(
+                          decorationColor: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        "N° $numeroDePlace",
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    ],
                   ),
-                ),
-                Text(
-                  heure,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Siège : ",
-                  style: TextStyle(
-                    decorationColor: Colors.white,
-                  ),
-                ),
-                Text(
-                  "N° $numeroDePlace",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              ],
+                ],
+              ),
             ),
             const Expanded(child: SizedBox()),
             Padding(
