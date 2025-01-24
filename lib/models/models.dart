@@ -104,7 +104,7 @@ class _CarouselState extends State<Carousel> {
                         width: double.infinity,
                         errorBuilder: (context, error, stackTrace) => Center(
                           child: Text(
-                            'Problème de connexion, images non chargées',
+                            'Vérifiez la  connexion internet.',
                             style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold),
@@ -514,74 +514,9 @@ class ImageModel {
   }
 }
 
-
-/*
-
-
-  Future<Map<String, dynamic>?> _InformationsUtilisateur() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        // Récupérer le document de l'utilisateur à partir de Firestore
-        DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
-            .collection('utilisateurs')
-            .doc(user.uid)
-            .get();
-        if (documentSnapshot.exists) {
-          // Extraire les informations du document
-          Map<String, dynamic> userData =
-              documentSnapshot.data() as Map<String, dynamic>;
-          String nom = userData['nom'] ?? '';
-          String prenoms = userData['prenoms'] ?? '';
-          String telephone = userData['telephone'] ?? '';
-          int points = userData['points'] ?? 0;
-          if (points > 0) {
-            // Retourner les informations récupérées
-            return {
-              'nom': nom,
-              'prenoms': prenoms,
-              'telephone': telephone,
-            };
-          } else {
-            // Si l'utilisateur n'a pas de points
-            await showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: Center(
-                      child: Text(
-                    'Alerte',
-                    style: TextStyle(
-                        color: Colors.yellow, fontWeight: FontWeight.bold),
-                  )),
-                  content: Text(
-                      'Votre profil est soumis à une restriction, \nveuillez contacter l\'administrateur MVST Mobile.'),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop(); // Ferme l'alerte
-                      },
-                      child: Text(
-                        'OK',
-                        style: TextStyle(
-                            color: Colors.yellow, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            );
-          }
-        } else {
-          return null; // Document non trouvé
-        }
-      } catch (e) {
-        return null; // Erreur lors de la récupération des informations
-      }
-    } else {
-      return null; // Utilisateur non connecté
-    }
-  }
-
-
-*/
+class InfosTarifs {
+  final String depart;
+  final String destination;
+  final int prix;
+  InfosTarifs(this.depart, this.destination, this.prix);
+}

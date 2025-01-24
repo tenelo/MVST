@@ -6,6 +6,7 @@ import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/models/models.dart';
 import 'package:mvst/profil/profil.dart';
 import 'package:mvst/screens/conditionsDutilisation.dart';
 import 'package:mvst/screens/infos.dart';
@@ -46,7 +47,7 @@ class _Home2State extends State<Home2> with SingleTickerProviderStateMixin {
             iconTheme: IconThemeData(
               color: Config.colors.jauneBlanc,
             ),
-            flexibleSpace: const Carousel2(),
+            flexibleSpace: const Carousel(),
             backgroundColor: Colors.transparent,
           ),
         ),
@@ -258,10 +259,10 @@ class _Home2State extends State<Home2> with SingleTickerProviderStateMixin {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        carteALettre("M"),
-                        carteALettre("V"),
-                        carteALettre("S"),
-                        carteALettre("T"),
+                        carteALettre2("M"),
+                        carteALettre2("V"),
+                        carteALettre2("S"),
+                        carteALettre2("T"),
                       ],
                     ),
                   ),

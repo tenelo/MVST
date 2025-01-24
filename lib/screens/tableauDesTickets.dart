@@ -35,9 +35,13 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
 
   Future<List<Map<String, dynamic>>> recuperationDeMesTickets() async {
     final conn = await Connexion.connexionDB();
-    setState(() {
-      _isLoading = true;
-    });
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     try {
       var resultat = await conn.query(
           'SELECT * FROM Tickets WHERE idUtilisateur = ? ORDER BY dateDeCreation DESC LIMIT 150',
@@ -63,17 +67,22 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
           'dateDeCreation': row['dateDeCreation'],
         });
       }
-      setState(() {
-        donnees = listeDesTickets;
-        _filtre = listeDesTickets;
-        _isLoading = false;
-      });
+
+      if (mounted) {
+        setState(() {
+          donnees = listeDesTickets;
+          _filtre = listeDesTickets;
+          _isLoading = false;
+        });
+      }
+
       return listeDesTickets;
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      print("Erreur lors de la récupération des ticket ");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
       return [];
     } finally {
       await conn.close();
@@ -86,7 +95,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
     return Scaffold(
       body: Container(
         height: MediaQuery.of(context).size.height * 1,
-        padding: const EdgeInsets.all(4.0),
+        //padding: const EdgeInsets.all(4.0),
         decoration: const BoxDecoration(
           color: Color.fromARGB(143, 228, 227, 227),
         ),

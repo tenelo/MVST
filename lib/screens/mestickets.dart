@@ -18,6 +18,7 @@ DateTime? dateApresDemain = DateTime.utc(
     dateActuelle!.year, dateActuelle!.month, dateActuelle!.day + 2);
 DateTime? dateAujourdhui =
     DateTime.utc(dateActuelle!.year, dateActuelle!.month, dateActuelle!.day);
+
 String? dateDAujourdhui;
 String? dateDeDemain;
 String? dateDapresDemain;

@@ -143,7 +143,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                 onPressed: () {
                   if (listeDesPlacesChoisies.isNotEmpty) {
                     stopCountdown();
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => Tickets(
@@ -639,7 +639,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
             onTap: () {
               if (listeDesPlacesChoisies.isNotEmpty) {
                 stopCountdown();
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => Tickets(
@@ -690,7 +690,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                     onPressed: () {
                       if (listeDesPlacesChoisies.isNotEmpty) {
                         stopCountdown();
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => Tickets(

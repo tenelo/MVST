@@ -5,6 +5,7 @@ import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesfonctions.dart';
 
+// import 'package:http/http.dart' as http;
 class ChoixPaiement extends StatefulWidget {
   const ChoixPaiement({
     super.key,
@@ -108,6 +109,61 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
     }
   }
 
+/*
+  Future<void> _ajouterTicketsPHP() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final url = Uri.parse('http://<votre-ip>/ajouter_tickets.php');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          "documentId":
+              "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h",
+          "idUtilisateur": widget.id,
+          "nom": widget.nom,
+          "telephone": widget.contact,
+          "date": widget.date,
+          "heure": widget.heure,
+          "depart": widget.depart,
+          "destination": widget.destination,
+          "prixDuTicket": widget.prixUnitaire,
+          "datePourCalcule": widget.datePourCalcule.toIso8601String(),
+          "tickets": widget.place,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(data['message']),
+            backgroundColor: Colors.green,
+          ));
+        } else {
+          throw Exception(data['message']);
+        }
+      } else {
+        throw Exception('Erreur réseau');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur : $e'),
+        backgroundColor: Colors.red,
+      ));
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+*/
   void messageEnCasDeSucces(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

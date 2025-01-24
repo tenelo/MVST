@@ -37,26 +37,30 @@ class _InformationsState extends State<Informations> {
                 });
               },
               labelType: NavigationRailLabelType.all,
-              destinations: <NavigationRailDestination>[
+              selectedIconTheme: IconThemeData(
+                color: Colors.amber, // Couleur pour l'icône sélectionnée
+                size: 30,
+              ),
+              unselectedIconTheme: IconThemeData(
+                color: Colors.white, // Couleur pour l'icône non sélectionnée
+                size: 24,
+              ),
+              selectedLabelTextStyle: TextStyle(
+                color: Colors.amber, // Couleur pour le texte sélectionné
+              ),
+              unselectedLabelTextStyle: TextStyle(
+                color: Colors.white, // Couleur pour le texte non sélectionné
+                fontWeight: FontWeight.normal,
+              ),
+              destinations: const <NavigationRailDestination>[
                 NavigationRailDestination(
-                  icon: Icon(Icons.location_on_outlined, color: Colors.white),
-                  label: Text(
-                    'Nos Gares',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+                  icon: Icon(Icons.location_on_outlined),
+                  label: Text('Nos Gares'),
                   padding: EdgeInsets.symmetric(vertical: 20), // Espacement
                 ),
                 NavigationRailDestination(
-                  icon: Icon(
-                    Icons.attach_money_outlined,
-                    color: Colors.white,
-                  ),
-                  label: Text(
-                    'Les prix',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+                  icon: Icon(Icons.attach_money_outlined),
+                  label: Text('Nos tarifs'),
                 ),
               ],
             ),

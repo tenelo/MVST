@@ -1,102 +1,9 @@
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/screens/detailsImages.dart';
 import 'package:mvst/screens/petitsEcrans/commande2.dart';
-
-class Carousel2 extends StatefulWidget {
-  const Carousel2({super.key});
-
-  @override
-  _Carousel2State createState() => _Carousel2State();
-}
-
-class _Carousel2State extends State<Carousel2> {
-  Stream<List<Map<String, String>>> chargerImagesStream() {
-    return FirebaseFirestore.instance
-        .collection('images')
-        .orderBy('dateCreation', descending: false)
-        .snapshots()
-        .map((snapshot) {
-      try {
-        return snapshot.docs.map((doc) {
-          return {
-            'url': doc['url'] as String,
-            'titre': doc['titre'] as String,
-            'description': doc['description'] as String,
-          };
-        }).toList();
-      } catch (e) {
-        return [];
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, String>>>(
-      stream: chargerImagesStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('IMAGE NON CHARGEE'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text(''));
-        }
-
-        final imgList = snapshot.data!;
-
-        return SizedBox(
-          width: double.infinity,
-          height: 300,
-          child: CarouselSlider.builder(
-            itemCount: imgList.length,
-            itemBuilder: (BuildContext context, int index, int realIndex) {
-              final String url = imgList[index]['url']!;
-              final String titre = imgList[index]['titre']!;
-              final String description = imgList[index]['description']!;
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DetailsImages(
-                        imageUrl: url,
-                        titre: titre,
-                        description: description,
-                      ),
-                    ),
-                  );
-                },
-                child: Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                ),
-              );
-            },
-            options: CarouselOptions(
-              autoPlay: true,
-              pauseAutoPlayOnTouch: true,
-              viewportFraction: 1.0,
-              aspectRatio: 16 / 9,
-              autoPlayInterval: const Duration(seconds: 3),
-              autoPlayAnimationDuration: const Duration(milliseconds: 940),
-              autoPlayCurve: Curves.fastOutSlowIn,
-              scrollDirection: Axis.horizontal,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-////////////////////////////
 
 Widget carte2(String pointDeDepart, String destinationA, String destinationB) {
   return Card(
@@ -331,7 +238,7 @@ class _PetitesCartes2State extends State<PetitesCartes2> {
   }
 }
 
-Widget carteALettre(String lettre) {
+Widget carteALettre2(String lettre) {
   return Card(
     color: Config.colors.bleuClaire,
     shape: RoundedRectangleBorder(
@@ -395,3 +302,30 @@ Widget porte() {
 }
 
 Map<String, int> prixDesBillets = {};
+
+class ImageModel {
+  final int id;
+  final String titre;
+  final String description;
+  final String statut;
+  final String lien_image;
+
+  ImageModel({
+    required this.id,
+    required this.titre,
+    required this.description,
+    required this.statut,
+    required this.lien_image,
+  });
+
+  // Méthode pour créer une instance d'ImageModel à partir de JSON
+  factory ImageModel.fromJson(Map<String, dynamic> json) {
+    return ImageModel(
+      id: json['id'],
+      titre: json['titre'],
+      description: json['description'],
+      statut: json['statut'],
+      lien_image: json['lien_image'],
+    );
+  }
+}

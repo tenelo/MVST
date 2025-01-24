@@ -29,7 +29,6 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
       }
       return infos;
     } catch (e) {
-      print("Erreur lors de la récupération des infos: $e");
       return [];
     } finally {
       await conn.close();
@@ -60,12 +59,13 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
                         snapshot.data == null ||
                         snapshot.data!.isEmpty) {
                       return Center(
-                          child: Text(
-                        'Aucune donnée',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Config.colors.bleuFonce2),
-                      ));
+                        child: Text(
+                          'Aucune donnée',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Config.colors.bleuFonce2),
+                        ),
+                      );
                     }
 
                     return Column(
