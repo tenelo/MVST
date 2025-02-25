@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/screens/commande.dart';
@@ -24,12 +27,7 @@ class _CarouselState extends State<Carousel> {
   @override
   void initState() {
     super.initState();
-    _connectToDatabase();
     _recupImages();
-  }
-
-  Future<void> _connectToDatabase() async {
-    conn = await Connexion.connexionDB();
   }
 
   Future<void> _recupImages() async {
@@ -38,23 +36,31 @@ class _CarouselState extends State<Carousel> {
     });
 
     try {
-      conn ??= await Connexion.connexionDB();
-      final results =
-          await conn!.query("SELECT * FROM Images WHERE statut = 'Actif'");
+      // URL du fichier PHP sur le serveur
+      final url = Uri.parse('https://tenelodata-tech.com/mvst/getImages.php');
 
-      setState(() {
-        images = results.map((row) {
-          return ImageModel.fromJson({
-            'id': row['id'],
-            'titre': row['titre'].toString(),
-            'description': row['description'].toString(),
-            'statut': row['statut'].toString(),
-            'lien_image': row['lien_image'].toString(),
+      // Requête HTTP GET
+      final response = await http.get(url);
+
+      // Vérifier le statut de la réponse
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          // Mise à jour de la liste des images avec les données retournées
+          setState(() {
+            images = List<ImageModel>.from(data['images'].map((image) {
+              return ImageModel.fromJson(image);
+            }));
           });
-        }).toList();
-      });
+        } else {
+          // Gérer les cas où `success` est false
+        }
+      } else {
+        // Erreur réseau
+      }
     } catch (e) {
-      conn = await Connexion.connexionDB();
+      // Gestion des exceptions
     } finally {
       setState(() {
         isLoading = false;
@@ -283,21 +289,37 @@ class _PetitesCartesState extends State<PetitesCartes> {
   }
 
   Future<List<Map<String, dynamic>>> getPrixDesTickets() async {
-    // Établir la connexion
-    final conn = await Connexion.connexionDB();
+    try {
+      // URL de l'API
+      final url =
+          Uri.parse('https://tenelodata-tech.com/mvst/getPrixDesTickets.php');
 
-    // Exécuter la requête
-    final results = await conn.query('SELECT axe, prix FROM PrixDesTickets');
+      // Effectuer une requête GET vers l'API
+      final response = await http.get(url);
 
-    // Transformer les résultats en une liste de maps
-    final List<Map<String, dynamic>> data = results.map((_prix) {
-      return {'axe': _prix['axe'], 'prix': _prix['prix']};
-    }).toList();
+      // Vérifier si la réponse est réussie
+      if (response.statusCode == 200) {
+        // Décoder la réponse JSON
+        final data = json.decode(response.body);
 
-    // Fermer la connexion
-    await conn.close();
-
-    return data;
+        // Vérifier si l'API a retourné un succès
+        if (data['success'] == true) {
+          // Extraire les données et les retourner sous forme de liste de maps
+          final List<Map<String, dynamic>> tickets =
+              List<Map<String, dynamic>>.from(data['heures']);
+          return tickets;
+        } else {
+          // Si success est false, retourner une liste vide ou lever une exception
+          return [];
+        }
+      } else {
+        // Si la réponse du serveur n'est pas réussie
+        return [];
+      }
+    } catch (e) {
+      // Gérer les exceptions
+      return [];
+    }
   }
 
   Future<void> recuperationAffectationPrix() async {
@@ -518,5 +540,14 @@ class InfosTarifs {
   final String depart;
   final String destination;
   final int prix;
+
   InfosTarifs(this.depart, this.destination, this.prix);
+
+  factory InfosTarifs.fromJson(Map<String, dynamic> json) {
+    return InfosTarifs(
+      json['depart'],
+      json['destination'],
+      json['prix'],
+    );
+  }
 }

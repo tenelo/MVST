@@ -1,43 +1,60 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_ticket/flutter_ticket.dart';
+import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 
 class InformationPrix extends StatelessWidget {
   Future<List<InfosTarifs>> recupererPrixDesTickets() async {
-    final conn = await Connexion.connexionDB();
+    final url = Uri.parse(
+        'https://tenelodata-tech.com/mvst/tarifsAxes_et_infos_gare.php?type=tarifs');
 
     try {
-      // Exécution de la requête pour récupérer les données
-      var resultat = await conn.query('SELECT axe, prix FROM PrixDesTickets');
+      final response = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
 
-      // Transformation des résultats en une liste d'objets InfosTarifs
-      Map<String, InfosTarifs> axesUniques = {};
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
 
-      for (var row in resultat) {
-        // Découper le champ 'axe' en départ et destination
-        List<String> axeSplit = (row['axe'] as String).split(' ');
-        if (axeSplit.length < 2) continue; // Passer les axes invalides
+        if (data['success']) {
+          // Transformation des résultats en une liste d'objets InfosTarifs
+          Map<String, InfosTarifs> axesUniques = {};
 
-        // Trier le départ et la destination pour normaliser l'axe
-        String depart = axeSplit[0];
-        String destination = axeSplit[1];
-        List<String> tridAxe = [depart, destination]..sort();
-        String axeTrie = tridAxe.join('-');
+          for (var item in data['tarifs']) {
+            // Découper le champ 'axe' en départ et destination
+            List<String> axeSplit = (item['axe'] as String).split(' ');
+            if (axeSplit.length < 2) continue; // Passer les axes invalides
 
-        // Ajouter l'axe unique avec son prix
-        if (!axesUniques.containsKey(axeTrie)) {
-          axesUniques[axeTrie] =
-              InfosTarifs(depart, destination, row['prix'] as int);
+            // Trier le départ et la destination pour normaliser l'axe
+            String depart = axeSplit[0];
+            String destination = axeSplit[1];
+            List<String> tridAxe = [depart, destination]..sort();
+            String axeTrie = tridAxe.join('-');
+
+            // Ajouter l'axe unique avec son prix
+            if (!axesUniques.containsKey(axeTrie)) {
+              axesUniques[axeTrie] = InfosTarifs(
+                depart,
+                destination,
+                item['prix'] as int,
+              );
+            }
+          }
+
+          return axesUniques.values
+              .toList(); // Retourner une liste des axes uniques
+        } else {
+          throw Exception(data['message']);
         }
+      } else {
+        throw Exception('Erreur réseau : ${response.statusCode}');
       }
-
-      return axesUniques.values
-          .toList(); // Retourner une liste des axes uniques
     } catch (e) {
       return [];
-    } finally {
-      await conn.close();
     }
   }
 

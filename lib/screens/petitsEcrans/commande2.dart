@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
@@ -354,23 +357,28 @@ class _Commande2State extends State<Commande2> {
 
   Future<void> _recupHeuresDeDeparts() async {
     try {
-      // Établir la connexion
-      final conn = await Connexion.connexionDB();
+      // URL de l'API
+      final url =
+          Uri.parse('https://tenelodata-tech.com/mvst/recuperationHeure.php');
 
-      // Exécuter la requête
-      final results = await conn.query(
-          'SELECT heure FROM HeuresDeDeparts ORDER BY dateCreation DESC');
+      // Appel de l'API
+      final response = await http.get(url);
 
-      // Transformer les résultats en une liste
-      final heures = results.map((row) => row['heure'] as String).toList();
+      if (response.statusCode == 200) {
+        // Décoder la réponse JSON
+        final data = json.decode(response.body);
 
-      // Mettre à jour l'état
-      setState(() {
-        listeHeures = heures;
-      });
+        if (data['success']) {
+          // Extraire les heures de la réponse
+          final List<String> heures =
+              List<String>.from(data['heures'].map((heure) => heure['heure']));
 
-      // Fermer la connexion
-      await conn.close();
+          // Mettre à jour l'état avec les heures récupérées
+          setState(() {
+            listeHeures = heures;
+          });
+        } else {}
+      } else {}
     } catch (e) {}
   }
 }

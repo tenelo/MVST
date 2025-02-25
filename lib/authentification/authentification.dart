@@ -1,9 +1,12 @@
 // ignore_for_file: library_private_types_in_public_api
 
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 import 'package:mvst/screens/home.dart';
 import 'package:mysql1/mysql1.dart';
@@ -353,17 +356,12 @@ class _PageDeVerificationState extends State<PageDeVerification> {
   @override
   void initState() {
     super.initState();
-    _connectToDatabase();
   }
 
   @override
   void dispose() {
     _isDisposed = true;
     super.dispose();
-  }
-
-  Future<void> _connectToDatabase() async {
-    conn = await Connexion.connexionDB();
   }
 
   @override
@@ -541,7 +539,6 @@ class _PageDeVerificationState extends State<PageDeVerification> {
 
         // Ajouter à MySQL
         await ajouterUtilisateurDansMySQL(
-            conn ??= await Connexion.connexionDB(),
             idUtilisateur: user.uid,
             idAuth: '',
             nom: "${widget.nom} ${widget.prenoms}",
@@ -565,8 +562,7 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     }
   }
 
-  Future<void> ajouterUtilisateurDansMySQL(
-    MySqlConnection conn, {
+  Future<void> ajouterUtilisateurDansMySQL({
     required String idUtilisateur,
     required String idAuth,
     required String nom,
@@ -575,30 +571,45 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     required int points,
     required String mail,
   }) async {
-    try {
-      final query = '''
-      INSERT INTO Utilisateurs (
-        idUtilisateur, idAuth, nom, residence, telephone, points, mail, dateDeCreation
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-      ON DUPLICATE KEY UPDATE
-        idAuth = VALUES(idAuth),
-        nom = VALUES(nom),
-        residence = VALUES(residence),
-        telephone = VALUES(telephone),
-        points = VALUES(points),
-        mail = VALUES(mail);
-    ''';
+    const String apiUrl =
+        'https://tenelodata-tech.com/mvst/insert_utilisateur.php'; // L'URL de votre script PHP
 
-      await conn.query(query, [
-        idUtilisateur,
-        idAuth,
-        nom,
-        residence,
-        telephone,
-        points,
-        mail,
-      ]);
-    } catch (e) {}
+    try {
+      // Création du corps de la requête JSON
+      final Map<String, dynamic> requestBody = {
+        'idUtilisateur': idUtilisateur,
+        'idAuth': idAuth,
+        'nom': nom,
+        'residence': residence,
+        'telephone': telephone,
+        'points': points,
+        'mail': mail,
+      };
+
+      // Envoi de la requête POST avec les données au format JSON
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(requestBody),
+      );
+
+      // Vérifier le statut de la réponse
+      if (response.statusCode == 200) {
+        // Décoder la réponse JSON
+        final data = json.decode(response.body);
+
+        // Vérifier la réponse du serveur
+        if (data['success']) {
+          print('Utilisateur ajouté ou mis à jour avec succès');
+        } else {
+          print('Erreur: ${data['message']}');
+        }
+      } else {
+        print('Erreur de serveur: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Erreur lors de l\'envoi des données: $e');
+    }
   }
 }
 

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/screens/detailsTickets.dart';
@@ -34,6 +36,8 @@ class MesTickets extends StatefulWidget {
 }
 
 class _MesTicketsState extends State<MesTickets> {
+  final String baseUrl = 'https://tenelodata-tech.com/mvst';
+
   @override
   void initState() {
     super.initState();
@@ -45,40 +49,27 @@ class _MesTicketsState extends State<MesTickets> {
         DateFormat('EEEE d MMMM y', 'fr_FR').format(dateApresDemain!);
   }
 
-  Stream<List<Map<String, dynamic>>> recuperationDeMesTickets() async* {
-    final conn = await Connexion.connexionDB();
+  Future<List<Map<String, dynamic>>> recuperationDeMesTickets() async {
     try {
-      var results = await conn.query(
-          'SELECT * FROM Tickets WHERE idUtilisateur = ? ORDER BY dateDeCreation DESC LIMIT 30',
-          [widget.idUtilisateur]);
+      final response = await http.post(
+        Uri.parse('$baseUrl/recuperation_mes_tickets.php'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"idUtilisateur": widget.idUtilisateur}),
+      );
 
-      List<Map<String, dynamic>> tickets = [];
-      for (var row in results) {
-        tickets.add({
-          'id': row['id'],
-          'documentId': row['documentId'],
-          'idUtilisateur': row['idUtilisateur'],
-          'nom': row['nom'],
-          'telephone': row['telephone'],
-          'date': row['date'],
-          'heure': row['heure'],
-          'depart': row['depart'],
-          'destination': row['destination'],
-          'prixDuTicket': row['prixDuTicket'],
-          'place': row['place'],
-          'etatScanne': row['etatScanne'],
-          'statut': row['statut'],
-          'dateDeCreation': row['dateDeCreation'],
-          'datePourCalcule': row['datePourCalcule'],
-          'scanneDate': row['scanneDate'],
-        });
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['success']) {
+          return List<Map<String, dynamic>>.from(data['tickets']);
+        } else {
+          throw Exception(data['message']);
+        }
+      } else {
+        throw Exception('Erreur de connexion au serveur.');
       }
-
-      yield tickets; // émettre les tickets à chaque requête
-    } catch (error) {
-      yield [];
-    } finally {
-      await conn.close();
+    } catch (e) {
+      throw Exception('Une erreur est survenue : $e');
     }
   }
 
@@ -89,33 +80,38 @@ class _MesTicketsState extends State<MesTickets> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: recuperationDeMesTickets(),
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: recuperationDeMesTickets(),
             builder: (BuildContext context,
                 AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
               if (snapshot.hasError) {
                 return Center(
                   child: Text(
-                    'Problème de connexion',
+                    'Vérifiez la connexion',
                     style: TextStyle(
-                        color: Config.colors.bleuFonce2,
-                        fontWeight: FontWeight.bold),
+                      color: Config.colors.bleuFonce2,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 );
               }
-
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
+                return Center(
+                    child: CircularProgressIndicator(
+                  color: Config.colors.bleuFonce2,
+                ));
               }
 
               if (snapshot.data == null || snapshot.data!.isEmpty) {
                 return Center(
-                    child: Text(
-                  "Vous n'avez aucun ticket",
-                  style: TextStyle(
+                  child: Text(
+                    "Vous n'avez aucun ticket",
+                    style: TextStyle(
                       color: Config.colors.bleuFonce2,
-                      fontWeight: FontWeight.bold),
-                ));
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
               }
 
               return ListView.builder(
@@ -124,7 +120,6 @@ class _MesTicketsState extends State<MesTickets> {
                   Map<String, dynamic> ticket = snapshot.data![index];
                   var idTicket = ticket['documentId'];
                   var verifDate = ticket['date'];
-
                   if (verifDate == dateDAujourdhui ||
                       verifDate == dateDeDemain ||
                       verifDate == dateDapresDemain) {
@@ -154,7 +149,7 @@ class _MesTicketsState extends State<MesTickets> {
                         ticket['etatScanne'],
                         ticket['prixDuTicket'].toString(),
                         ticket['statut'],
-                        ticket['datePourCalcule'],
+                        DateTime.parse(ticket['datePourCalcule']),
                       ),
                       rightChild: _buildRight(),
                       tapHandler: () {},

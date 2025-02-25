@@ -1,11 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesfonctions.dart';
 
-// import 'package:http/http.dart' as http;
 class ChoixPaiement extends StatefulWidget {
   const ChoixPaiement({
     super.key,
@@ -61,109 +63,64 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
 
     setState(() {
       _isLoading = true;
-    });
-
-    final conn = await Connexion.connexionDB();
-    String documentId =
-        "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h";
+    }); // URL de votre fichier PHP
+    final url =
+        Uri.parse('https://tenelodata-tech.com/mvst/ajouterTickets.php');
 
     try {
-      // Démarrer une transaction
-      await conn.query('BEGIN');
+      // Construire le payload pour l'envoi des données
+      final payload = {
+        "documentId":
+            "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h",
+        "idUtilisateur": widget.id,
+        "nom": widget.nom,
+        "telephone": widget.contact,
+        "date": widget.date,
+        "heure": widget.heure,
+        "depart": widget.depart,
+        "destination": widget.destination,
+        "prixDuTicket": widget.prixUnitaire,
+        "places": widget.place,
+        "statut": "valide",
+        "etatScanne": "nonScanné",
+        "datePourCalcule": widget.datePourCalcule.toIso8601String(),
+      };
 
-      // Insérer les tickets dans la table 'Tickets' en une seule transaction
-      for (var _place in widget.place) {
-        await conn.query(
-            '''INSERT INTO Tickets (documentId, idUtilisateur, nom, telephone, date, heure, depart, destination, prixDuTicket, place, etatScanne, statut, datePourCalcule, scanneDate, dateDeCreation) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nonScanné', 'valide', ?, '', NOW())''',
-            [
-              documentId,
-              widget.id,
-              widget.nom,
-              widget.contact,
-              widget.date,
-              widget.heure,
-              widget.depart,
-              widget.destination,
-              widget.prixUnitaire,
-              _place,
-              widget.datePourCalcule,
-            ]);
+      // Envoyer la requête POST
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(payload),
+      );
+
+      // Vérifier la réponse du serveur
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          // Nettoyer et afficher un message en cas de succès
+          listeDeVerification.clear();
+          messageEnCasDeSucces(context);
+        } else {
+          // Gérer les cas où l'insertion échoue côté serveur
+          messageEnCasDecheque(context);
+        }
+      } else {
+        // Gérer les erreurs réseau
+        messageEnCasDecheque(
+          context,
+        );
       }
-
-      // Finaliser la transaction
-      await conn.query('COMMIT');
-
-      // Nettoyer et afficher un message en cas de succès
-      listeDeVerification.clear();
-      messageEnCasDeSucces(context);
     } catch (e) {
-      // Annuler la transaction en cas d'erreur
-      await conn.query('ROLLBACK');
+      // Gérer les exceptions
       messageEnCasDecheque(context);
     } finally {
       setState(() {
         _isLoading = false;
       });
-      await conn.close();
     }
   }
 
-/*
-  Future<void> _ajouterTicketsPHP() async {
-    if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final url = Uri.parse('http://<votre-ip>/ajouter_tickets.php');
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          "documentId":
-              "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h",
-          "idUtilisateur": widget.id,
-          "nom": widget.nom,
-          "telephone": widget.contact,
-          "date": widget.date,
-          "heure": widget.heure,
-          "depart": widget.depart,
-          "destination": widget.destination,
-          "prixDuTicket": widget.prixUnitaire,
-          "datePourCalcule": widget.datePourCalcule.toIso8601String(),
-          "tickets": widget.place,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success']) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(data['message']),
-            backgroundColor: Colors.green,
-          ));
-        } else {
-          throw Exception(data['message']);
-        }
-      } else {
-        throw Exception('Erreur réseau');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur : $e'),
-        backgroundColor: Colors.red,
-      ));
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-*/
   void messageEnCasDeSucces(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -620,3 +577,61 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
     return true;
   }
 }
+
+
+
+/*
+  Future<void> _ajouterTicketsMySQL() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final conn = await Connexion.connexionDB();
+    String documentId =
+        "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h";
+
+    try {
+      // Démarrer une transaction
+      await conn.query('BEGIN');
+
+      // Insérer les tickets dans la table 'Tickets' en une seule transaction
+      for (var _place in widget.place) {
+        await conn.query(
+            '''INSERT INTO Tickets (documentId, idUtilisateur, nom, telephone, date, heure, depart, destination, prixDuTicket, place, etatScanne, statut, datePourCalcule, scanneDate, dateDeCreation) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nonScanné', 'valide', ?, '', NOW())''',
+            [
+              documentId,
+              widget.id,
+              widget.nom,
+              widget.contact,
+              widget.date,
+              widget.heure,
+              widget.depart,
+              widget.destination,
+              widget.prixUnitaire,
+              _place,
+              widget.datePourCalcule,
+            ]);
+      }
+
+      // Finaliser la transaction
+      await conn.query('COMMIT');
+
+      // Nettoyer et afficher un message en cas de succès
+      listeDeVerification.clear();
+      messageEnCasDeSucces(context);
+    } catch (e) {
+      // Annuler la transaction en cas d'erreur
+      await conn.query('ROLLBACK');
+      messageEnCasDecheque(context);
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+      await conn.close();
+    }
+  }
+*/
+  

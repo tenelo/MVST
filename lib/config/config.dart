@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mysql1/mysql1.dart';
 
 class Config {
   // on met les propriétés à static pour pouvoir y avoir accès
@@ -37,21 +36,3 @@ double calculeTailleEcran() {
   }
 
 */
-
-class Connexion {
-  static Future<MySqlConnection> connexionDB() async {
-    try {
-      final conn = await MySqlConnection.connect(ConnectionSettings(
-        host: 'srv1582.hstgr.io',
-        port: 3306,
-        user: 'u232422107_t_mvst',
-        password: 't_mvst_P@ss9',
-        db: 'u232422107_mvst',
-      ));
-      return conn;
-    } catch (e) {
-      throw Exception(
-          'Connexion à la base de données échouée'); // Lève une exception
-    }
-  }
-}

@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesfonctions.dart';
@@ -34,58 +36,63 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
   }
 
   Future<List<Map<String, dynamic>>> recuperationDeMesTickets() async {
-    final conn = await Connexion.connexionDB();
-
     if (mounted) {
       setState(() {
         _isLoading = true;
       });
     }
 
+    final url = Uri.parse(
+        'https://tenelodata-tech.com/mvst/recuperation_mes_tickets_tableau.php');
+
     try {
-      var resultat = await conn.query(
-          'SELECT * FROM Tickets WHERE idUtilisateur = ? ORDER BY dateDeCreation DESC LIMIT 150',
-          [widget.idUtilisateur]);
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({"idUtilisateur": widget.idUtilisateur}),
+      );
 
-      List<Map<String, dynamic>> listeDesTickets = [];
-      for (var row in resultat) {
-        listeDesTickets.add({
-          'id': row['id'],
-          'documentId': row['documentId'],
-          'idUtilisateur': row['idUtilisateur'],
-          'nom': row['nom'],
-          'telephone': row['telephone'],
-          'date': row['date'],
-          'heure': row['heure'],
-          'depart': row['depart'],
-          'destination': row['destination'],
-          'prixDuTicket': row['prixDuTicket'],
-          'place': row['place'],
-          'etatScanne': row['etatScanne'],
-          'statut': row['statut'],
-          'datePourCalcule': row['datePourCalcule'],
-          'dateDeCreation': row['dateDeCreation'],
-        });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success']) {
+          List<Map<String, dynamic>> listeDesTickets =
+              List<Map<String, dynamic>>.from(data['tickets']);
+
+          if (mounted) {
+            setState(() {
+              donnees = listeDesTickets;
+              _filtre = listeDesTickets;
+              _isLoading = false;
+            });
+          }
+
+          return listeDesTickets;
+        } else {
+          throw Exception(data['message']);
+        }
+      } else {
+        throw Exception("Erreur réseau");
       }
-
-      if (mounted) {
-        setState(() {
-          donnees = listeDesTickets;
-          _filtre = listeDesTickets;
-          _isLoading = false;
-        });
-      }
-
-      return listeDesTickets;
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Erreur..."),
+        backgroundColor: Colors.red,
+      ));
+
       return [];
     } finally {
-      await conn.close();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -103,72 +110,87 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
           children: [
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  SizedBox(
-                    width: 170,
-                    height: 40,
-                    child: TextField(
-                      controller: _rechercheParDate,
-                      decoration: const InputDecoration(
-                        hintText: 'Recherche par date',
-                        hintStyle: TextStyle(fontSize: 11),
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12.0)),
+              // Champs de recherches
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  top: 3,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    SizedBox(
+                      width: 170,
+                      height: 40,
+                      child: TextField(
+                        controller: _rechercheParDate,
+                        decoration: const InputDecoration(
+                          hintText: 'Recherche par date',
+                          hintStyle: TextStyle(fontSize: 11),
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(12.0)),
+                          ),
                         ),
+                        onChanged: (value) {
+                          setState(() {
+                            donnees = _filtre.where((data) {
+                              final date =
+                                  data['date'].toString().toLowerCase();
+                              final jourMois =
+                                  DateFormat('dd MMMM yyyy', 'fr_FR')
+                                      .format(DateTime.parse(data['date']));
+                              return date.contains(value.toLowerCase()) ||
+                                  jourMois.contains(value.toLowerCase());
+                            }).toList();
+                          });
+                        },
                       ),
-                      onChanged: (value) {
-                        setState(() {
-                          donnees = _filtre.where((data) {
-                            final date = data['date'].toString().toLowerCase();
-                            final jourMois = DateFormat('dd MMMM yyyy', 'fr_FR')
-                                .format(DateTime.parse(data['date']));
-                            return date.contains(value.toLowerCase()) ||
-                                jourMois.contains(value.toLowerCase());
-                          }).toList();
-                        });
-                      },
                     ),
-                  ),
-                  SizedBox(
-                    width: 198,
-                    height: 40,
-                    child: TextField(
-                      controller: _rechercheParDestination,
-                      decoration: const InputDecoration(
-                        hintText: 'Recherche par destination',
-                        hintStyle: TextStyle(fontSize: 11),
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12.0)),
+                    SizedBox(width: 3),
+                    SizedBox(
+                      width: 198,
+                      height: 40,
+                      child: TextField(
+                        controller: _rechercheParDestination,
+                        decoration: const InputDecoration(
+                          hintText: 'Recherche par destination',
+                          hintStyle: TextStyle(fontSize: 11),
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(12.0)),
+                          ),
                         ),
+                        onChanged: (value) {
+                          setState(() {
+                            donnees = _filtre
+                                .where((data) => data['destination']
+                                    .toString()
+                                    .toLowerCase()
+                                    .contains(value.toLowerCase()))
+                                .toList();
+                          });
+                        },
                       ),
-                      onChanged: (value) {
-                        setState(() {
-                          donnees = _filtre
-                              .where((data) => data['destination']
-                                  .toString()
-                                  .toLowerCase()
-                                  .contains(value.toLowerCase()))
-                              .toList();
-                        });
-                      },
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? Center(
+                      child: CircularProgressIndicator(
+                      color: Config.colors.bleuFonce2,
+                    ))
                   : SingleChildScrollView(
                       child: SizedBox(
                         width: double.infinity,
                         child: Theme(
                           data: ThemeData.light().copyWith(
                               cardColor: Theme.of(context).canvasColor),
+                          // Tableau
                           child: PaginatedDataTable(
                             header: Center(
                               child: Text(
@@ -315,7 +337,8 @@ class TicketDataSource extends DataTableSource {
             etatScann: ticket['etatScanne'].toString(),
             statut: ticket['statut'].toString(),
             prixTicket: ticket['prixDuTicket'].toString(),
-            datePourCalcule: ticket['datePourCalcule'],
+            datePourCalcule: DateTime.parse(ticket['datePourCalcule']),
+            //datePourCalcule: ticket['datePourCalcule'],
           ),
         ),
       );

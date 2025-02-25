@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
@@ -59,93 +62,61 @@ class _ChoixPaiement2State extends State<ChoixPaiement2> {
 
     setState(() {
       _isLoading = true;
-    });
-
-    final conn = await Connexion.connexionDB();
-    String documentId =
-        "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h";
+    }); // URL de votre fichier PHP
+    final url =
+        Uri.parse('https://tenelodata-tech.com/mvst/ajouterTickets.php');
 
     try {
-      // Démarrer une transaction
-      await conn.query('BEGIN');
+      // Construire le payload pour l'envoi des données
+      final payload = {
+        "documentId":
+            "${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h",
+        "idUtilisateur": widget.id,
+        "nom": widget.nom,
+        "telephone": widget.contact,
+        "date": widget.date,
+        "heure": widget.heure,
+        "depart": widget.depart,
+        "destination": widget.destination,
+        "prixDuTicket": widget.prixUnitaire,
+        "places": widget.place,
+        "statut": "valide",
+        "etatScanne": "nonScanné",
+        "datePourCalcule": widget.datePourCalcule.toIso8601String(),
+      };
 
-      // Vérifier l'existence du document et l'insérer si nécessaire
-      var result = await conn.query(
-          'SELECT COUNT(*) FROM Departs WHERE documentId = ?', [documentId]);
+      // Envoyer la requête POST
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(payload),
+      );
 
-      if (result.first[0] == 0) {
-        await conn.query(
-            '''INSERT INTO Departs (documentId, dateDeDepart, heureDeDepart, depart, destination, mois, moisAnnee, annee, placesChoisies, dateDeCreation) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())''',
-            [
-              documentId,
-              widget.idDate,
-              widget.heure,
-              widget.depart,
-              widget.destination,
-              widget.mois,
-              widget.moisAnnee,
-              widget.annee,
-              '[]',
-            ]);
+      // Vérifier la réponse du serveur
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          // Nettoyer et afficher un message en cas de succès
+          listeDeVerification.clear();
+          messageEnCasDeSucces(context);
+        } else {
+          // Gérer les cas où l'insertion échoue côté serveur
+          messageEnCasDecheque(context);
+        }
+      } else {
+        // Gérer les erreurs réseau
+        messageEnCasDecheque(
+          context,
+        );
       }
-
-      // Créer la table 'Tickets' si elle n'existe pas (à déplacer hors de la boucle si possible)
-      await conn.query('''
-      CREATE TABLE IF NOT EXISTS Tickets (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        idUtilisateur VARCHAR(255),
-        nom VARCHAR(255),
-        telephone VARCHAR(255),
-        date VARCHAR(100),
-        heure VARCHAR(255),
-        depart VARCHAR(255),
-        destination VARCHAR(255),
-        prixDuTicket INT,
-        place INT,
-        etatScanne VARCHAR(255),
-        statut VARCHAR(255),
-        scanneDate VARCHAR(50),
-        dateDeCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (documentId) REFERENCES Departs(documentId)
-      )
-    ''');
-
-// Insérer les tickets dans la table 'Tickets' en une seule transaction
-      for (var _place in widget.place) {
-        await conn.query(
-            '''INSERT INTO Tickets (documentId, idUtilisateur, nom, telephone, date, heure, depart, destination, prixDuTicket, place, etatScanne, statut, datePourCalcule, scanneDate, dateDeCreation) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nonScanné', 'valide', ?, '', NOW())''',
-            [
-              documentId,
-              widget.id,
-              widget.nom,
-              widget.contact,
-              widget.date,
-              widget.heure,
-              widget.depart,
-              widget.destination,
-              widget.prixUnitaire,
-              _place,
-              widget.datePourCalcule,
-            ]);
-      }
-
-      // Finaliser la transaction
-      await conn.query('COMMIT');
-
-      // Nettoyer et afficher un message en cas de succès
-      listeDeVerification.clear();
-      messageEnCasDeSucces(context);
-    } catch (error) {
-      // Annuler la transaction en cas d'erreur
-      await conn.query('ROLLBACK');
+    } catch (e) {
+      // Gérer les exceptions
       messageEnCasDecheque(context);
     } finally {
       setState(() {
         _isLoading = false;
       });
-      await conn.close();
     }
   }
 

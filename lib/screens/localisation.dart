@@ -1,7 +1,10 @@
 // ignore_for_file: unused_local_variable
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 
 class LocalisationsDesGars extends StatefulWidget {
@@ -12,32 +15,42 @@ class LocalisationsDesGars extends StatefulWidget {
 }
 
 class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
-  Future<List<Map<String, dynamic>>> fetchInfosGares() async {
-    final conn = await Connexion.connexionDB();
-
+  Future<List<Map<String, dynamic>>> infosGares() async {
+    final url = Uri.parse(
+        'https://tenelodata-tech.com/mvst/tarifsAxes_et_infos_gare.php?type=gares');
     try {
-      var results = await conn
-          .query('SELECT ville, description, telephone FROM InfosGares');
-      List<Map<String, dynamic>> infos = [];
+      final response = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
 
-      for (var row in results) {
-        infos.add({
-          'ville': row['ville'],
-          'description': row['description'],
-          'telephone': row['telephone'],
-        });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          List<Map<String, dynamic>> infos = [];
+          for (var item in data['tarifs']) {
+            infos.add({
+              'ville': item['ville'],
+              'description': item['description'],
+              'telephone': item['telephone'],
+            });
+          }
+          return infos;
+        } else {
+          throw Exception(data['message']);
+        }
+      } else {
+        throw Exception('Erreur réseau');
       }
-      return infos;
     } catch (e) {
       return [];
-    } finally {
-      await conn.close();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 166, 223, 248),
       body: SizedBox(
         height: MediaQuery.of(context).size.height,
         width: MediaQuery.of(context).size.width,
@@ -47,7 +60,7 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
             Container(
               child: SingleChildScrollView(
                 child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: fetchInfosGares(),
+                  future: infosGares(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(

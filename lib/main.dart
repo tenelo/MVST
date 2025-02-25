@@ -46,8 +46,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Lancer la fonction en arrière-plan
-    // Lancer la tâche lourde dans un Isolate
+    // Lancer la fonction en arrière-plan , lancer la tâche lourde dans un Isolate
     _runIsolateTask();
   }
 
@@ -55,7 +54,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     receivePort = ReceivePort();
     try {
       await Isolate.spawn(_backgroundTask, receivePort.sendPort);
-    } catch (e, stackTrace) {}
+    } catch (e) {}
   }
 
   @override
@@ -72,16 +71,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       // L'application est en arrière-plan ou fermée
-      _handleAppClosed();
+      processPlacesTemporaires();
     }
   }
-
-  void _handleAppClosed() {
-    // Exécuter  fonction de nettoyage
-    maFonction();
-  }
-
-  void maFonction() {}
 
   @override
   Widget build(BuildContext context) {
@@ -211,14 +203,10 @@ Future<void> _checkTermsAcceptance(BuildContext ctx) async {
 
 // Fonction exécutée dans un Isolate
 void _backgroundTask(SendPort sendPort) async {
-  //sendPort.send('Traitement en arrière-plan commencé');
+  //Traitement en arrière-plan commencé
   try {
-    // Votre logique de traitement
     await processPlacesTemporaires();
-//sendPort.send('Traitement terminé avec succès');
-  } catch (e) {
-    // sendPort.send('Erreur');
-  }
+  } catch (e) {}
 }
 
 double calculeTailleEcran(BuildContext ctx) {

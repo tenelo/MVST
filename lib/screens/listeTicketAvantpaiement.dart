@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesfonctions.dart';
 import 'package:mvst/paiement/choixPaiement.dart';
-import 'package:mvst/screens/petitsEcrans/choixPaiement2.dart';
+import 'package:mvst/paiement/choixPaiement2.dart';
 import 'package:ticket_material/ticket_material.dart';
 
 int? tailleEcran;

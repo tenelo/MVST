@@ -849,7 +849,6 @@ class _PlacesState extends State<Places> {
                   _heure!,
                   widget.numero,
                 );
-
                 if (resultat == 'succès') {
                   counterBloc.add(EventIcrement());
                   listeDesPlacesChoisies.add(widget.numero);
