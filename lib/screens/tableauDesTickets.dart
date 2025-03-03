@@ -338,7 +338,6 @@ class TicketDataSource extends DataTableSource {
             statut: ticket['statut'].toString(),
             prixTicket: ticket['prixDuTicket'].toString(),
             datePourCalcule: DateTime.parse(ticket['datePourCalcule']),
-            //datePourCalcule: ticket['datePourCalcule'],
           ),
         ),
       );
@@ -359,7 +358,7 @@ class TicketDataSource extends DataTableSource {
             etatScann: ticket['etatScanne'].toString(),
             statut: ticket['statut'].toString(),
             prixTicket: ticket['prixDuTicket'].toString(),
-            datePourCalcule: ticket['datePourCalcule'],
+            datePourCalcule: DateTime.parse(ticket['datePourCalcule']),
           ),
         ),
       );

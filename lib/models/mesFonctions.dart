@@ -478,7 +478,7 @@ cela crée des places occupée dans la table 'Departs' pourtant n'appartenant à
 utilisateur.  
 */
 
-Future<void> processPlacesTemporaires() async {
+Future<void> suppressionPlacesTemporaires() async {
   const String apiUrl =
       'https://tenelodata-tech.com/mvst/process_places_temporaires.php'; // Remplacez par l'URL de votre script PHP
 
@@ -501,10 +501,6 @@ Future<void> processPlacesTemporaires() async {
     // Gérer les exceptions
   }
 }
-
-
-
-
 
 /*
 Future<void> processPlacesTemporaires() async {

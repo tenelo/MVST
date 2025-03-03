@@ -47,13 +47,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // Lancer la fonction en arrière-plan , lancer la tâche lourde dans un Isolate
-    _runIsolateTask();
+    _isolationDeTaches();
   }
 
-  Future<void> _runIsolateTask() async {
+  Future<void> _isolationDeTaches() async {
     receivePort = ReceivePort();
     try {
-      await Isolate.spawn(_backgroundTask, receivePort.sendPort);
+      await Isolate.spawn(_tachesArrierePlan, receivePort.sendPort);
     } catch (e) {}
   }
 
@@ -71,7 +71,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       // L'application est en arrière-plan ou fermée
-      processPlacesTemporaires();
+      suppressionPlacesTemporaires();
     }
   }
 
@@ -202,10 +202,10 @@ Future<void> _checkTermsAcceptance(BuildContext ctx) async {
 }
 
 // Fonction exécutée dans un Isolate
-void _backgroundTask(SendPort sendPort) async {
+void _tachesArrierePlan(SendPort sendPort) async {
   //Traitement en arrière-plan commencé
   try {
-    await processPlacesTemporaires();
+    await suppressionPlacesTemporaires();
   } catch (e) {}
 }
 
@@ -213,6 +213,5 @@ double calculeTailleEcran(BuildContext ctx) {
   double screenWidth = MediaQuery.of(ctx).size.width;
   double screenHeight = MediaQuery.of(ctx).size.height;
   return sqrt(pow(screenWidth, 2) + pow(screenHeight, 2)) / 160.0;
-  // RECUPERATION
   // int arrondi = calculateDiagonalInches().round();
 }

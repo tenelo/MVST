@@ -3,7 +3,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+import 'package:flutter_direct_caller_plugin/flutter_direct_caller_plugin.dart';
 import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 
@@ -130,8 +130,8 @@ Widget carteInfos(
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  _appel(contact);
+                onPressed: () async {
+                  FlutterDirectCallerPlugin.callNumber(contact);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromARGB(132, 5, 82, 121),
@@ -150,8 +150,4 @@ Widget carteInfos(
       ),
     ),
   );
-}
-
-_appel(String numero) async {
-  bool? res = await FlutterPhoneDirectCaller.callNumber(numero);
 }
