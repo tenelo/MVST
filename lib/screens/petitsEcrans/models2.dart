@@ -181,7 +181,6 @@ class _PetitesCartes2State extends State<PetitesCartes2> {
             );
           }
         } catch (e) {
-          print('Erreur lors de la récupération des données : $e');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Erreur: Impossible de récupérer les données.'),

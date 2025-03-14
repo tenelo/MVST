@@ -25,14 +25,3 @@ class _Color {
   //final couleurTertiaire = const Color.fromARGB(255, 242, 255, 0);
   // #FF9500
 }
-
-/*
-double calculeTailleEcran() {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-    return sqrt(pow(screenWidth, 2) + pow(screenHeight, 2)) / 160.0;
-    // RECUPERATION
-    // int arrondi = calculateDiagonalInches().round();
-  }
-
-*/

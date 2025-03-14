@@ -116,7 +116,6 @@ class _CommandeState extends State<Commande> {
     try {
       DateTime? choixDeDate = await showDatePicker(
         context: context,
-        //initialDate: dateDemain!,EEEE d MMMM y
         firstDate: dateDemain!,
         lastDate: dateApresDemain!,
       );
