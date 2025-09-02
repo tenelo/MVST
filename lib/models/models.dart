@@ -135,8 +135,6 @@ class _CarouselState extends State<Carousel> {
   }
 }
 
-////////////////////////////
-
 Widget carte(String pointDeDepart, String destinationA, String destinationB) {
   return Card(
     color: const Color.fromARGB(145, 143, 208, 231),
