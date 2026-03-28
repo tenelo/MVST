@@ -33,7 +33,10 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
-        return windows;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -64,16 +67,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'application-mobile-mvst.appspot.com',
     iosBundleId: 'com.app.mvst',
   );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAx2m1b7Z9bZFRJUMCgn1xYX_vTmfLmtgE',
-    appId: '1:507287568722:web:40572afe6bb232c93dfa8b',
-    messagingSenderId: '507287568722',
-    projectId: 'application-mobile-mvst',
-    authDomain: 'application-mobile-mvst.firebaseapp.com',
-    databaseURL: 'https://application-mobile-mvst-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'application-mobile-mvst.appspot.com',
-    measurementId: 'G-301QVFXQ9V',
-  );
-
 }

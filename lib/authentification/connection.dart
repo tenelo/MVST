@@ -16,158 +16,256 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
   final TextEditingController _phoneNumberController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   bool _isLoading = false;
 
-  Future<void> sauthentifier(BuildContext context, String telephhone) async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> sauthentifier(BuildContext context, String telephone) async {
+    setState(() => _isLoading = true);
 
     try {
-      // Authentification de l'utilisateur avec l'e-mail et le mot de passe
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: "$telephhone@gmail.com",
-        password: telephhone,
+        email: "$telephone@gmail.com",
+        password: telephone,
       );
 
-      // Redirection vers la page Home après authentification réussie
-      Navigator.pushReplacement(
-        // ignore: use_build_context_synchronously
-        context,
-        MaterialPageRoute(
-          builder: (context) => const Home(),
-        ),
-      );
+      if (context.mounted) {
+        FocusScope.of(context).unfocus();
+        await Future.delayed(const Duration(milliseconds: 300));
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const Home()),
+          (route) => false,
+        );
+      }
     } catch (e) {
-      // Redirection vers la page Authentification en cas d'échec
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const PageDAuthentification(),
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color.fromARGB(255, 249, 54, 6),
+            content: Text(
+              'Numéro incorrect ou compte inexistant.',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        );
+      }
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      backgroundColor: Colors.blueGrey,
-      appBar: AppBar(
-        backgroundColor: Colors.blueGrey,
-        centerTitle: true,
-        title: const Text(
-          'Vérification du numéro',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(22.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: TextFormField(
-                    maxLength: 10,
-                    cursorColor: Colors.white,
-                    style: const TextStyle(color: Colors.white),
-                    controller: _phoneNumberController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelStyle: TextStyle(color: Colors.white),
-                      labelText: 'Numéro de téléphone',
-                      border: OutlineInputBorder(),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.white,
+      backgroundColor: c.authBackground,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // ── Logo ──────────────────────────────────────────────────
+                  Container(
+                    width: screenWidth * 0.22,
+                    height: screenWidth * 0.22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: c.authAccent, width: 2),
+                      color: c.authCardBackground,
+                    ),
+                    child: Center(
+                      child: Text(
+                        'MVST',
+                        style: TextStyle(
+                          color: c.authAccent,
+                          fontSize: screenWidth * 0.045,
+                          fontFamily: 'Lobster',
+                          letterSpacing: 1.5,
                         ),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Veuillez entrer votre numéro de téléphone';
-                      }
-                      return null;
-                    },
                   ),
-                ),
-                const SizedBox(height: 8.0),
-                SizedBox(
-                  width: double.infinity,
-                  height: 40,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Config.colors.bleuFonce2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        side: const BorderSide(
-                            color: Color.fromARGB(255, 80, 165, 235)),
+
+                  SizedBox(height: screenHeight * 0.04),
+
+                  // ── Titre ─────────────────────────────────────────────────
+                  Text(
+                    'Connexion',
+                    style: TextStyle(
+                      color: c.authTextPrimary,
+                      fontSize: screenWidth * 0.06,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+
+                  SizedBox(height: screenHeight * 0.008),
+
+                  Text(
+                    'Entrez votre numéro pour continuer',
+                    style: TextStyle(
+                      color: c.authTextSecondary,
+                      fontSize: screenWidth * 0.033,
+                    ),
+                  ),
+
+                  SizedBox(height: screenHeight * 0.045),
+
+                  // ── Champ téléphone ───────────────────────────────────────
+                  Container(
+                    decoration: BoxDecoration(
+                      color: c.authCardBackground,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: c.authBorder, width: 1.5),
+                    ),
+                    child: TextFormField(
+                      maxLength: 10,
+                      cursorColor: c.authAccent,
+                      style: TextStyle(
+                        color: c.authTextPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      controller: _phoneNumberController,
+                      keyboardType: TextInputType.phone,
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        counterText: '',
+                        border: InputBorder.none,
+                        hintText: 'Ex: 0505050505',
+                        hintStyle: TextStyle(
+                          color: c.authTextSecondary,
+                          fontSize: screenWidth * 0.035,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.phone_outlined,
+                          color: c.authAccent,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.018,
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Veuillez entrer votre numéro';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+
+                  SizedBox(height: screenHeight * 0.03),
+
+                  // ── Bouton connexion ──────────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    height: screenHeight * 0.058,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: c.authButton,
+                        foregroundColor: c.authTextPrimary,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              if (_formKey.currentState!.validate()) {
+                                setState(() => _isLoading = true);
+                                await sauthentifier(
+                                    context, _phoneNumberController.text);
+                              }
+                            },
+                      child: _isLoading
+                          ? SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: c.authTextPrimary,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Text(
+                              'Se connecter',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.038,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                    ),
+                  ),
+
+                  SizedBox(height: screenHeight * 0.04),
+
+                  // ── Divider ───────────────────────────────────────────────
+                  Row(
+                    children: [
+                      const Expanded(
+                          child: Divider(color: Colors.white12, thickness: 1)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.03),
+                        child: Text(
+                          'ou',
+                          style: TextStyle(
+                            color: c.authTextSecondary,
+                            fontSize: screenWidth * 0.032,
+                          ),
+                        ),
+                      ),
+                      const Expanded(
+                          child: Divider(color: Colors.white12, thickness: 1)),
+                    ],
+                  ),
+
+                  SizedBox(height: screenHeight * 0.03),
+
+                  // ── Créer un compte ───────────────────────────────────────
+                  GestureDetector(
+                    onTap: () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PageDAuthentification(),
                       ),
                     ),
-                    onPressed: _isLoading
-                        ? null
-                        : () async {
-                            if (_formKey.currentState!.validate()) {
-                              setState(() {
-                                _isLoading = true;
-                              });
-                              sauthentifier(
-                                  context, _phoneNumberController.text);
-                            }
-                          },
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text(
-                            'Se connecter',
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Pas de compte ? ',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: c.authTextSecondary,
+                              fontSize: screenWidth * 0.034,
                             ),
                           ),
-                  ),
-                ),
-                const SizedBox(
-                  height: 100,
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PageDAuthentification(),
+                          TextSpan(
+                            text: 'Créer un compte',
+                            style: TextStyle(
+                              color: c.authAccent,
+                              fontSize: screenWidth * 0.034,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                              decorationColor: c.authAccent,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  child: RichText(
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'Pas de compte',
-                          style: TextStyle(
-                            color: Colors.lightBlueAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '\tCréer un compte?',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+
+                  SizedBox(height: screenHeight * 0.02),
+                ],
+              ),
             ),
           ),
         ),

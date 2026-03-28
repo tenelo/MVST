@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:mvst/config/config.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:mvst/models/mesFonctions.dart';
 
 class Suggestions extends StatefulWidget {
   const Suggestions({super.key, required this.idUtilisateur});
@@ -73,7 +76,7 @@ class _SuggestionsState extends State<Suggestions> {
           duration: Duration(seconds: 8),
           backgroundColor: Config.colors.bleuFonce2,
           content: Text(
-            'Erreur lors de la récupération des données de l\'utilisateur : $e',
+            'Erreur lors de la récupération des données de l\'utilisateur',
             style: TextStyle(color: Colors.white),
           ),
         ),
@@ -159,7 +162,7 @@ class _SuggestionsState extends State<Suggestions> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           // Réinitialiser les messages d'erreur
                           setState(() {
                             _nameError = null;
@@ -203,7 +206,54 @@ class _SuggestionsState extends State<Suggestions> {
                               _emailController.text.isNotEmpty &&
                               _isValidEmail(_emailController.text) &&
                               _messageController.text.isNotEmpty) {
-                            // Traiter les suggestions ici
+                            // Traiter les suggestions
+                            setState(() => _isLoading = true);
+
+                            try {
+                              final response = await http.post(
+                                Uri.parse(
+                                    'https://mvst.tenelo.cloud/suggestions.php'),
+                                headers: {"Content-Type": "application/json"},
+                                body: jsonEncode({
+                                  "nomClient": _nameController.text,
+                                  "telephoneClient":
+                                      _phoneNumberController.text,
+                                  "suggestion": _messageController.text,
+                                }),
+                              );
+
+                              final data = jsonDecode(response.body);
+
+                              if (data['success'] == true) {
+                                _nameController.clear();
+                                _phoneNumberController.clear();
+                                _emailController.clear();
+                                _messageController.clear();
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.green,
+                                    content: Row(
+                                      children: const [
+                                        Icon(Icons.check_circle,
+                                            color: Colors.white),
+                                        SizedBox(width: 8),
+                                        Text('Merci pour votre suggestion !',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                afficherErreur(context, data['message']);
+                              }
+                            } catch (e) {
+                              afficherErreur(context, e);
+                            } finally {
+                              setState(() => _isLoading = false);
+                            }
 
                             // Réinitialiser les champs après soumission
                             _nameController.clear();

@@ -1,5 +1,3 @@
-// ignore_for_file: unused_local_variable
-
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -16,32 +14,28 @@ class LocalisationsDesGars extends StatefulWidget {
 
 class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
   Future<List<Map<String, dynamic>>> infosGares() async {
-    final url = Uri.parse(
-        'https://tenelodata-tech.com/mvst/tarifsAxes_et_infos_gare.php?type=gares');
     try {
       final response = await http.get(
-        url,
+        Uri.parse(
+          'https://mvst.tenelo.cloud/tarifsAxes_et_infos_gare.php?type=gares',
+        ),
         headers: {'Content-Type': 'application/json'},
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          List<Map<String, dynamic>> infos = [];
-          for (var item in data['tarifs']) {
-            infos.add({
-              'ville': item['ville'],
-              'description': item['description'],
-              'telephone': item['telephone'],
-            });
-          }
-          return infos;
-        } else {
-          throw Exception(data['message']);
+          return List<Map<String, dynamic>>.from(
+            data['tarifs'].map(
+              (item) => {
+                'ville': item['ville'],
+                'description': item['description'],
+                'telephone': item['telephone'],
+              },
+            ),
+          );
         }
-      } else {
-        throw Exception('Erreur réseau');
       }
+      return [];
     } catch (e) {
       return [];
     }
@@ -49,105 +43,161 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 166, 223, 248),
-      body: SizedBox(
-        height: MediaQuery.of(context).size.height,
-        width: MediaQuery.of(context).size.width,
-        child: Stack(
-          alignment: AlignmentDirectional.center,
-          children: [
-            Container(
-              child: SingleChildScrollView(
-                child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: infosGares(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(
-                          child: CircularProgressIndicator(
-                        color: Config.colors.bleuFonce2,
-                      ));
-                    }
-                    if (snapshot.hasError ||
-                        snapshot.data == null ||
-                        snapshot.data!.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'Aucune donnée',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Config.colors.bleuFonce2),
-                        ),
-                      );
-                    }
+    final c = Config.colors;
+    final double screenWidth = MediaQuery.of(context).size.width;
 
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: snapshot.data!.map((_infos) {
-                        return carteInfos(
-                          context,
-                          _infos['ville'],
-                          _infos['description'],
-                          _infos['telephone'],
-                        );
-                      }).toList(),
-                    );
-                  },
-                ),
+    return Scaffold(
+      backgroundColor: c.homeBackground,
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: infosGares(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(color: c.homeButtonPrimary),
+            );
+          }
+          if (snapshot.hasError ||
+              snapshot.data == null ||
+              snapshot.data!.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.wifi_off_outlined,
+                    color: c.homeButtonPrimary.withOpacity(0.3),
+                    size: 48,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Aucune donnée disponible',
+                    style: TextStyle(
+                      color: c.homeTextPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
+            );
+          }
+
+          return ListView.builder(
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04,
+              vertical: 12,
             ),
-          ],
-        ),
+            itemCount: snapshot.data!.length,
+            itemBuilder: (context, index) {
+              final info = snapshot.data![index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _carteGare(
+                  context,
+                  info['ville'],
+                  info['description'],
+                  info['telephone'],
+                  screenWidth,
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
-}
 
-Widget carteInfos(
-    BuildContext context, String ville, String localisation, String contact) {
-  return Card(
-    child: SizedBox(
-      height: MediaQuery.of(context).size.height * 0.20,
-      width: MediaQuery.of(context).size.width * 0.80,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 8.0, top: 4.0, right: 8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  ville,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                )
-              ],
-            ),
-            Text(
-              localisation,
-              maxLines: 4,
-            ),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  FlutterDirectCallerPlugin.callNumber(contact);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(132, 5, 82, 121),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                ),
-                child: Text(
-                  "Appeler à la gare",
-                  style: TextStyle(color: Config.colors.jauneBlanc),
-                ),
+  Widget _carteGare(
+    BuildContext context,
+    String ville,
+    String description,
+    String telephone,
+    double screenWidth,
+  ) {
+    final c = Config.colors;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.homeCardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.homeBordurePetiteCarte, width: 1),
+      ),
+      child: Column(
+        children: [
+          // ── Header gare ───────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: c.homeButtonPrimary.withOpacity(0.08),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
               ),
             ),
-          ],
-        ),
+            child: Row(
+              children: [
+                Icon(Icons.location_on, color: c.homeButtonPrimary, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  ville,
+                  style: TextStyle(
+                    color: c.homeButtonPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenWidth * 0.038,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // ── Description ───────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  description,
+                  maxLines: 4,
+                  style: TextStyle(
+                    color: c.homeTextPrimary.withOpacity(0.75),
+                    fontSize: screenWidth * 0.032,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      FlutterDirectCallerPlugin.callNumber(telephone);
+                    },
+                    icon: Icon(
+                      Icons.phone_outlined,
+                      color: Config.colors.homeAccent,
+                      size: 16,
+                    ),
+                    label: Text(
+                      'Appeler la gare',
+                      style: TextStyle(
+                        color: Config.colors.homeAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: c.homeButtonPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
 }

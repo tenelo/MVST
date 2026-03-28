@@ -1,2 +1,0 @@
-C:/Users/Eti/FLUTTER/mvst/android/app/.cxx/Debug/6e1r2f1g/x86/CMakeFiles/edit_cache.dir
-C:/Users/Eti/FLUTTER/mvst/android/app/.cxx/Debug/6e1r2f1g/x86/CMakeFiles/rebuild_cache.dir

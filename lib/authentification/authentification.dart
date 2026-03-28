@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 import 'package:mvst/screens/home.dart';
-import 'package:mysql1/mysql1.dart';
 
 class PageDAuthentification extends StatefulWidget {
   const PageDAuthentification({super.key});
@@ -28,69 +27,68 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
 
   Future<bool> verificationListeNoire(String numero) async {
     try {
-      // Vérifier si le numéro est dans la liste noire
-      final QuerySnapshot listeNoireSnapshot = await FirebaseFirestore.instance
-          .collection('listeNoire')
-          .where('numero', isEqualTo: numero)
-          .get();
+      final response = await http.post(
+        Uri.parse('https://mvst.tenelo.cloud/verifierTelephone.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'telephone': numero}),
+      );
 
-      // Vérifier si le numéro est déjà dans les utilisateurs
-      final QuerySnapshot utilisateursSnapshot = await FirebaseFirestore
-          .instance
-          .collection('utilisateurs')
-          .where('numero', isEqualTo: numero)
-          .get();
-
-      if (listeNoireSnapshot.docs.isNotEmpty ||
-          utilisateursSnapshot.docs.isNotEmpty) {
-        // Si le numéro est dans la liste noire ou déjà enregistré dans utilisateurs
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.warning,
-                  color: Colors.red,
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['existe'] == true) {
+          if (mounted) {
+            final c = Config.colors;
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: c.authDialogBackground,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                title: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.warning, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text("Accès Refusé",
+                        style: TextStyle(
+                            color: Colors.red, fontWeight: FontWeight.bold)),
+                  ],
                 ),
-                SizedBox(width: 8),
-                const Text(
-                  "Accès Refusé",
-                  style:
-                      TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                content: const Text(
+                  "\nLe numéro utilisé est déjà associé à un utilisateur existant"
+                  "\nou est inscrit sur la liste noire."
+                  "\nVeuillez contacter les administrateurs MVST pour assistance.",
+                  style: TextStyle(color: Colors.white70),
                 ),
-              ],
-            ),
-            content: const Text(
-              "\nLe numéro utilisé est déjà associé à un utilisateur existant"
-              "\nou est inscrit sur la liste noire."
-              "\nVeuillez contacter les administrateurs MVST pour assistance.",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  // Fermer l'application
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    SystemNavigator.pop();
-                  });
-                },
-                child: Text("OK",
-                    style: TextStyle(
-                        color: Colors.red, fontWeight: FontWeight.bold)),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        SystemNavigator.pop();
+                      });
+                    },
+                    child: const Text("OK",
+                        style: TextStyle(
+                            color: Colors.red, fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-        return true; // Numéro trouvé dans l'une des deux collections
+            );
+          }
+          return true;
+        }
+        return false;
       }
-      return false; // Numéro non trouvé dans aucune des deux collections
+      return false;
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur lors de la vérification, reprenez le processus'),
-      ));
-      return false; // En cas d'erreur
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:
+              Text('Erreur lors de la vérification, reprenez le processus'),
+        ));
+      }
+      return false;
     }
   }
 
@@ -109,20 +107,14 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
-    // Vérification dans la liste noire avant toute autre action
     bool surListeNoire =
         await verificationListeNoire(_telephoneController.text);
 
     if (surListeNoire) {
-      // Si le numéro est dans la liste noire, on arrête l'exécution
-      setState(() {
-        _isLoading = false;
-      });
-      return; // Ne pas continuer l'exécution si le numéro est dans la liste noire
+      setState(() => _isLoading = false);
+      return;
     }
 
     String numeroTelephone = '+225${_telephoneController.text}';
@@ -132,192 +124,217 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
         phoneNumber: numeroTelephone,
         verificationCompleted: (PhoneAuthCredential credential) async {},
         verificationFailed: (FirebaseAuthException e) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Erreur de vérification.'),
-          ));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Erreur de vérification.'),
+            ));
+          }
         },
         codeSent: (String verificationId, int? resendToken) async {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PageDeVerification(
-                verificationId: verificationId,
-                nom: _nomController.text,
-                prenoms: _prenomController.text,
-                telephone: _telephoneController.text,
-                ville: _residenceController.text,
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PageDeVerification(
+                  verificationId: verificationId,
+                  nom: _nomController.text,
+                  prenoms: _prenomController.text,
+                  telephone: _telephoneController.text,
+                  ville: _residenceController.text,
+                ),
               ),
-            ),
-          );
+            );
+          }
         },
         codeAutoRetrievalTimeout: (String verificationId) {},
         timeout: const Duration(seconds: 60),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur lors de l\'envoi du code'),
-      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Erreur lors de l\'envoi du code'),
+        ));
+      }
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
+  }
+
+  Widget _buildChamp({
+    required TextEditingController controller,
+    required String label,
+    required IconData icone,
+    TextInputType keyboardType = TextInputType.text,
+    int? maxLength,
+  }) {
+    final c = Config.colors;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: c.authCardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.authBorder, width: 1.5),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLength: maxLength,
+        cursorColor: c.authAccent,
+        style: TextStyle(color: c.authTextPrimary, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          counterText: '',
+          border: InputBorder.none,
+          labelText: label,
+          labelStyle: TextStyle(
+            color: c.authTextSecondary,
+            fontSize: screenWidth * 0.034,
+          ),
+          prefixIcon: Icon(icone, color: c.authAccent, size: 20),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      backgroundColor: Colors.blueGrey,
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Config.colors.jauneBlanc,
-        ),
-        backgroundColor: Colors.blueGrey,
-        centerTitle: true,
-        title: const Text(
-          'Authentification',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: TextFormField(
-                  style: const TextStyle(color: Colors.white),
-                  cursorColor: Colors.white,
+      backgroundColor: c.authBackground,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: screenHeight * 0.04),
+
+                // ── Logo ────────────────────────────────────────────────────
+                Container(
+                  width: screenWidth * 0.20,
+                  height: screenWidth * 0.20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: c.authAccent, width: 2),
+                    color: c.authCardBackground,
+                  ),
+                  child: Center(
+                    child: Text(
+                      'MVST',
+                      style: TextStyle(
+                        color: c.authAccent,
+                        fontSize: screenWidth * 0.042,
+                        fontFamily: 'Lobster',
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.03),
+
+                Text(
+                  'Créer un compte',
+                  style: TextStyle(
+                    color: c.authTextPrimary,
+                    fontSize: screenWidth * 0.058,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.006),
+
+                Text(
+                  'Remplissez les informations ci-dessous',
+                  style: TextStyle(
+                    color: c.authTextSecondary,
+                    fontSize: screenWidth * 0.032,
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.035),
+
+                _buildChamp(
                   controller: _nomController,
-                  decoration: const InputDecoration(
-                    labelStyle: TextStyle(
-                      color: Colors.white,
-                    ),
-                    labelText: 'Nom',
-                    border: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: Colors.lightBlue, width: 2.0),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  label: 'Nom',
+                  icone: Icons.person_outline,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: TextFormField(
-                  style: const TextStyle(color: Colors.white),
-                  cursorColor: Colors.white,
+                _buildChamp(
                   controller: _prenomController,
-                  decoration: const InputDecoration(
-                    labelStyle: TextStyle(
-                      color: Colors.white,
-                    ),
-                    labelText: 'Prénoms',
-                    border: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: Colors.lightBlue, width: 2.0),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  label: 'Prénoms',
+                  icone: Icons.person_outline,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: TextFormField(
-                  maxLength: 10,
-                  style: const TextStyle(color: Colors.white),
-                  cursorColor: Colors.white,
+                _buildChamp(
                   controller: _telephoneController,
+                  label: 'Numéro de téléphone',
+                  icone: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelStyle: TextStyle(
-                      color: Colors.white,
-                    ),
-                    labelText: 'Numéro de téléphone',
-                    border: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: Colors.lightBlue, width: 2.0),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  maxLength: 10,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: TextFormField(
-                  style: const TextStyle(color: Colors.white),
+                _buildChamp(
                   controller: _residenceController,
-                  cursorColor: Colors.white,
-                  decoration: const InputDecoration(
-                    labelStyle: TextStyle(
-                      color: Colors.white,
-                    ),
-                    labelText: 'Lieu de résidence',
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  label: 'Lieu de résidence',
+                  icone: Icons.location_on_outlined,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: SizedBox(
+
+                SizedBox(height: screenHeight * 0.01),
+
+                SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: screenHeight * 0.058,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Config.colors.bleuFonce2,
+                      backgroundColor: c.authButton,
+                      foregroundColor: c.authTextPrimary,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        side: const BorderSide(color: Colors.blue),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     onPressed: _isLoading ? null : _envoyerCodeDeVerification,
                     child: _isLoading
-                        ? const Row(
+                        ? Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               SizedBox(
-                                width: 24.0,
-                                height: 24.0,
+                                width: 22,
+                                height: 22,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2.0,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white),
+                                  color: c.authTextPrimary,
+                                  strokeWidth: 2.5,
                                 ),
                               ),
-                              SizedBox(width: 8.0),
+                              const SizedBox(width: 12),
                               Text(
                                 'Envoi en cours...',
-                                style: TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                    color: c.authTextPrimary,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ],
                           )
-                        : const Text(
-                            'Recevoir un code de vérification par SMS',
-                            style: TextStyle(color: Colors.white),
+                        : Text(
+                            'Recevoir le code par SMS',
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.038,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                   ),
                 ),
-              ),
-            ],
+
+                SizedBox(height: screenHeight * 0.03),
+              ],
+            ),
           ),
         ),
       ),
@@ -333,6 +350,7 @@ class PageDeVerification extends StatefulWidget {
   final String prenoms;
   final String telephone;
   final String ville;
+
   const PageDeVerification({
     super.key,
     required this.verificationId,
@@ -351,7 +369,6 @@ class _PageDeVerificationState extends State<PageDeVerification> {
   String idAuth = '';
   bool _isDisposed = false;
   bool _isLoading = false;
-  MySqlConnection? conn;
 
   @override
   void initState() {
@@ -361,91 +378,153 @@ class _PageDeVerificationState extends State<PageDeVerification> {
   @override
   void dispose() {
     _isDisposed = true;
+    _codeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      backgroundColor: Colors.blueGrey,
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Config.colors.jauneBlanc,
-        ),
-        backgroundColor: Colors.blueGrey,
-        centerTitle: true,
-        title: const Text(
-          'Code de vérification',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(100.0),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: TextFormField(
-                  maxLength: 6,
-                  cursorColor: Colors.white,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+      backgroundColor: c.authBackground,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(height: screenHeight * 0.06),
+
+                // ── Icône SMS ────────────────────────────────────────────────
+                Container(
+                  width: screenWidth * 0.20,
+                  height: screenWidth * 0.20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: c.authAccent, width: 2),
+                    color: c.authCardBackground,
                   ),
-                  textAlign: TextAlign.center,
-                  controller: _codeController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelStyle: TextStyle(
-                      color: Colors.white,
+                  child: Icon(
+                    Icons.sms_outlined,
+                    color: c.authAccent,
+                    size: screenWidth * 0.09,
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.035),
+
+                Text(
+                  'Code de vérification',
+                  style: TextStyle(
+                    color: c.authTextPrimary,
+                    fontSize: screenWidth * 0.056,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.008),
+
+                Text(
+                  'Entrez le code reçu par SMS au',
+                  style: TextStyle(
+                    color: c.authTextSecondary,
+                    fontSize: screenWidth * 0.032,
+                  ),
+                ),
+
+                Text(
+                  '+225 ${widget.telephone}',
+                  style: TextStyle(
+                    color: c.authAccent,
+                    fontSize: screenWidth * 0.034,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.045),
+
+                // ── Champ code ───────────────────────────────────────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: c.authCardBackground,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: c.authBorder, width: 1.5),
+                  ),
+                  child: TextFormField(
+                    maxLength: 6,
+                    cursorColor: c.authAccent,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: c.authTextPrimary,
+                      fontSize: screenWidth * 0.055,
+                      letterSpacing: 8,
                     ),
-                    labelText: 'Code de vérification',
-                    border: OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.white,
+                    textAlign: TextAlign.center,
+                    controller: _codeController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      counterText: '',
+                      border: InputBorder.none,
+                      hintText: '------',
+                      hintStyle: TextStyle(
+                        color: c.authTextSecondary,
+                        fontSize: screenWidth * 0.05,
+                        letterSpacing: 8,
+                      ),
+                      contentPadding:
+                          EdgeInsets.symmetric(vertical: screenHeight * 0.022),
+                    ),
+                    onChanged: (value) => setState(() {}),
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.035),
+
+                // ── Bouton valider ───────────────────────────────────────────
+                SizedBox(
+                  width: double.infinity,
+                  height: screenHeight * 0.058,
+                  child: ElevatedButton(
+                    onPressed: _isLoading || _codeController.text.isEmpty
+                        ? null
+                        : () => _seConnecterParNumTelephone(
+                            widget.verificationId, _codeController.text),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: c.authButton,
+                      foregroundColor: c.authTextPrimary,
+                      elevation: 0,
+                      disabledBackgroundColor: c.authButtonDisabled,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {});
-                  },
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              SizedBox(
-                width: double.infinity,
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: _isLoading || _codeController.text.isEmpty
-                      ? null
-                      : () {
-                          _seConnecterParNumTelephone(
-                              widget.verificationId, _codeController.text);
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Config.colors.bleuFonce2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                      side: const BorderSide(color: Colors.blue),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text(
-                          'Valider',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                    child: _isLoading
+                        ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: c.authTextPrimary,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Text(
+                            'Valider',
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.038,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
+                  ),
                 ),
-              ),
-            ],
+
+                SizedBox(height: screenHeight * 0.02),
+              ],
+            ),
           ),
         ),
       ),
@@ -455,9 +534,7 @@ class _PageDeVerificationState extends State<PageDeVerification> {
   Future<void> _seConnecterParNumTelephone(
       String verificationId, String smsCode) async {
     if (_isDisposed) return;
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final AuthCredential credential = PhoneAuthProvider.credential(
@@ -469,35 +546,32 @@ class _PageDeVerificationState extends State<PageDeVerification> {
           await FirebaseAuth.instance.signInWithCredential(credential);
 
       final User? user = authResult.user;
+      if (user == null) return;
 
-      // Mise à jour du nom d'affichage
-      await user!.updateDisplayName('${widget.nom} ${widget.prenoms}');
+      await user.updateDisplayName('${widget.nom} ${widget.prenoms}');
 
-      // Mise à jour du numéro de téléphone
       final PhoneAuthCredential phoneAuthCredential =
           PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,
       );
-
       await user.updatePhoneNumber(phoneAuthCredential);
 
-      setState(() {
-        idAuth = user.uid;
-      });
+      setState(() => idAuth = user.uid);
 
-      // Appel de la fonction creerUtilisateurEtAuthentifierParMail avec idAuth
-      creerUtilisateurEtAuthentifierParMail(
-          idAuth, widget.nom, widget.prenoms, widget.telephone, context);
+      if (mounted) {
+        await creerUtilisateurEtAuthentifierParMail(
+            idAuth, widget.nom, widget.prenoms, widget.telephone, context);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur lors de la connexion : $e'),
-      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur lors de la connexion : $e'),
+        ));
+      }
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> creerUtilisateurEtAuthentifierParMail(
@@ -508,20 +582,16 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     BuildContext context,
   ) async {
     try {
-      // Créer l'utilisateur avec l'adresse e-mail et le mot de passe
       final UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: "$telephone@gmail.com",
         password: telephone,
       );
 
-      // Mettre à jour le profil de l'utilisateur avec les informations supplémentaires
       User? user = userCredential.user;
       if (user != null) {
-        // Mettre à jour le nom d'affichage de l'utilisateur
         await user.updateDisplayName('$nom $prenoms');
 
-        // Ajouter dans Firestore
         await FirebaseFirestore.instance
             .collection('utilisateurs')
             .doc(user.uid)
@@ -537,8 +607,7 @@ class _PageDeVerificationState extends State<PageDeVerification> {
           'dateDeCreation': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
 
-        // Ajouter à MySQL
-        await ajouterUtilisateurDansMySQL(
+        await ajouterUtilisateurALaBaseDeDonnees(
             idUtilisateur: user.uid,
             idAuth: '',
             nom: "${widget.nom} ${widget.prenoms}",
@@ -547,22 +616,20 @@ class _PageDeVerificationState extends State<PageDeVerification> {
             points: 3,
             mail: "${widget.telephone}@gmail.com");
 
-        // Deconnexion et Reconnexion automatique une fois que l'utilisateur est créé et authentifié avec succès
-        deconnexionEtReconnexion("$telephone@gmail.com", telephone);
-        // Rediriger vers la page Home
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const Home(),
-          ),
-        );
+        if (context.mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const Home()),
+            (route) => false,
+          );
+        }
       }
     } catch (e) {
-      // Gérer les erreurs
+      debugPrint('❌ Erreur création compte: $e');
     }
   }
 
-  Future<void> ajouterUtilisateurDansMySQL({
+  Future<void> ajouterUtilisateurALaBaseDeDonnees({
     required String idUtilisateur,
     required String idAuth,
     required String nom,
@@ -571,11 +638,9 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     required int points,
     required String mail,
   }) async {
-    const String apiUrl =
-        'https://tenelodata-tech.com/mvst/insert_utilisateur.php'; // L'URL de votre script PHP
+    const String apiUrl = 'https://mvst.tenelo.cloud/insert_utilisateur.php';
 
     try {
-      // Création du corps de la requête JSON
       final Map<String, dynamic> requestBody = {
         'idUtilisateur': idUtilisateur,
         'idAuth': idAuth,
@@ -586,43 +651,24 @@ class _PageDeVerificationState extends State<PageDeVerification> {
         'mail': mail,
       };
 
-      // Envoi de la requête POST avec les données au format JSON
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(requestBody),
       );
 
-      // Vérifier le statut de la réponse
       if (response.statusCode == 200) {
-        // Décoder la réponse JSON
         final data = json.decode(response.body);
-
-        // Vérifier la réponse du serveur
         if (data['success']) {
-          print('Utilisateur ajouté ou mis à jour avec succès');
+          debugPrint('Utilisateur ajouté avec succès');
         } else {
-          print('Erreur: ${data['message']}');
+          debugPrint('Erreur: ${data['message']}');
         }
       } else {
-        print('Erreur de serveur: ${response.statusCode}');
+        debugPrint('Erreur serveur: ${response.statusCode}');
       }
     } catch (e) {
-      print('Erreur lors de l\'envoi des données: $e');
+      debugPrint('Erreur envoi données: $e');
     }
   }
-}
-
-Future<void> deconnexionEtReconnexion(String email, String motDepass) async {
-  try {
-    // Déconnexion de l'utilisateur actuel
-    await FirebaseAuth.instance.signOut();
-
-    // Connexion avec l'e-mail et le mot de passe
-    await FirebaseAuth.instance.signInWithEmailAndPassword(
-      email: email,
-      password: motDepass,
-    );
-    // ignore: empty_catches
-  } catch (e) {}
 }

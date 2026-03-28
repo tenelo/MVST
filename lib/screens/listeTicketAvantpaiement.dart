@@ -1,14 +1,9 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesfonctions.dart';
 import 'package:mvst/paiement/choixPaiement.dart';
-import 'package:mvst/paiement/choixPaiement2.dart';
 import 'package:ticket_material/ticket_material.dart';
-
-int? tailleEcran;
 
 class Tickets extends StatefulWidget {
   const Tickets(
@@ -26,7 +21,8 @@ class Tickets extends StatefulWidget {
       required this.depart,
       required this.prixDuTicket,
       required this.moisAnnee,
-      required this.annee});
+      required this.annee,
+      this.typeVoyage = 'standard'});
   final String idDate;
   final String id;
   final int nombreDeTicket;
@@ -41,6 +37,7 @@ class Tickets extends StatefulWidget {
   final String destination;
   final String depart;
   final int prixDuTicket;
+  final String typeVoyage;
 
   @override
   State<Tickets> createState() => _TicketsState();
@@ -61,7 +58,6 @@ class _TicketsState extends State<Tickets> {
 
   @override
   Widget build(BuildContext context) {
-    tailleEcran = calculeTailleEcran(context).round();
     return WillPopScope(
       onWillPop: () async {
         if (!_isNavigating) {
@@ -71,7 +67,7 @@ class _TicketsState extends State<Tickets> {
         return true;
       },
       child: Scaffold(
-        backgroundColor: Config.colors.bleuFonce,
+        backgroundColor: Config.colors.homeBackground,
         appBar: AppBar(
           toolbarHeight: 40,
           centerTitle: true,
@@ -82,7 +78,7 @@ class _TicketsState extends State<Tickets> {
           iconTheme: const IconThemeData(
             color: Colors.white,
           ),
-          backgroundColor: Config.colors.bleuFonce,
+          backgroundColor: Config.colors.homeDrawerBackground,
         ),
         body: SafeArea(
           child: Padding(
@@ -131,7 +127,7 @@ class _TicketsState extends State<Tickets> {
               if (mounted) {
                 setState(() {
                   _isLoading = true;
-                  _isNavigating = true; // Indique que l'utilisateur avance
+                  _isNavigating = true;
                 });
               }
 
@@ -142,7 +138,6 @@ class _TicketsState extends State<Tickets> {
                     _isNavigating = false;
                   });
                 }
-
                 showDialog(
                   context: context,
                   builder: (BuildContext context) {
@@ -161,48 +156,28 @@ class _TicketsState extends State<Tickets> {
                   },
                 );
               } else {
-                // Navigation vers les pages suivantes
-                Widget page = tailleEcran! >= 6
-                    ? // Grands écrants
-                    ChoixPaiement(
-                        idDate: widget.idDate,
-                        nombreDeTicket: widget.nombreDeTicket,
-                        prixUnitaire: widget.prixDuTicket,
-                        id: widget.id,
-                        place: widget.place,
-                        nom: widget.nom,
-                        contact: widget.contact,
-                        date: widget.date,
-                        heure: widget.heure,
-                        destination: widget.destination,
-                        depart: widget.depart,
-                        mois: widget.mois,
-                        moisAnnee: widget.moisAnnee,
-                        annee: widget.annee,
-                        datePourCalcule: dateFormatee,
-                      )
-                    : // Petits écrants
-                    ChoixPaiement2(
-                        idDate: widget.idDate,
-                        nombreDeTicket: widget.nombreDeTicket,
-                        prixUnitaire: widget.prixDuTicket,
-                        id: widget.id,
-                        place: widget.place,
-                        nom: widget.nom,
-                        contact: widget.contact,
-                        date: widget.date,
-                        heure: widget.heure,
-                        destination: widget.destination,
-                        depart: widget.depart,
-                        mois: widget.mois,
-                        moisAnnee: widget.moisAnnee,
-                        annee: widget.annee,
-                        datePourCalcule: dateFormatee,
-                      );
-
                 await Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => page),
+                  MaterialPageRoute(
+                    builder: (context) => ChoixPaiement(
+                      idDate: widget.idDate,
+                      nombreDeTicket: widget.nombreDeTicket,
+                      prixUnitaire: widget.prixDuTicket,
+                      id: widget.id,
+                      place: widget.place,
+                      nom: widget.nom,
+                      contact: widget.contact,
+                      date: widget.date,
+                      heure: widget.heure,
+                      destination: widget.destination,
+                      depart: widget.depart,
+                      mois: widget.mois,
+                      moisAnnee: widget.moisAnnee,
+                      annee: widget.annee,
+                      datePourCalcule: dateFormatee,
+                      typeVoyage: widget.typeVoyage,
+                    ),
+                  ),
                 );
               }
             },
@@ -346,25 +321,19 @@ class _TicketsState extends State<Tickets> {
 
   Future<bool> _netoyageEnCasDeFermeture() async {
     if (listeDeVerification.isNotEmpty) {
-      await supprimerPlaces(
-        widget.depart,
-        widget.destination,
-        widget.idDate,
-        widget.id,
-        widget.mois,
-        widget.moisAnnee,
-        widget.annee,
-        widget.heure,
-        listeDeVerification,
-      );
+      // await supprimerPlaces(
+      //   widget.depart,
+      //   widget.destination,
+      //   widget.idDate,
+      //   widget.id,
+      //   widget.mois,
+      //   widget.moisAnnee,
+      //   widget.annee,
+      //   widget.heure,
+      //   listeDeVerification,
+      // );
     }
     listeDeVerification.clear();
     return true;
   }
-}
-
-double calculeTailleEcran(BuildContext ctx) {
-  double screenWidth = MediaQuery.of(ctx).size.width;
-  double screenHeight = MediaQuery.of(ctx).size.height;
-  return sqrt(pow(screenWidth, 2) + pow(screenHeight, 2)) / 160.0;
 }

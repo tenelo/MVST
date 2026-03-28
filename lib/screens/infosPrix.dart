@@ -1,41 +1,30 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_ticket/flutter_ticket.dart';
 import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 
 class InformationPrix extends StatelessWidget {
   Future<List<InfosTarifs>> recupererPrixDesTickets() async {
-    final url = Uri.parse(
-        'https://tenelodata-tech.com/mvst/tarifsAxes_et_infos_gare.php?type=tarifs');
-
     try {
       final response = await http.get(
-        url,
+        Uri.parse(
+          'https://mvst.tenelo.cloud/tarifsAxes_et_infos_gare.php?type=tarifs',
+        ),
         headers: {'Content-Type': 'application/json'},
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['success']) {
-          // Transformation des résultats en une liste d'objets InfosTarifs
           Map<String, InfosTarifs> axesUniques = {};
-
           for (var item in data['tarifs']) {
-            // Découper le champ 'axe' en départ et destination
             List<String> axeSplit = (item['axe'] as String).split(' ');
-            if (axeSplit.length < 2) continue; // Passer les axes invalides
-
-            // Trier le départ et la destination pour normaliser l'axe
+            if (axeSplit.length < 2) continue;
             String depart = axeSplit[0];
             String destination = axeSplit[1];
             List<String> tridAxe = [depart, destination]..sort();
             String axeTrie = tridAxe.join('-');
-
-            // Ajouter l'axe unique avec son prix
             if (!axesUniques.containsKey(axeTrie)) {
               axesUniques[axeTrie] = InfosTarifs(
                 depart,
@@ -44,15 +33,10 @@ class InformationPrix extends StatelessWidget {
               );
             }
           }
-
-          return axesUniques.values
-              .toList(); // Retourner une liste des axes uniques
-        } else {
-          throw Exception(data['message']);
+          return axesUniques.values.toList();
         }
-      } else {
-        throw Exception('Erreur réseau : ${response.statusCode}');
       }
+      return [];
     } catch (e) {
       return [];
     }
@@ -60,156 +44,186 @@ class InformationPrix extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
+    final double screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 166, 223, 248),
+      backgroundColor: c.homeBackground,
       body: FutureBuilder<List<InfosTarifs>>(
         future: recupererPrixDesTickets(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
-                child: CircularProgressIndicator(
-              color: Config.colors.bleuFonce2,
-            ));
-          } else if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Vérifiez la connexion',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Config.colors.bleuFonce2),
-              ),
-            );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Text(
-                'Aucun tarif trouvé.',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Config.colors.bleuFonce2),
-              ),
-            );
-          } else {
-            // Afficher les données récupérées
-            final tarifs = snapshot.data!;
-            return ListView.builder(
-              itemCount: tarifs.length,
-              itemBuilder: (context, index) {
-                final tarif = tarifs[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 2.0, vertical: 8.0),
-                  child: Ticket(
-                    innerRadius: BorderRadius.only(
-                        topLeft: Radius.circular(10.0),
-                        topRight: Radius.circular(10.0)),
-                    outerRadius: BorderRadius.all(Radius.circular(10.0)),
-                    child: Container(
-                      color: Colors.amber[50],
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'MVST',
-                                  style: TextStyle(
-                                    letterSpacing: 8,
-                                    fontSize: 18.0,
-                                    fontFamily: 'Lobster',
-                                    color: const Color.fromARGB(
-                                        255, 160, 196, 226),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Divider(height: 0.0),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 2.0, vertical: 14),
-                                child: Text(
-                                  tarif.depart,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Icon(
-                                Icons.sync_alt_outlined,
-                                color: const Color.fromARGB(255, 160, 196, 226),
-                                size: 16,
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 2.0, vertical: 14),
-                                child: Text(
-                                  tarif.destination,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 2.0, vertical: 14),
-                                child: Text(
-                                  tarif.destination,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Icon(
-                                Icons.sync_alt_outlined,
-                                color: const Color.fromARGB(255, 160, 196, 226),
-                                size: 16,
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 2.0, vertical: 14),
-                                child: Text(
-                                  tarif.depart,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Divider(height: 0.0),
-                          // CONTAINER PRIX
-                          Container(
-                            width: double.infinity,
-                            color: Colors.amber[50],
-                            padding: EdgeInsets.symmetric(vertical: 8.0),
-                            child: Center(
-                              child: Text(
-                                '${tarif.prix} f',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+              child: CircularProgressIndicator(color: c.homeButtonPrimary),
             );
           }
+          if (snapshot.hasError ||
+              !snapshot.hasData ||
+              snapshot.data!.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.wifi_off_outlined,
+                    color: c.homeButtonPrimary.withOpacity(0.3),
+                    size: 48,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Aucun tarif disponible',
+                    style: TextStyle(
+                      color: c.homeTextPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04,
+              vertical: 12,
+            ),
+            itemCount: snapshot.data!.length,
+            itemBuilder: (context, index) {
+              final tarif = snapshot.data![index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _carteTarif(tarif, screenWidth),
+              );
+            },
+          );
         },
+      ),
+    );
+  }
+
+  Widget _carteTarif(InfosTarifs tarif, double screenWidth) {
+    final c = Config.colors;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.homeCardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.homeBordurePetiteCarte, width: 1),
+      ),
+      child: Column(
+        children: [
+          // ── Header MVST ──────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: c.homeButtonPrimary.withOpacity(0.08),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                'MVST',
+                style: TextStyle(
+                  color: c.homeButtonPrimary,
+                  fontFamily: 'Lobster',
+                  fontSize: screenWidth * 0.045,
+                  letterSpacing: 4,
+                ),
+              ),
+            ),
+          ),
+
+          // ── Trajet ────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              children: [
+                // Aller
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Text(
+                      tarif.depart,
+                      style: TextStyle(
+                        color: c.homeButtonPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: screenWidth * 0.036,
+                      ),
+                    ),
+                    Icon(
+                      Icons.sync_alt_outlined,
+                      color: c.homeButtonPrimary,
+                      size: 18,
+                    ),
+                    Text(
+                      tarif.destination,
+                      style: TextStyle(
+                        color: c.homeButtonPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: screenWidth * 0.036,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Retour
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Text(
+                      tarif.destination,
+                      style: TextStyle(
+                        color: c.homeTextPrimary.withOpacity(0.6),
+                        fontSize: screenWidth * 0.032,
+                      ),
+                    ),
+                    Icon(
+                      Icons.sync_alt_outlined,
+                      color: c.homeTextPrimary.withOpacity(0.3),
+                      size: 16,
+                    ),
+                    Text(
+                      tarif.depart,
+                      style: TextStyle(
+                        color: c.homeTextPrimary.withOpacity(0.6),
+                        fontSize: screenWidth * 0.032,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ── Séparateur ────────────────────────────────────────────
+          Divider(height: 0, color: c.homeBordurePetiteCarte),
+
+          // ── Prix ──────────────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: c.homeAccent.withOpacity(0.08),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                '${tarif.prix} FCFA',
+                style: TextStyle(
+                  color: c.homeButtonPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: screenWidth * 0.042,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

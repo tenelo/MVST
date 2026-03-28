@@ -17,10 +17,8 @@ class DetailsImages extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.white,
-        ),
-        backgroundColor: Colors.blueGrey,
+        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: Config.colors.authDialogBackground,
       ),
       body: Stack(
         children: [
@@ -83,7 +81,7 @@ class DetailsImages extends StatelessWidget {
                                 maxLines: 20,
                               ),
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
