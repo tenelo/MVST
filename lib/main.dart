@@ -18,14 +18,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  FlutterError.onError = (FlutterErrorDetails details) {};
-
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Config.chargerTheme();
 
   runApp(const MyApp());
 }
@@ -138,25 +137,7 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    //     final size = MediaQuery.of(context).size;
-    //     final dpr = MediaQuery.of(context).devicePixelRatio;
-    //     final ppi = dpr * 160;
-
-    // // ── Calcul diagonale en pouces ─────────────────────────────────────────
-    //     final double wPhysique = size.width * dpr;
-    //     final double hPhysique = size.height * dpr;
-    //     final double diagonaleInches =
-    //         sqrt(wPhysique * wPhysique + hPhysique * hPhysique) / ppi;
-
-    //     debugPrint('📱 Taille logique  : ${size.width} x ${size.height}');
-    //     debugPrint('📱 Taille physique : $wPhysique x $hPhysique');
-    //     debugPrint('📱 DPR             : $dpr');
-    //     debugPrint(
-    //         '📱 Diagonale       : ${diagonaleInches.toStringAsFixed(2)} pouces');
-    //     debugPrint('📱 petitEcran      : ${diagonaleInches <= 6.0}');
-
     return Scaffold(
-      //backgroundColor: Config.colors.couleurDfond,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -166,7 +147,6 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
               height: 120.0,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                //border: Border.all(color: Config.colors.jauneBlanc, width: 2.0),
                 border: Border.all(
                   color: Config.colors.bleuFonce2,
                   width: 2.10,
@@ -176,7 +156,6 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
                 child: Text(
                   'MVST',
                   style: TextStyle(
-                    // color: Config.colors.jauneBlanc,
                     color: Config.colors.bleuFonce2,
                     fontSize: 24,
                     fontFamily: 'Lobster',
@@ -185,7 +164,6 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
               ),
             ),
             const SizedBox(height: 30),
-            //SpinKitThreeBounce(color: Config.colors.jauneBlanc),
             SpinKitThreeBounce(color: Config.colors.bleuFonce2),
           ],
         ),

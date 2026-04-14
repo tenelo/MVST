@@ -200,10 +200,9 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (!_isNavigating) await _netoyageEnCasDeFermeture();
-        return true;
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop && !_isNavigating) await _netoyageEnCasDeFermeture();
       },
       child: Scaffold(
         body: SafeArea(

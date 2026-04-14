@@ -1,4 +1,4 @@
-// ignore_for_file: unused_field, deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'dart:async';
 import 'dart:convert';
@@ -15,15 +15,8 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 
-DateTime? dateActuelle = DateTime.now();
-DateTime? dateDemain = DateTime.utc(
-  dateActuelle!.year,
-  dateActuelle!.month,
-  dateActuelle!.day + 1,
-);
-
 List<int> listeDesPlacesChoisies = [];
-String? _id, _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
+String? _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
 IO.Socket? _socket;
 
 class ChoixPlaces extends StatefulWidget {
@@ -64,13 +57,10 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
   late Timer _timer;
   bool _isLoading = true;
   late IO.Socket socket;
-  bool _socketConnecte = false;
-
   @override
   void initState() {
     super.initState();
     _socket = null;
-    _id = widget.id;
     _date = widget.idDate;
     _mois = widget.mois;
     _moisAnnee = widget.moisAnnee;
@@ -181,10 +171,8 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     socket.connect();
 
     socket.onConnect((_) {
-      print('🔄 socket.connect() appelé — connected: ${socket.connected}');
       if (!mounted) return;
       _socket = socket;
-      setState(() => _socketConnecte = true);
 
       socket.emit('rejoindre_room', {
         'depart': widget.depart,
@@ -221,10 +209,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
       });
     });
 
-    socket.onDisconnect((_) {
-      if (!mounted) return;
-      setState(() => _socketConnecte = false);
-    });
+    socket.onDisconnect((_) {});
   }
 
   @override

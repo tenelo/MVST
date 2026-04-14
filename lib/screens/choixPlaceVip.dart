@@ -1,4 +1,4 @@
-// ignore_for_file: unused_field, deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'dart:async';
 import 'dart:convert';
@@ -16,8 +16,7 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 
-// ignore: unused_element
-String? _id, _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
+String? _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
 IO.Socket? _socket;
 // ── Couleurs VIP ───────────────────────────────────────────────────────────────
 const Color _vipOr = Color(0xFFFFD700);
@@ -65,12 +64,10 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
   late Timer _timer;
   bool _isLoading = true;
   late IO.Socket socket;
-  bool _socketConnecte = false;
 
   @override
   void initState() {
     super.initState();
-    _id = widget.id;
     _date = widget.idDate;
     _mois = widget.mois;
     _moisAnnee = widget.moisAnnee;
@@ -186,7 +183,6 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     socket.onConnect((_) {
       if (!mounted) return;
       _socket = socket;
-      setState(() => _socketConnecte = true);
 
       final documentId =
           '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
@@ -236,10 +232,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
       });
     });
 
-    socket.onDisconnect((_) {
-      if (!mounted) return;
-      setState(() => _socketConnecte = false);
-    });
+    socket.onDisconnect((_) {});
   }
 
   @override

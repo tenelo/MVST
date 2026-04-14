@@ -66,7 +66,7 @@ class InformationPrix extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.wifi_off_outlined,
-                    color: c.homeButtonPrimary.withOpacity(0.3),
+                    color: c.homeButtonPrimary.withValues(alpha:0.3),
                     size: 48,
                   ),
                   const SizedBox(height: 12),
@@ -117,7 +117,7 @@ class InformationPrix extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
-              color: c.homeButtonPrimary.withOpacity(0.08),
+              color: c.homeButtonPrimary.withValues(alpha:0.08),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -176,19 +176,19 @@ class InformationPrix extends StatelessWidget {
                     Text(
                       tarif.destination,
                       style: TextStyle(
-                        color: c.homeTextPrimary.withOpacity(0.6),
+                        color: c.homeTextPrimary.withValues(alpha:0.6),
                         fontSize: screenWidth * 0.032,
                       ),
                     ),
                     Icon(
                       Icons.sync_alt_outlined,
-                      color: c.homeTextPrimary.withOpacity(0.3),
+                      color: c.homeTextPrimary.withValues(alpha:0.3),
                       size: 16,
                     ),
                     Text(
                       tarif.depart,
                       style: TextStyle(
-                        color: c.homeTextPrimary.withOpacity(0.6),
+                        color: c.homeTextPrimary.withValues(alpha:0.6),
                         fontSize: screenWidth * 0.032,
                       ),
                     ),
@@ -206,7 +206,7 @@ class InformationPrix extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: c.homeAccent.withOpacity(0.08),
+              color: c.homeAccent.withValues(alpha:0.08),
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(16),
                 bottomRight: Radius.circular(16),

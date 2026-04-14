@@ -125,7 +125,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                         children: [
                           Icon(
                             Icons.history,
-                            color: c.homeButtonPrimary.withOpacity(0.3),
+                            color: c.homeButtonPrimary.withValues(alpha:0.3),
                             size: 64,
                           ),
                           const SizedBox(height: 16),
@@ -271,7 +271,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
-            color: Config.colors.homeTextPrimary.withOpacity(0.4),
+            color: Config.colors.homeTextPrimary.withValues(alpha:0.4),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),

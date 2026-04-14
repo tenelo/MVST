@@ -185,25 +185,21 @@ Sur demande du Client, le Prestataire transmet les informations relatives à la 
                 ),
               ),
             ),
-            RadioListTile(
-              title: const Text('J\'accepte les termes d\'utilisation'),
-              value: true,
+            RadioGroup<bool>(
               groupValue: _termsAccepte,
-              onChanged: (value) {
-                setState(() {
-                  _termsAccepte = value!;
-                });
-              },
-            ),
-            RadioListTile(
-              title: const Text('Je n\'accepte pas les termes d\'utilisation'),
-              value: false,
-              groupValue: _termsAccepte,
-              onChanged: (bool? value) {
-                setState(() {
-                  _termsAccepte = value!;
-                });
-              },
+              onChanged: (value) => setState(() => _termsAccepte = value),
+              child: Column(
+                children: [
+                  RadioListTile(
+                    title: const Text('J\'accepte les termes d\'utilisation'),
+                    value: true,
+                  ),
+                  RadioListTile(
+                    title: const Text('Je n\'accepte pas les termes d\'utilisation'),
+                    value: false,
+                  ),
+                ],
+              ),
             ),
             SizedBox(
               width: double.infinity,

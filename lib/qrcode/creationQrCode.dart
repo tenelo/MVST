@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:mvst/config/config.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+// Exposées pour la génération PDF dans detailsTickets.dart
 Color? couleurA;
 Color? couleurB;
 
@@ -27,20 +28,24 @@ class CreationQrCode {
     final String message =
         "$idUtilisateur \n$idTicket \n$nom \n$contact \n$date \n$heure \n$place \n$depart->$destination  \n$prix \n$etatScann \n$datePourCalcule";
 
-    final FutureBuilder<ui.Image> qrFutureBuilder = FutureBuilder<ui.Image>(
+    // Les couleurs dépendent de l'état du scan, pas du chargement de l'image.
+    // Elles doivent être calculées une seule fois, avant le FutureBuilder,
+    // pour éviter que QrPainter reçoive color: null au premier rendu.
+    final Color qrCouleurA = etatScann == "scanné"
+        ? Config.colors.bleuA
+        : Config.colors.vertA;
+    final Color qrCouleurB = etatScann == "scanné"
+        ? Config.colors.bleuB
+        : Config.colors.vertB;
+
+    // Mise à jour des globales pour la génération PDF
+    couleurA = qrCouleurA;
+    couleurB = qrCouleurB;
+
+    return FutureBuilder<ui.Image>(
       future: _loadOverlayImage(),
       builder: (BuildContext ctx, AsyncSnapshot<ui.Image> snapshot) {
         const double size = 250.0;
-        if (snapshot.hasData) {
-          if (etatScann == "scanné") {
-            couleurA = Config.colors.bleuA;
-            couleurB = Config.colors.bleuB;
-          } else {
-            couleurA = Config.colors.vertA;
-            couleurB = Config.colors.vertB;
-          }
-        }
-
         return CustomPaint(
           size: const Size.square(size),
           painter: QrPainter(
@@ -48,14 +53,13 @@ class CreationQrCode {
             version: QrVersions.auto,
             eyeStyle: QrEyeStyle(
               eyeShape: QrEyeShape.square,
-              color: couleurA,
+              color: qrCouleurA,
             ),
             dataModuleStyle: QrDataModuleStyle(
               dataModuleShape: QrDataModuleShape.square,
-              color: couleurB,
+              color: qrCouleurB,
             ),
             embeddedImage: snapshot.data,
-            // taille de l'image dans le qrcode
             embeddedImageStyle: const QrEmbeddedImageStyle(
               size: Size.square(65),
             ),
@@ -63,8 +67,6 @@ class CreationQrCode {
         );
       },
     );
-
-    return qrFutureBuilder;
   }
 
   static Future<ui.Image> _loadOverlayImage() async {

@@ -48,11 +48,13 @@ dependencies:
 
 #--------------------
 
+  intl: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_native_splash: ^2.4.7
   flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^6.0.0
 
 #flutter pub run flutter_native_splash:create
 # theme vert :  "#004D40"

@@ -367,7 +367,7 @@ class _PetitesCartesState extends State<PetitesCartes> {
                   ),
                   content: Text(
                     'Votre profil est soumis à une restriction.\nVeuillez contacter l\'administrateur MVST Mobile.',
-                    style: TextStyle(color: c.homeTextPrimary.withOpacity(0.8)),
+                    style: TextStyle(color: c.homeTextPrimary.withValues(alpha:0.8)),
                   ),
                   actions: <Widget>[
                     TextButton(
@@ -432,7 +432,7 @@ class _PetitesCartesState extends State<PetitesCartes> {
     final bool isVip = widget.typeVoyage == 'vip';
     final Color cardColor = isVip
         ? const Color(0xFF1A3D2B)
-        : c.homeCardBackground.withOpacity(0.85);
+        : c.homeCardBackground.withValues(alpha:0.85);
     final Color borderColor = isVip
         ? const Color(0xFFFFD700)
         : c.homeBordurePetiteCarte;

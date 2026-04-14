@@ -176,7 +176,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         : c.homeButtonPrimary;
     final Color textColor = isVip
         ? Colors.white70
-        : c.homeTextPrimary.withOpacity(0.75);
+        : c.homeTextPrimary.withValues(alpha:0.75);
 
     final List<Map<String, String>> infos = isVip
         ? [
@@ -358,7 +358,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: c.homeAccent, width: 1.5),
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha:0.1),
                           ),
                           child: Center(
                             child: Text(
@@ -450,7 +450,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 ),
                 // ── Sélecteur de thème ──────────────────────────────────
                 _buildThemeSelector(context),
-                Divider(color: Colors.white.withOpacity(0.15), thickness: 1),
+                Divider(color: Colors.white.withValues(alpha:0.15), thickness: 1),
                 _buildDrawerItem(
                   icon: Icons.power_settings_new,
                   label: 'Déconnexion',
@@ -460,7 +460,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               ],
             ),
           ),
-          Divider(color: Colors.white.withOpacity(0.15), thickness: 1),
+          Divider(color: Colors.white.withValues(alpha:0.15), thickness: 1),
           _buildDrawerItem(
             icon: Icons.info_outlined,
             label: 'À propos du développeur',
@@ -496,7 +496,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           Text(
             'Thème',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha:0.5),
               fontSize: 12,
             ),
           ),
@@ -508,9 +508,9 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               final bool isActive = Config.activeTheme == t['mode'];
               return GestureDetector(
                 onTap: () {
-                  setState(
-                    () => Config.activeTheme = t['mode'] as AppThemeMode,
-                  );
+                  final mode = t['mode'] as AppThemeMode;
+                  setState(() => Config.activeTheme = mode);
+                  Config.sauvegarderTheme(mode);
                   Navigator.pop(context);
                 },
                 child: Container(
@@ -521,12 +521,12 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   decoration: BoxDecoration(
                     color: isActive
                         ? (t['color'] as Color)
-                        : Colors.white.withOpacity(0.08),
+                        : Colors.white.withValues(alpha:0.08),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isActive
                           ? (t['color'] as Color)
-                          : Colors.white.withOpacity(0.2),
+                          : Colors.white.withValues(alpha:0.2),
                       width: 1,
                     ),
                   ),
@@ -572,7 +572,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   }) {
     final color = isDestructive
         ? Colors.redAccent
-        : Colors.white.withOpacity(0.85);
+        : Colors.white.withValues(alpha:0.85);
     return ListTile(
       leading: Icon(icon, color: color, size: 22),
       title: Text(

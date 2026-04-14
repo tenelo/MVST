@@ -65,7 +65,7 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
                 children: [
                   Icon(
                     Icons.wifi_off_outlined,
-                    color: c.homeButtonPrimary.withOpacity(0.3),
+                    color: c.homeButtonPrimary.withValues(alpha:0.3),
                     size: 48,
                   ),
                   const SizedBox(height: 12),
@@ -128,7 +128,7 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: c.homeButtonPrimary.withOpacity(0.08),
+              color: c.homeButtonPrimary.withValues(alpha:0.08),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -159,7 +159,7 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
                   description,
                   maxLines: 4,
                   style: TextStyle(
-                    color: c.homeTextPrimary.withOpacity(0.75),
+                    color: c.homeTextPrimary.withValues(alpha:0.75),
                     fontSize: screenWidth * 0.032,
                     height: 1.5,
                   ),

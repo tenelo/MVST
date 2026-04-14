@@ -3,14 +3,9 @@ import 'package:flutter/material.dart';
 abstract class AppColors {
   // ── Couleurs de base ─────────────────────────────────────────────────────
   Color get couleurDfond;
-  Color get couleurtDuText;
-  Color get couleurDuCercle;
   Color get bleuClaire;
   Color get bleuFonce;
   Color get bleuFonce2;
-  Color get jauneClaire;
-  Color get jauneFonce;
-  Color get bar;
   Color get jauneBlanc;
   Color get vertA;
   Color get vertB;
@@ -29,8 +24,6 @@ abstract class AppColors {
   Color get authDialogBackground;
 
   // ── Home & Models ─────────────────────────────────────────────────────────
-  Color get commandeBackground;
-  Color get commandeCardBackground;
   Color get homeBackground;
   Color get homeCardBackground;
   Color get homeBordurePetiteCarte;
@@ -42,16 +35,11 @@ abstract class AppColors {
   Color get homeBandeauBackground;
   Color get homeBandeauBorder;
 
-  // ── Nouvelles couleurs design V2 ──────────────────────────────────────────
+  // ── Design V2 ─────────────────────────────────────────────────────────────
   Color get homeHeaderTop;
   Color get homeHeaderBottom;
-  Color get homeHeaderCurve;
-  Color get homeChipBackground;
-  Color get homeChipText;
   Color get homeGrandeCarte;
   Color get homeButtonPrimary;
-  Color get homeButtonSecondaryBorder;
-  Color get homeTabActivePill;
 }
 
 // ─── Thème Bleu  ───────────────────────────────────────────────────────────
@@ -61,22 +49,11 @@ class BlueColors implements AppColors {
   @override
   Color get couleurDfond => const Color(0xFF1288E9);
   @override
-  Color get couleurtDuText => const Color(0xFFFAF4B2);
-  @override
-  Color get couleurDuCercle => const Color(0xFFFAF4B2);
-  @override
   Color get bleuClaire => const Color(0xFF004f71);
   @override
   Color get bleuFonce => const Color(0xFF0a3752);
   @override
   Color get bleuFonce2 => const Color.fromARGB(255, 11, 0, 208);
-  //Color get bleuFonce2 => const Color(0xFF0D01F7);
-  @override
-  Color get jauneClaire => const Color(0xFFdec33e);
-  @override
-  Color get jauneFonce => const Color(0xFFffcb05);
-  @override
-  Color get bar => const Color(0xFF63A1BA);
   @override
   Color get jauneBlanc => const Color(0xFFFAF4B2);
   @override
@@ -110,15 +87,12 @@ class BlueColors implements AppColors {
 
   // ── Home ─────────────────────────────────────────────────────────────────
   @override
-  Color get commandeBackground => const Color(0xFF0D1B2A);
-  @override
-  Color get commandeCardBackground => const Color(0xFF1A2D3E);
-  @override
   Color get homeBackground => const Color(0xFFF4F7FB);
   @override
   Color get homeCardBackground => const Color(0xFFFFFFFF);
   @override
-  Color get homeBordurePetiteCarte => const Color.fromARGB(255, 149, 202, 255);
+  Color get homeBordurePetiteCarte =>
+      const Color.fromARGB(255, 149, 202, 255);
   @override
   Color get homeAccent => const Color(0xFFFFE082);
   @override
@@ -140,21 +114,10 @@ class BlueColors implements AppColors {
   @override
   Color get homeHeaderBottom => const Color(0xFF1E88E5);
   @override
-  Color get homeHeaderCurve => const Color(0xFF1565C0);
-  @override
-  Color get homeChipBackground => const Color(0xFFE8F0FE);
-  @override
-  Color get homeChipText => const Color(0xFF1A56C4);
-  @override
-  //Color get homeGrandeCarte => const Color(0xFFF0F6FF);
-  //255, 219, 233, 253
-  Color get homeGrandeCarte => const Color.fromARGB(92, 216, 231, 251);
+  Color get homeGrandeCarte =>
+      const Color.fromARGB(92, 216, 231, 251);
   @override
   Color get homeButtonPrimary => const Color(0xFF1565C0);
-  @override
-  Color get homeButtonSecondaryBorder => const Color(0xFF1565C0);
-  @override
-  Color get homeTabActivePill => const Color(0xFFE8F0FE);
 }
 
 // ─── Thème Vert  ───────────────────────────────────────────────────────────
@@ -164,21 +127,11 @@ class GreenColors implements AppColors {
   @override
   Color get couleurDfond => const Color(0xFF004D40);
   @override
-  Color get couleurtDuText => const Color(0xFFFAF4B2);
-  @override
-  Color get couleurDuCercle => const Color(0xFFFAF4B2);
-  @override
   Color get bleuClaire => const Color(0xFF80CBC4);
   @override
   Color get bleuFonce => const Color(0xFF00695C);
   @override
   Color get bleuFonce2 => const Color(0xFF004D40);
-  @override
-  Color get jauneClaire => const Color(0xFFA5D6A7);
-  @override
-  Color get jauneFonce => const Color(0xFF66BB6A);
-  @override
-  Color get bar => const Color(0xFF4DB6AC);
   @override
   Color get jauneBlanc => const Color(0xFFFAF4B2);
   @override
@@ -212,15 +165,12 @@ class GreenColors implements AppColors {
 
   // ── Home ─────────────────────────────────────────────────────────────────
   @override
-  Color get commandeBackground => const Color(0xFF0A1A12);
-  @override
-  Color get commandeCardBackground => const Color(0xFF152A1E);
-  @override
   Color get homeBackground => const Color(0xFFF4FBF7);
   @override
   Color get homeCardBackground => const Color(0xFFFFFFFF);
   @override
-  Color get homeBordurePetiteCarte => const Color.fromARGB(255, 201, 247, 217);
+  Color get homeBordurePetiteCarte =>
+      const Color.fromARGB(255, 201, 247, 217);
   @override
   Color get homeAccent => const Color(0xFFFFE082);
   @override
@@ -242,17 +192,7 @@ class GreenColors implements AppColors {
   @override
   Color get homeHeaderBottom => const Color(0xFF1B6B41);
   @override
-  Color get homeHeaderCurve => const Color(0xFF0D3D22);
-  @override
-  Color get homeChipBackground => const Color(0xFFE8F5EE);
-  @override
-  Color get homeChipText => const Color(0xFF1B6B41);
-  @override
   Color get homeGrandeCarte => const Color(0xFFF0FBF4);
   @override
   Color get homeButtonPrimary => const Color(0xFF1B6B41);
-  @override
-  Color get homeButtonSecondaryBorder => const Color(0xFF1B6B41);
-  @override
-  Color get homeTabActivePill => const Color(0xFFE8F5EE);
 }

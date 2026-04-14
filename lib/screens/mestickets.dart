@@ -140,7 +140,7 @@ class _MesTicketsState extends State<MesTickets> {
                               children: [
                                 Icon(
                                   Icons.receipt_long_outlined,
-                                  color: c.homeButtonPrimary.withOpacity(0.4),
+                                  color: c.homeButtonPrimary.withValues(alpha:0.4),
                                   size: 64,
                                 ),
                                 const SizedBox(height: 16),
@@ -156,7 +156,7 @@ class _MesTicketsState extends State<MesTickets> {
                                 Text(
                                   'Réservez votre premier voyage',
                                   style: TextStyle(
-                                    color: c.homeTextPrimary.withOpacity(0.5),
+                                    color: c.homeTextPrimary.withValues(alpha:0.5),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -218,20 +218,20 @@ class _MesTicketsState extends State<MesTickets> {
         ? const Color(0xFFFFD700)
         : isRecent
         ? c.homeButtonPrimary
-        : Colors.grey.withOpacity(0.4);
+        : Colors.grey.withValues(alpha:0.4);
 
     final Color accentColor = isVip
         ? const Color(0xFFFFD700)
         : isRecent
         ? c
               .homeButtonPrimary // ← bleu vif si date proche
-        : c.homeTextPrimary.withOpacity(0.4); // ← grisé si passé
+        : c.homeTextPrimary.withValues(alpha:0.4); // ← grisé si passé
 
     final Color textColor = isVip ? Colors.white : c.homeTextPrimary;
 
     final Color subTextColor = isVip
         ? Colors.white54
-        : c.homeTextPrimary.withOpacity(0.55);
+        : c.homeTextPrimary.withValues(alpha:0.55);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -271,10 +271,10 @@ class _MesTicketsState extends State<MesTickets> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isVip
-                    ? const Color(0xFFFFD700).withOpacity(0.15)
+                    ? const Color(0xFFFFD700).withValues(alpha:0.15)
                     : isRecent
-                    ? c.homeButtonPrimary.withOpacity(0.08)
-                    : Colors.grey.withOpacity(0.06),
+                    ? c.homeButtonPrimary.withValues(alpha:0.08)
+                    : Colors.grey.withValues(alpha:0.06),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -386,7 +386,7 @@ class _MesTicketsState extends State<MesTickets> {
                     child: CustomPaint(
                       painter: _DashedLinePainter(
                         color: isVip
-                            ? const Color(0xFFFFD700).withOpacity(0.3)
+                            ? const Color(0xFFFFD700).withValues(alpha:0.3)
                             : c.homeBordurePetiteCarte,
                       ),
                     ),
@@ -435,7 +435,7 @@ class _MesTicketsState extends State<MesTickets> {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: accentColor.withOpacity(0.1),
+                            color: accentColor.withValues(alpha:0.1),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: accentColor, width: 0.8),
                           ),
@@ -471,13 +471,13 @@ class _MesTicketsState extends State<MesTickets> {
   }) {
     return Row(
       children: [
-        Icon(icon, color: accentColor.withOpacity(0.7), size: 13),
+        Icon(icon, color: accentColor.withValues(alpha:0.7), size: 13),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
             label,
             style: TextStyle(
-              color: isBold ? textColor : textColor.withOpacity(0.85),
+              color: isBold ? textColor : textColor.withValues(alpha:0.85),
               fontSize: screenWidth * 0.031,
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             ),

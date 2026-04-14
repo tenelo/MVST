@@ -58,13 +58,9 @@ class _TicketsState extends State<Tickets> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (!_isNavigating) {
-          // Si l'utilisateur revient en arrière, lancer la fonction de nettoyage
-          await _netoyageEnCasDeFermeture();
-        }
-        return true;
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop && !_isNavigating) await _netoyageEnCasDeFermeture();
       },
       child: Scaffold(
         backgroundColor: Config.colors.homeBackground,
