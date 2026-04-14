@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -235,7 +237,8 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                                     decoration: const BoxDecoration(
                                       image: DecorationImage(
                                         image: AssetImage(
-                                            'assets/images/credAA.png'),
+                                          'assets/images/credAA.png',
+                                        ),
                                         fit: BoxFit.cover,
                                       ),
                                     ),
@@ -264,7 +267,11 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                                           "2% — un ticket de 8.000 coûtera 8.160",
                                           style: TextStyle(
                                             color: const Color.fromARGB(
-                                                255, 119, 118, 118),
+                                              255,
+                                              119,
+                                              118,
+                                              118,
+                                            ),
                                             fontWeight: FontWeight.bold,
                                             fontSize: screenWidth * 0.030,
                                           ),
@@ -274,7 +281,11 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                                           "2.5% — un ticket de 8.000 coûtera 8.200",
                                           style: TextStyle(
                                             color: const Color.fromARGB(
-                                                255, 119, 118, 118),
+                                              255,
+                                              119,
+                                              118,
+                                              118,
+                                            ),
                                             fontWeight: FontWeight.bold,
                                             fontSize: screenWidth * 0.030,
                                           ),
@@ -334,7 +345,11 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                                       titre: 'Paiement par MooV',
                                       pourcentage: 2.5 / 100,
                                       shadowColor: const Color.fromARGB(
-                                          255, 12, 92, 196),
+                                        255,
+                                        12,
+                                        92,
+                                        196,
+                                      ),
                                       screenWidth: screenWidth,
                                       screenHeight: screenHeight,
                                     ),
@@ -345,9 +360,10 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                               if (_isLoading) ...[
                                 SizedBox(height: screenHeight * 0.000),
                                 Center(
-                                    child: CircularProgressIndicator(
-                                  color: Config.colors.couleurDfond,
-                                )),
+                                  child: CircularProgressIndicator(
+                                    color: Config.colors.couleurDfond,
+                                  ),
+                                ),
                               ],
                             ],
                           ),
@@ -384,7 +400,8 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                                   decoration: const BoxDecoration(
                                     image: DecorationImage(
                                       image: AssetImage(
-                                          'assets/images/credAA.png'),
+                                        'assets/images/credAA.png',
+                                      ),
                                       fit: BoxFit.cover,
                                     ),
                                   ),
@@ -413,7 +430,11 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                                         "2% — un ticket de 8.000 coûtera 8.160",
                                         style: TextStyle(
                                           color: const Color.fromARGB(
-                                              255, 119, 118, 118),
+                                            255,
+                                            119,
+                                            118,
+                                            118,
+                                          ),
                                           fontWeight: FontWeight.bold,
                                           fontSize: screenWidth * 0.030,
                                         ),
@@ -423,7 +444,11 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                                         "2.5% — un ticket de 8.000 coûtera 8.200",
                                         style: TextStyle(
                                           color: const Color.fromARGB(
-                                              255, 119, 118, 118),
+                                            255,
+                                            119,
+                                            118,
+                                            118,
+                                          ),
                                           fontWeight: FontWeight.bold,
                                           fontSize: screenWidth * 0.030,
                                         ),
@@ -482,8 +507,12 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                                     label: 'frais 2.5%',
                                     titre: 'Paiement par MooV',
                                     pourcentage: 2.5 / 100,
-                                    shadowColor:
-                                        const Color.fromARGB(255, 12, 92, 196),
+                                    shadowColor: const Color.fromARGB(
+                                      255,
+                                      12,
+                                      92,
+                                      196,
+                                    ),
                                     screenWidth: screenWidth,
                                     screenHeight: screenHeight,
                                   ),
@@ -494,9 +523,10 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                             if (_isLoading) ...[
                               SizedBox(height: screenHeight * 0.010),
                               Center(
-                                  child: CircularProgressIndicator(
-                                color: Config.colors.couleurDfond,
-                              )),
+                                child: CircularProgressIndicator(
+                                  color: Config.colors.couleurDfond,
+                                ),
+                              ),
                             ],
                           ],
                         ),
@@ -509,7 +539,7 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
     );
   }
 
-// ── Widget opérateur réutilisable ──────────────────────────────────────────
+  // ── Widget opérateur réutilisable ──────────────────────────────────────────
   Widget _buildOperateur(
     BuildContext context,
     BlocCompteur initialiseBloc, {

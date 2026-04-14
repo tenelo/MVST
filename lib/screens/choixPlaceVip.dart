@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: unused_field, deprecated_member_use
 
 import 'dart:async';
 import 'dart:convert';
@@ -16,6 +16,7 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 
+// ignore: unused_element
 String? _id, _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
 IO.Socket? _socket;
 // ── Couleurs VIP ───────────────────────────────────────────────────────────────

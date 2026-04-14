@@ -61,8 +61,6 @@ class BlueColors implements AppColors {
   @override
   Color get couleurDfond => const Color(0xFF1288E9);
   @override
-  Color get couleurGriseCarteMesTickets => const Color(0xFF1288E9);
-  @override
   Color get couleurtDuText => const Color(0xFFFAF4B2);
   @override
   Color get couleurDuCercle => const Color(0xFFFAF4B2);
