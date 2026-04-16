@@ -1,300 +1,674 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:mvst/config/app_colors.dart';
 import 'package:mvst/config/config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:intl/intl.dart';
 
+// ── Catégories disponibles ─────────────────────────────────────────────────
+const List<_Categorie> _categories = [
+  _Categorie('Amélioration', Icons.build_circle_outlined),
+  _Categorie('Nouveau trajet', Icons.map_outlined),
+  _Categorie('Problème', Icons.warning_amber_outlined),
+  _Categorie('Compliment', Icons.star_outline_rounded),
+  _Categorie('Autre', Icons.chat_bubble_outline_rounded),
+];
+
+class _Categorie {
+  final String label;
+  final IconData icon;
+  const _Categorie(this.label, this.icon);
+}
+
+// ── Statuts affichés pour l'utilisateur ────────────────────────────────────
+const Map<String, _StatutInfo> _statuts = {
+  'en_attente': _StatutInfo(
+    'En attente',
+    Color(0xFFF59E0B),
+    Icons.hourglass_empty_rounded,
+  ),
+  'lu': _StatutInfo('Lu', Color(0xFF3B82F6), Icons.drafts_outlined),
+  'traite': _StatutInfo(
+    'Traité',
+    Color(0xFF10B981),
+    Icons.check_circle_outline_rounded,
+  ),
+};
+
+class _StatutInfo {
+  final String label;
+  final Color color;
+  final IconData icon;
+  const _StatutInfo(this.label, this.color, this.icon);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 class Suggestions extends StatefulWidget {
   const Suggestions({super.key, required this.idUtilisateur});
   final String idUtilisateur;
 
   @override
-  _SuggestionsState createState() => _SuggestionsState();
+  State<Suggestions> createState() => _SuggestionsState();
 }
 
-class _SuggestionsState extends State<Suggestions> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneNumberController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _messageController = TextEditingController();
+class _SuggestionsState extends State<Suggestions>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController _message = TextEditingController();
+  final FocusNode _messageFocus = FocusNode();
 
-  String? _nameError;
-  String? _phoneNumberError;
-  String? _emailError;
-  String? _messageError;
-
+  String _nomUtilisateur = '';
+  String _telephoneUtilisateur = '';
+  String _categorieSelectionnee = _categories[0].label;
   bool _isLoading = false;
+  bool _loadingProfil = true;
+  late TabController _tabController;
+
+  static const int _maxChars = 500;
 
   @override
   void initState() {
     super.initState();
-    getUserData();
+    _tabController = TabController(length: 2, vsync: this);
+    _message.addListener(() => setState(() {}));
+    _chargerProfil();
   }
 
-  Future<void> getUserData() async {
-    setState(() {
-      _isLoading = true;
-    });
+  @override
+  void dispose() {
+    _message.dispose();
+    _messageFocus.dispose();
+    _tabController.dispose();
+    super.dispose();
+  }
 
-    FirebaseFirestore _firestore = FirebaseFirestore.instance;
-    CollectionReference usersCollection = _firestore.collection('utilisateurs');
+  // ── Chargement du profil utilisateur ─────────────────────────────────────
+  Future<void> _chargerProfil() async {
     try {
-      QuerySnapshot querySnapshot = await usersCollection
+      final snap = await FirebaseFirestore.instance
+          .collection('utilisateurs')
           .where('id', isEqualTo: widget.idUtilisateur)
           .limit(1)
           .get();
+      if (snap.docs.isNotEmpty && mounted) {
+        final d = snap.docs.first.data();
+        setState(() {
+          _nomUtilisateur = '${d['nom'] ?? ''} ${d['prenoms'] ?? ''}'.trim();
+          _telephoneUtilisateur = d['telephone'] ?? '';
+          _loadingProfil = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingProfil = false);
+    }
+  }
 
-      if (querySnapshot.docs.isNotEmpty) {
-        DocumentSnapshot userDoc = querySnapshot.docs.first;
-        Map<String, dynamic>? userData =
-            userDoc.data() as Map<String, dynamic>?;
+  // ── Envoi de la suggestion ────────────────────────────────────────────────
+  Future<void> _envoyer() async {
+    if (_message.text.trim().isEmpty) return;
+    setState(() => _isLoading = true);
 
-        if (userData != null) {
-          var _noms = "${userData['nom']} ${userData['prenoms']}";
-          setState(() {
-            _nameController.text = _noms;
-            _phoneNumberController.text = userData['telephone'] ?? '';
-          });
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            duration: Duration(seconds: 8),
-            backgroundColor: Config.colors.bleuFonce2,
-            content: Text(
-              'Aucun utilisateur trouvé avec l\'ID "${widget.idUtilisateur}".',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
+    try {
+      // 1. Sauvegarde Firestore (pour le suivi utilisateur + admin)
+      await FirebaseFirestore.instance.collection('suggestions').add({
+        'idUtilisateur': widget.idUtilisateur,
+        'nom': _nomUtilisateur,
+        'telephone': _telephoneUtilisateur,
+        'categorie': _categorieSelectionnee,
+        'message': _message.text.trim(),
+        'statut': 'en_attente',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. Notification serveur PHP (existant — ne rien casser côté admin)
+      try {
+        await http.post(
+          Uri.parse('https://mvst.tenelo.cloud/suggestions.php'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'nomClient': _nomUtilisateur,
+            'telephoneClient': _telephoneUtilisateur,
+            'suggestion': '[$_categorieSelectionnee] ${_message.text.trim()}',
+          }),
         );
+      } catch (_) {
+        // PHP optionnel — si indisponible, Firestore suffit
+      }
+
+      if (mounted) {
+        _message.clear();
+        _tabController.animateTo(1); // bascule vers l'historique
+        _afficherSucces();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: Duration(seconds: 8),
-          backgroundColor: Config.colors.bleuFonce2,
-          content: Text(
-            'Erreur lors de la récupération des données de l\'utilisateur',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-      );
+      if (mounted) _afficherErreur();
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _afficherSucces() {
+    final c = Config.colors;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 4),
+        backgroundColor: c.homeButtonPrimary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+            SizedBox(width: 10),
+            Text(
+              'Suggestion envoyée, merci !',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _afficherErreur() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: const Text(
+          'Erreur lors de l\'envoi, réessayez.',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Suggestions',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
-        centerTitle: true,
-        backgroundColor: Color.fromRGBO(5, 82, 121, 0.518),
-      ),
-      body: _isLoading
-          ? Center(
-              child: SpinKitPouringHourGlassRefined(
-              color: Colors.blueGrey,
-            ))
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Laissez-nous vos suggestions :',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+      backgroundColor: c.homeBackground,
+      body: _loadingProfil
+          ? Center(child: CircularProgressIndicator(color: c.homeButtonPrimary))
+          : NestedScrollView(
+              headerSliverBuilder: (_, _) => [
+                SliverAppBar(
+                  expandedHeight: 160,
+                  pinned: true,
+                  backgroundColor: c.homeButtonPrimary,
+                  iconTheme: IconThemeData(color: c.homeAccent),
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [c.homeHeaderTop, c.homeButtonPrimary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Nom',
-                        border: const OutlineInputBorder(),
-                        errorText: _nameError,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _phoneNumberController,
-                      decoration: InputDecoration(
-                        labelText: 'Numéro de téléphone',
-                        border: const OutlineInputBorder(),
-                        errorText: _phoneNumberError,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      keyboardType: TextInputType.emailAddress,
-                      controller: _emailController,
-                      decoration: InputDecoration(
-                        labelText: 'Adresse email',
-                        border: const OutlineInputBorder(),
-                        errorText: _emailError,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      maxLines: 10,
-                      controller: _messageController,
-                      decoration: InputDecoration(
-                        labelText: 'Votre suggestion',
-                        border: const OutlineInputBorder(),
-                        errorText: _messageError,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          // Réinitialiser les messages d'erreur
-                          setState(() {
-                            _nameError = null;
-                            _phoneNumberError = null;
-                            _emailError = null;
-                            _messageError = null;
-                          });
-
-                          // Vérifier si tous les champs sont remplis
-                          if (_nameController.text.isEmpty) {
-                            setState(() {
-                              _nameError = 'Veuillez saisir votre nom.';
-                            });
-                          }
-                          if (_phoneNumberController.text.isEmpty) {
-                            setState(() {
-                              _phoneNumberError =
-                                  'Veuillez saisir votre numéro de téléphone.';
-                            });
-                          }
-                          if (_emailController.text.isEmpty) {
-                            setState(() {
-                              _emailError =
-                                  'Veuillez saisir votre adresse email.';
-                            });
-                          } else if (!_isValidEmail(_emailController.text)) {
-                            setState(() {
-                              _emailError = 'Adresse email invalide.';
-                            });
-                          }
-                          if (_messageController.text.isEmpty) {
-                            setState(() {
-                              _messageError =
-                                  'Veuillez saisir votre suggestion.';
-                            });
-                          }
-
-                          // Si tous les champs sont remplis, traiter les suggestions
-                          if (_nameController.text.isNotEmpty &&
-                              _phoneNumberController.text.isNotEmpty &&
-                              _emailController.text.isNotEmpty &&
-                              _isValidEmail(_emailController.text) &&
-                              _messageController.text.isNotEmpty) {
-                            // Traiter les suggestions
-                            setState(() => _isLoading = true);
-
-                            try {
-                              final response = await http.post(
-                                Uri.parse(
-                                    'https://mvst.tenelo.cloud/suggestions.php'),
-                                headers: {"Content-Type": "application/json"},
-                                body: jsonEncode({
-                                  "nomClient": _nameController.text,
-                                  "telephoneClient":
-                                      _phoneNumberController.text,
-                                  "suggestion": _messageController.text,
-                                }),
-                              );
-
-                              final data = jsonDecode(response.body);
-
-                              if (data['success'] == true) {
-                                _nameController.clear();
-                                _phoneNumberController.clear();
-                                _emailController.clear();
-                                _messageController.clear();
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.green,
-                                    content: Row(
-                                      children: const [
-                                        Icon(Icons.check_circle,
-                                            color: Colors.white),
-                                        SizedBox(width: 8),
-                                        Text('Merci pour votre suggestion !',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                afficherErreur(context, data['message']);
-                              }
-                            } catch (e) {
-                              afficherErreur(context, e);
-                            } finally {
-                              setState(() => _isLoading = false);
-                            }
-
-                            // Réinitialiser les champs après soumission
-                            _nameController.clear();
-                            _phoneNumberController.clear();
-                            _emailController.clear();
-                            _messageController.clear();
-
-                            // Afficher une confirmation à l'utilisateur
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Merci pour votre suggestion !'),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 8),
+                              Text(
+                                'Suggestions',
+                                style: TextStyle(
+                                  color: c.homeAccent,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Lobster',
+                                ),
                               ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Config.colors.bleuFonce2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            side: const BorderSide(color: Colors.blue),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Votre avis améliore le service',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.75),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: const Text(
-                          'Soumettre',
-                          style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
                       ),
                     ),
-                  ],
+                  ),
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(46),
+                    child: Container(
+                      color: c.homeButtonPrimary,
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorColor: Colors.white,
+                        indicatorWeight: 3,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: Colors.white.withValues(
+                          alpha: 0.55,
+                        ),
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        tabs: const [
+                          Tab(text: 'Nouvelle suggestion'),
+                          Tab(text: 'Mes envois'),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
+              ],
+              body: TabBarView(
+                controller: _tabController,
+                children: [_buildFormulaire(c), _buildHistorique(c)],
               ),
             ),
     );
   }
 
-  // Fonction pour valider le format de l'adresse email
-  bool _isValidEmail(String email) {
-    // Expression régulière pour vérifier le format de l'adresse email
-    final RegExp emailRegExp = RegExp(
-        r"^[a-zA-Z0-9.!#$%&\'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$");
-    return emailRegExp.hasMatch(email);
+  // ── Onglet 1 : Formulaire ─────────────────────────────────────────────────
+  Widget _buildFormulaire(AppColors c) {
+    final int restants = _maxChars - _message.text.length;
+    final bool pret =
+        _message.text.trim().isNotEmpty && _message.text.length <= _maxChars;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Expéditeur ───────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: c.homeButtonPrimary.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: c.homeButtonPrimary.withValues(alpha: 0.15),
+                  child: Icon(
+                    Icons.person_outline,
+                    color: c.homeButtonPrimary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _nomUtilisateur.isNotEmpty
+                            ? _nomUtilisateur
+                            : 'Utilisateur',
+                        style: TextStyle(
+                          color: c.homeTextPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (_telephoneUtilisateur.isNotEmpty)
+                        Text(
+                          _telephoneUtilisateur,
+                          style: TextStyle(
+                            color: c.homeTextPrimary.withValues(alpha: 0.5),
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Catégorie ────────────────────────────────────────────────────
+          Text(
+            'CATÉGORIE',
+            style: TextStyle(
+              color: c.homeTextPrimary.withValues(alpha: 0.45),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _categories.map((cat) {
+                final bool selected = cat.label == _categorieSelectionnee;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () =>
+                        setState(() => _categorieSelectionnee = cat.label),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? c.homeButtonPrimary
+                            : c.homeButtonPrimary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: selected
+                              ? c.homeButtonPrimary
+                              : c.homeButtonPrimary.withValues(alpha: 0.2),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            cat.icon,
+                            size: 14,
+                            color: selected
+                                ? Colors.white
+                                : c.homeButtonPrimary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            cat.label,
+                            style: TextStyle(
+                              color: selected
+                                  ? Colors.white
+                                  : c.homeButtonPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Message ──────────────────────────────────────────────────────
+          Text(
+            'VOTRE MESSAGE',
+            style: TextStyle(
+              color: c.homeTextPrimary.withValues(alpha: 0.45),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _message,
+            focusNode: _messageFocus,
+            maxLines: 7,
+            maxLength: _maxChars,
+            style: TextStyle(
+              color: c.homeTextPrimary,
+              fontSize: 14,
+              height: 1.5,
+            ),
+            decoration: InputDecoration(
+              hintText:
+                  'Décrivez votre suggestion, idée ou problème rencontré...',
+              hintStyle: TextStyle(
+                color: c.homeTextPrimary.withValues(alpha: 0.35),
+                fontSize: 13,
+              ),
+              filled: true,
+              fillColor: c.homeCardBackground,
+              counterStyle: TextStyle(
+                color: restants < 50
+                    ? Colors.redAccent
+                    : c.homeTextPrimary.withValues(alpha: 0.4),
+                fontSize: 11,
+              ),
+              contentPadding: const EdgeInsets.all(16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: c.homeButtonPrimary, width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: c.homeTextPrimary.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Bouton envoyer ───────────────────────────────────────────────
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: (_isLoading || !pret) ? null : _envoyer,
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, size: 18),
+              label: Text(_isLoading ? 'Envoi...' : 'Envoyer la suggestion'),
+              style: FilledButton.styleFrom(
+                backgroundColor: pret
+                    ? c.homeButtonPrimary
+                    : c.homeButtonPrimary.withValues(alpha: 0.4),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Onglet 2 : Historique ─────────────────────────────────────────────────
+  Widget _buildHistorique(AppColors c) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('suggestions')
+          .where('idUtilisateur', isEqualTo: widget.idUtilisateur)
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(color: c.homeButtonPrimary),
+          );
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+
+        if (docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 56,
+                  color: c.homeButtonPrimary.withValues(alpha: 0.25),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Aucune suggestion envoyée',
+                  style: TextStyle(
+                    color: c.homeTextPrimary.withValues(alpha: 0.5),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, i) {
+            final data = docs[i].data() as Map<String, dynamic>;
+            final String categorie = data['categorie'] ?? 'Autre';
+            final String message = data['message'] ?? '';
+            final String statut = data['statut'] ?? 'en_attente';
+            final Timestamp? ts = data['createdAt'];
+            final String date = ts != null
+                ? DateFormat('d MMM y · HH:mm', 'fr_FR').format(ts.toDate())
+                : '—';
+
+            final statutInfo = _statuts[statut] ?? _statuts['en_attente']!;
+            final catInfo = _categories.firstWhere(
+              (c) => c.label == categorie,
+              orElse: () => _categories.last,
+            );
+
+            return Container(
+              decoration: BoxDecoration(
+                color: c.homeCardBackground,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: c.homeButtonPrimary.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── En-tête : catégorie + statut ─────────────────────
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: c.homeButtonPrimary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                catInfo.icon,
+                                size: 12,
+                                color: c.homeButtonPrimary,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                categorie,
+                                style: TextStyle(
+                                  color: c.homeButtonPrimary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statutInfo.color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                statutInfo.icon,
+                                size: 12,
+                                color: statutInfo.color,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                statutInfo.label,
+                                style: TextStyle(
+                                  color: statutInfo.color,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // ── Message ──────────────────────────────────────────
+                    Text(
+                      message,
+                      style: TextStyle(
+                        color: c.homeTextPrimary,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+
+                    // ── Date ─────────────────────────────────────────────
+                    Text(
+                      date,
+                      style: TextStyle(
+                        color: c.homeTextPrimary.withValues(alpha: 0.4),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

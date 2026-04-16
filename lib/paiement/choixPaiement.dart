@@ -210,7 +210,7 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
               ? SingleChildScrollView(
                   child: Container(
                     color: Config.colors.homeBandeauBorder,
-                    height: screenHeight,
+                    constraints: BoxConstraints(minHeight: screenHeight),
                     width: screenWidth,
                     child: Padding(
                       padding: EdgeInsets.symmetric(
@@ -371,9 +371,10 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                     ),
                   ),
                 )
-              : Container(
+              : SingleChildScrollView(
+                  child: Container(
                   color: const Color.fromARGB(197, 177, 241, 249),
-                  height: screenHeight,
+                  constraints: BoxConstraints(minHeight: screenHeight),
                   width: screenWidth,
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -533,6 +534,7 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                     ),
                   ),
                 ),
+              ),
         ),
       ),
     );

@@ -28,9 +28,6 @@ class CreationQrCode {
     final String message =
         "$idUtilisateur \n$idTicket \n$nom \n$contact \n$date \n$heure \n$place \n$depart->$destination  \n$prix \n$etatScann \n$datePourCalcule";
 
-    // Les couleurs dépendent de l'état du scan, pas du chargement de l'image.
-    // Elles doivent être calculées une seule fois, avant le FutureBuilder,
-    // pour éviter que QrPainter reçoive color: null au premier rendu.
     final Color qrCouleurA = etatScann == "scanné"
         ? Config.colors.bleuA
         : Config.colors.vertA;
@@ -61,7 +58,7 @@ class CreationQrCode {
             ),
             embeddedImage: snapshot.data,
             embeddedImageStyle: const QrEmbeddedImageStyle(
-              size: Size.square(65),
+              size: Size.square(52),
             ),
           ),
         );

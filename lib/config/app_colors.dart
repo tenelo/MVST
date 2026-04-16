@@ -40,6 +40,8 @@ abstract class AppColors {
   Color get homeHeaderBottom;
   Color get homeGrandeCarte;
   Color get homeButtonPrimary;
+  Color get couleurInitiales;
+  Color get couleurTicket;
 }
 
 // ─── Thème Bleu  ───────────────────────────────────────────────────────────
@@ -91,8 +93,7 @@ class BlueColors implements AppColors {
   @override
   Color get homeCardBackground => const Color(0xFFFFFFFF);
   @override
-  Color get homeBordurePetiteCarte =>
-      const Color.fromARGB(255, 149, 202, 255);
+  Color get homeBordurePetiteCarte => const Color.fromARGB(255, 149, 202, 255);
   @override
   Color get homeAccent => const Color(0xFFFFE082);
   @override
@@ -114,10 +115,14 @@ class BlueColors implements AppColors {
   @override
   Color get homeHeaderBottom => const Color(0xFF1E88E5);
   @override
-  Color get homeGrandeCarte =>
-      const Color.fromARGB(92, 216, 231, 251);
+  Color get homeGrandeCarte => const Color.fromARGB(92, 216, 231, 251);
   @override
   Color get homeButtonPrimary => const Color(0xFF1565C0);
+  @override
+  Color get couleurTicket => const Color.fromARGB(255, 135, 213, 241);
+  //Color get couleurTicket => const Color.fromARGB(255, 66, 194, 192);
+  @override
+  Color get couleurInitiales => const Color.fromARGB(255, 11, 150, 242);
 }
 
 // ─── Thème Vert  ───────────────────────────────────────────────────────────
@@ -169,8 +174,7 @@ class GreenColors implements AppColors {
   @override
   Color get homeCardBackground => const Color(0xFFFFFFFF);
   @override
-  Color get homeBordurePetiteCarte =>
-      const Color.fromARGB(255, 201, 247, 217);
+  Color get homeBordurePetiteCarte => const Color.fromARGB(255, 201, 247, 217);
   @override
   Color get homeAccent => const Color(0xFFFFE082);
   @override
@@ -195,4 +199,8 @@ class GreenColors implements AppColors {
   Color get homeGrandeCarte => const Color(0xFFF0FBF4);
   @override
   Color get homeButtonPrimary => const Color(0xFF1B6B41);
+  @override
+  Color get couleurTicket => const Color.fromARGB(255, 0, 208, 184);
+  @override
+  Color get couleurInitiales => const Color.fromARGB(255, 2, 190, 93);
 }

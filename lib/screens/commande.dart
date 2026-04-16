@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -10,6 +12,7 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
 import 'package:mvst/screens/home.dart';
+import 'package:mvst/screens/home_v1.dart';
 import 'package:mvst/screens/choixPlaceVip.dart';
 
 String? dateFormatee, idMois, idMoisAnnee, idAnnee;
@@ -91,7 +94,7 @@ class _CommandeState extends State<Commande> {
               color: c.homeCardBackground,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: c.homeBordurePetiteCarte.withValues(alpha:0.4),
+                color: c.homeBordurePetiteCarte.withValues(alpha: 0.4),
                 width: 1,
               ),
             ),
@@ -104,7 +107,7 @@ class _CommandeState extends State<Commande> {
                   height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: c.homeAccent.withValues(alpha:0.15),
+                    color: c.homeAccent.withValues(alpha: 0.15),
                   ),
                   child: Icon(
                     Icons.directions_bus,
@@ -156,6 +159,7 @@ class _CommandeState extends State<Commande> {
                           });
                         },
                         style: OutlinedButton.styleFrom(
+                          backgroundColor: c.homeBackground,
                           side: BorderSide(color: c.homeBordurePetiteCarte),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -205,7 +209,7 @@ class _CommandeState extends State<Commande> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: c.homeBackground.withValues(alpha:0.5),
+        color: c.homeBackground.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -255,9 +259,12 @@ class _CommandeState extends State<Commande> {
                       ? const Color(0xFFFFD700)
                       : c.homeButtonPrimary,
                 ),
-              ), dialogTheme: DialogThemeData(backgroundColor: _isVip
-                  ? const Color(0xFF1A1A2E)
-                  : Colors.white),
+              ),
+              dialogTheme: DialogThemeData(
+                backgroundColor: _isVip
+                    ? const Color(0xFF1A1A2E)
+                    : Colors.white,
+              ),
             ),
             child: MediaQuery(
               data: MediaQuery.of(
@@ -309,8 +316,8 @@ class _CommandeState extends State<Commande> {
 
           // ── AppBar ──────────────────────────────────────────────────────
           appBar: AppBar(
-            backgroundColor: headerColor,
-            iconTheme: IconThemeData(color: accentColor),
+            backgroundColor: c.authButtonDisabled,
+            iconTheme: IconThemeData(color: c.homeAccent),
             centerTitle: true,
             title: Center(
               child: Row(
@@ -331,7 +338,7 @@ class _CommandeState extends State<Commande> {
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Icon(
                       Icons.airport_shuttle_sharp,
-                      color: accentColor,
+                      color: c.homeAccent,
                       size: 14,
                     ),
                   ),
@@ -353,13 +360,13 @@ class _CommandeState extends State<Commande> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha:0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       '${widget.prixDuBillet} f',
                       style: TextStyle(
-                        color: accentColor,
+                        color: c.homeAccent,
                         fontSize: screenWidth * 0.035,
                         fontWeight: FontWeight.bold,
                       ),
@@ -416,7 +423,7 @@ class _CommandeState extends State<Commande> {
                               style: TextStyle(
                                 color: _isVip
                                     ? Colors.white54
-                                    : c.homeTextPrimary.withValues(alpha:0.5),
+                                    : c.homeTextPrimary.withValues(alpha: 0.5),
                                 fontSize: 11,
                               ),
                             ),
@@ -446,7 +453,7 @@ class _CommandeState extends State<Commande> {
                               style: TextStyle(
                                 color: _isVip
                                     ? Colors.white54
-                                    : c.homeTextPrimary.withValues(alpha:0.5),
+                                    : c.homeTextPrimary.withValues(alpha: 0.5),
                                 fontSize: 11,
                               ),
                             ),
@@ -478,8 +485,9 @@ class _CommandeState extends State<Commande> {
                     icone: Icons.person_outline,
                     c: c,
                     validator: (value) {
-                      if (value == null || value.isEmpty)
+                      if (value == null || value.isEmpty) {
                         return 'Veuillez entrer votre nom';
+                      }
                       return null;
                     },
                   ),
@@ -493,8 +501,9 @@ class _CommandeState extends State<Commande> {
                     keyboardType: TextInputType.phone,
                     c: c,
                     validator: (value) {
-                      if (value == null || value.isEmpty)
+                      if (value == null || value.isEmpty) {
                         return 'Veuillez entrer votre contact';
+                      }
                       return null;
                     },
                   ),
@@ -560,17 +569,17 @@ class _CommandeState extends State<Commande> {
                               }
                             },
                       icon: _isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
-                                color: Colors.white,
+                                color: c.homeAccent,
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.event_seat_outlined,
-                              color: Colors.white,
+                              color: c.homeAccent,
                               size: 18,
                             ),
                       label: Text(
@@ -586,8 +595,8 @@ class _CommandeState extends State<Commande> {
                                   ? const Color(0xFFB8860B)
                                   : const Color(0xFFFFD700)
                             : _isLoading
-                            ? c.homeButtonPrimary.withValues(alpha:0.5)
-                            : c.homeButtonPrimary,
+                            ? c.authButtonDisabled.withValues(alpha: 0.5)
+                            : c.authButtonDisabled,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -622,7 +631,7 @@ class _CommandeState extends State<Commande> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
-          color: c.homeTextPrimary.withValues(alpha:0.8),
+          color: c.homeTextPrimary.withValues(alpha: 0.8),
           fontSize: 15,
         ),
         prefixIcon: Icon(
@@ -639,15 +648,15 @@ class _CommandeState extends State<Commande> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-            color: c.homeBordurePetiteCarte.withValues(alpha:0.4),
+            color: c.homeBordurePetiteCarte.withValues(alpha: 0.4),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
             color: _isVip
-                ? const Color(0xFFFFD700).withValues(alpha:0.3)
-                : c.homeBordurePetiteCarte.withValues(alpha:0.3),
+                ? const Color(0xFFFFD700).withValues(alpha: 0.3)
+                : c.homeBordurePetiteCarte.withValues(alpha: 0.3),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -676,7 +685,7 @@ class _CommandeState extends State<Commande> {
       decoration: InputDecoration(
         labelText: 'Date de départ',
         labelStyle: TextStyle(
-          color: c.homeTextPrimary.withValues(alpha:0.8),
+          color: c.homeTextPrimary.withValues(alpha: 0.8),
           fontSize: 15,
         ),
         prefixIcon: Icon(
@@ -693,15 +702,15 @@ class _CommandeState extends State<Commande> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-            color: c.homeBordurePetiteCarte.withValues(alpha:0.4),
+            color: c.homeBordurePetiteCarte.withValues(alpha: 0.4),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
             color: _isVip
-                ? const Color(0xFFFFD700).withValues(alpha:0.3)
-                : c.homeBordurePetiteCarte.withValues(alpha:0.3),
+                ? const Color(0xFFFFD700).withValues(alpha: 0.3)
+                : c.homeBordurePetiteCarte.withValues(alpha: 0.3),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -729,7 +738,7 @@ class _CommandeState extends State<Commande> {
       decoration: InputDecoration(
         labelText: 'Heure de départ',
         labelStyle: TextStyle(
-          color: c.homeTextPrimary.withValues(alpha:0.8),
+          color: c.homeTextPrimary.withValues(alpha: 0.8),
           fontSize: 13,
         ),
         prefixIcon: Icon(
@@ -746,15 +755,15 @@ class _CommandeState extends State<Commande> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-            color: c.homeBordurePetiteCarte.withValues(alpha:0.4),
+            color: c.homeBordurePetiteCarte.withValues(alpha: 0.4),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
             color: _isVip
-                ? const Color(0xFFFFD700).withValues(alpha:0.3)
-                : c.homeBordurePetiteCarte.withValues(alpha:0.3),
+                ? const Color(0xFFFFD700).withValues(alpha: 0.3)
+                : c.homeBordurePetiteCarte.withValues(alpha: 0.3),
           ),
         ),
         focusedBorder: OutlineInputBorder(

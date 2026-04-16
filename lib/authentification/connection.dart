@@ -43,8 +43,10 @@ class _LoginState extends State<Login> {
             backgroundColor: Color.fromARGB(255, 249, 54, 6),
             content: Text(
               'Numéro incorrect ou compte inexistant.',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         );
@@ -182,7 +184,9 @@ class _LoginState extends State<Login> {
                               if (_formKey.currentState!.validate()) {
                                 setState(() => _isLoading = true);
                                 await sauthentifier(
-                                    context, _phoneNumberController.text);
+                                  context,
+                                  _phoneNumberController.text,
+                                );
                               }
                             },
                       child: _isLoading
@@ -211,10 +215,12 @@ class _LoginState extends State<Login> {
                   Row(
                     children: [
                       const Expanded(
-                          child: Divider(color: Colors.white12, thickness: 1)),
+                        child: Divider(color: Colors.white12, thickness: 1),
+                      ),
                       Padding(
                         padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.03),
+                          horizontal: screenWidth * 0.03,
+                        ),
                         child: Text(
                           'ou',
                           style: TextStyle(
@@ -224,7 +230,8 @@ class _LoginState extends State<Login> {
                         ),
                       ),
                       const Expanded(
-                          child: Divider(color: Colors.white12, thickness: 1)),
+                        child: Divider(color: Colors.white12, thickness: 1),
+                      ),
                     ],
                   ),
 

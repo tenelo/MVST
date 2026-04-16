@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesFonctions.dart';
 import 'package:mvst/screens/detailsTickets.dart';
+import 'package:ticket_material/ticket_material.dart';
 
 DateTime? dateActuelle = DateTime.now();
 DateTime? dateDemain = DateTime.utc(
@@ -73,7 +74,7 @@ class _MesTicketsState extends State<MesTickets> {
         throw Exception('Erreur de connexion au serveur.');
       }
     } catch (e) {
-      afficherErreur(context, e);
+      if (mounted) afficherErreur(context, e);
       return [];
     }
   }
@@ -140,7 +141,9 @@ class _MesTicketsState extends State<MesTickets> {
                               children: [
                                 Icon(
                                   Icons.receipt_long_outlined,
-                                  color: c.homeButtonPrimary.withValues(alpha:0.4),
+                                  color: c.homeButtonPrimary.withValues(
+                                    alpha: 0.4,
+                                  ),
                                   size: 64,
                                 ),
                                 const SizedBox(height: 16),
@@ -156,7 +159,9 @@ class _MesTicketsState extends State<MesTickets> {
                                 Text(
                                   'Réservez votre premier voyage',
                                   style: TextStyle(
-                                    color: c.homeTextPrimary.withValues(alpha:0.5),
+                                    color: c.homeTextPrimary.withValues(
+                                      alpha: 0.5,
+                                    ),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -211,247 +216,213 @@ class _MesTicketsState extends State<MesTickets> {
   }) {
     final c = Config.colors;
 
-    // ── Couleurs selon type et date ───────────────────────────────────────
-    final Color cardBg = isVip ? const Color(0xFF12122A) : c.homeCardBackground;
+    // Vérifier si la date du ticket est passée
+    final bool isDatePassed = _isTicketDatePassed(ticket['date']);
 
-    final Color cardBorder = isVip
-        ? const Color(0xFFFFD700)
-        : isRecent
-        ? c.homeButtonPrimary
-        : Colors.grey.withValues(alpha:0.4);
+    // Si la date est passée, appliquer un filtre gris
+    final Color cardBg = isVip
+        ? (isDatePassed ? Colors.grey[800]! : const Color(0xFF12122A))
+        : (isDatePassed ? Colors.grey[300]! : c.homeBandeauBackground);
 
     final Color accentColor = isVip
-        ? const Color(0xFFFFD700)
-        : isRecent
-        ? c
-              .homeButtonPrimary // ← bleu vif si date proche
-        : c.homeTextPrimary.withValues(alpha:0.4); // ← grisé si passé
+        ? (isDatePassed ? Colors.grey[500]! : const Color(0xFFFFD700))
+        : (isDatePassed
+              ? Colors.grey[400]!
+              : (isRecent
+                    ? c.homeButtonPrimary
+                    : c.homeTextPrimary.withValues(alpha: 0.4)));
 
-    final Color textColor = isVip ? Colors.white : c.homeTextPrimary;
+    final Color textColor = isVip
+        ? (isDatePassed ? Colors.grey[400]! : Colors.white)
+        : (isDatePassed ? Colors.black : c.homeTextPrimary);
 
     final Color subTextColor = isVip
-        ? Colors.white54
-        : c.homeTextPrimary.withValues(alpha:0.55);
+        ? (isDatePassed ? Colors.grey[500]! : Colors.white54)
+        : (isDatePassed ? Colors.black : c.homeTextPrimary);
 
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DetailsTickets(
-            idTicket: ticket['documentId'],
-            idUtilisateur: ticket['idUtilisateur'],
-            nom: ticket['nom'],
-            contact: ticket['telephone'],
-            date: ticket['date'],
-            heure: ticket['heure'],
-            depart: ticket['depart'],
-            destination: ticket['destination'],
-            place: ticket['place'],
-            etatScann: ticket['etatScanne'],
-            statut: ticket['statut'],
-            prixTicket: ticket['prixDuTicket'].toString(),
-            datePourCalcule: ticket['datePourCalcule'] != null
-                ? DateTime.parse(ticket['datePourCalcule'])
-                : DateTime.now(),
-            typeVoyage: typeVoyage,
-          ),
+    void ouvrirDetails() => Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetailsTickets(
+          idTicket: ticket['documentId'],
+          idUtilisateur: ticket['idUtilisateur'],
+          nom: ticket['nom'],
+          contact: ticket['telephone'],
+          date: ticket['date'],
+          heure: ticket['heure'],
+          depart: ticket['depart'],
+          destination: ticket['destination'],
+          place: ticket['place'],
+          etatScann: ticket['etatScanne'],
+          statut: ticket['statut'],
+          prixTicket: ticket['prixDuTicket'].toString(),
+          datePourCalcule: ticket['datePourCalcule'] != null
+              ? DateTime.parse(ticket['datePourCalcule'])
+              : DateTime.now(),
+          typeVoyage: typeVoyage,
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cardBorder, width: isRecent ? 1.5 : 1),
-        ),
+    );
+
+    return TicketMaterial(
+      height: 110,
+      colorBackground: cardBg,
+      radiusBorder: 14,
+      flexLefSize: 72,
+      flexMaskSize: 6,
+      flexRightSize: 22,
+      colorShadow: accentColor,
+      shadowSize: 3,
+      tapHandler: ouvrirDetails,
+
+      // ── Partie gauche : infos trajet ──────────────────────────────────
+      leftChild: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // ── Bandeau supérieur coloré ─────────────────────────────────
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isVip
-                    ? const Color(0xFFFFD700).withValues(alpha:0.15)
-                    : isRecent
-                    ? c.homeButtonPrimary.withValues(alpha:0.08)
-                    : Colors.grey.withValues(alpha:0.06),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // ── Trajet ─────────────────────────────────────────
-                  Row(
-                    children: [
-                      Text(
-                        ticket['depart'],
-                        style: TextStyle(
-                          color: accentColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: screenWidth * 0.035,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Icon(
-                          Icons.arrow_forward,
-                          color: accentColor,
-                          size: 14,
-                        ),
-                      ),
-                      Text(
-                        ticket['destination'],
-                        style: TextStyle(
-                          color: accentColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: screenWidth * 0.035,
-                        ),
-                      ),
-                    ],
+            // Trajet
+            Row(
+              children: [
+                Text(
+                  ticket['depart'],
+                  style: TextStyle(
+                    color: accentColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenWidth * 0.036,
                   ),
-                  // ── Badge VIP ou statut ────────────────────────────
-                  if (isVip)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFD700),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        '★ VIP',
-                        style: TextStyle(
-                          color: Color(0xFF12122A),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: accentColor,
+                    size: 14,
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    ticket['destination'],
+                    style: TextStyle(
+                      color: accentColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: screenWidth * 0.036,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (isVip) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD700),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      '★ VIP',
+                      style: TextStyle(
+                        color: Color(0xFF12122A),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
                       ),
                     ),
+                  ),
                 ],
+              ],
+            ),
+            // Date
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_outlined,
+                  color: accentColor.withValues(alpha: 0.7),
+                  size: 12,
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    ticket['date'],
+                    style: TextStyle(
+                      color: subTextColor,
+                      fontSize: screenWidth * 0.029,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            // Heure + Siège
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time_outlined,
+                  color: accentColor.withValues(alpha: 0.7),
+                  size: 12,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '${ticket['heure']} h',
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenWidth * 0.030,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(
+                  Icons.event_seat_outlined,
+                  color: accentColor.withValues(alpha: 0.7),
+                  size: 12,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  'Siège ${ticket['place']}',
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenWidth * 0.030,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+
+      // ── Partie droite : logo + bouton ─────────────────────────────────
+      rightChild: GestureDetector(
+        onTap: ouvrirDetails,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'MVST',
+              style: TextStyle(
+                color: accentColor,
+                fontFamily: 'Lobster',
+                fontSize: screenWidth * 0.048,
               ),
             ),
-
-            // ── Corps du ticket ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  // ── Infos principales ─────────────────────────────
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _infoRow(
-                          icon: Icons.calendar_today_outlined,
-                          label: ticket['date'],
-                          textColor: textColor,
-                          subColor: subTextColor,
-                          accentColor: accentColor,
-                          screenWidth: screenWidth,
-                        ),
-                        const SizedBox(height: 6),
-                        _infoRow(
-                          icon: Icons.access_time_outlined,
-                          label: '${ticket['heure']} h',
-                          textColor: textColor,
-                          subColor: subTextColor,
-                          accentColor: accentColor,
-                          screenWidth: screenWidth,
-                          isBold: true,
-                        ),
-                        const SizedBox(height: 6),
-                        _infoRow(
-                          icon: Icons.event_seat_outlined,
-                          label: 'Siège N° ${ticket['place']}',
-                          textColor: textColor,
-                          subColor: subTextColor,
-                          accentColor: accentColor,
-                          screenWidth: screenWidth,
-                          isBold: true,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ── Séparateur pointillé ───────────────────────────
-                  Container(
-                    width: 1,
-                    height: 70,
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                    child: CustomPaint(
-                      painter: _DashedLinePainter(
-                        color: isVip
-                            ? const Color(0xFFFFD700).withValues(alpha:0.3)
-                            : c.homeBordurePetiteCarte,
-                      ),
-                    ),
-                  ),
-
-                  // ── Logo + bouton ──────────────────────────────────
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'MVST',
-                        style: TextStyle(
-                          color: accentColor,
-                          fontFamily: 'Lobster',
-                          fontSize: screenWidth * 0.055,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailsTickets(
-                              idTicket: ticket['documentId'],
-                              idUtilisateur: ticket['idUtilisateur'],
-                              nom: ticket['nom'],
-                              contact: ticket['telephone'],
-                              date: ticket['date'],
-                              heure: ticket['heure'],
-                              depart: ticket['depart'],
-                              destination: ticket['destination'],
-                              place: ticket['place'],
-                              etatScann: ticket['etatScanne'],
-                              statut: ticket['statut'],
-                              prixTicket: ticket['prixDuTicket'].toString(),
-                              datePourCalcule: ticket['datePourCalcule'] != null
-                                  ? DateTime.parse(ticket['datePourCalcule'])
-                                  : DateTime.now(),
-                              typeVoyage: typeVoyage,
-                            ),
-                          ),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: accentColor.withValues(alpha:0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: accentColor, width: 0.8),
-                          ),
-                          child: Text(
-                            'Détails',
-                            style: TextStyle(
-                              color: accentColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: accentColor, width: 0.8),
+              ),
+              child: Text(
+                'Détails',
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -459,55 +430,25 @@ class _MesTicketsState extends State<MesTickets> {
       ),
     );
   }
-
-  Widget _infoRow({
-    required IconData icon,
-    required String label,
-    required Color textColor,
-    required Color subColor,
-    required Color accentColor,
-    required double screenWidth,
-    bool isBold = false,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, color: accentColor.withValues(alpha:0.7), size: 13),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isBold ? textColor : textColor.withValues(alpha:0.85),
-              fontSize: screenWidth * 0.031,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
-// ── Séparateur pointillé ───────────────────────────────────────────────────────
-class _DashedLinePainter extends CustomPainter {
-  final Color color;
-  _DashedLinePainter({required this.color});
+// Méthode pour vérifier si la date est passée
+bool _isTicketDatePassed(String dateString) {
+  try {
+    final DateFormat formatter = DateFormat('EEEE d MMMM y', 'fr_FR');
+    final DateTime ticketDate = formatter.parse(dateString);
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-    double y = 0;
-    const double dashHeight = 4;
-    const double gapHeight = 4;
-    while (y < size.height) {
-      canvas.drawLine(Offset(0, y), Offset(0, y + dashHeight), paint);
-      y += dashHeight + gapHeight;
-    }
+    // Date d'aujourd'hui (sans l'heure)
+    final DateTime today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+
+    // Comparer les dates
+    return ticketDate.isBefore(today);
+  } catch (e) {
+    // Si erreur de parsing, considérer comme non expiré
+    return false;
   }
-
-  @override
-  bool shouldRepaint(_DashedLinePainter oldDelegate) => false;
 }

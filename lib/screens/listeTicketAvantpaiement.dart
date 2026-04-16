@@ -2,27 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesfonctions.dart';
-import 'package:mvst/paiement/choixPaiement.dart';
+import 'package:mvst/screens/reservation.dart';
 import 'package:ticket_material/ticket_material.dart';
 
 class Tickets extends StatefulWidget {
-  const Tickets(
-      {super.key,
-      required this.idDate,
-      required this.nombreDeTicket,
-      required this.place,
-      required this.id,
-      required this.nom,
-      required this.contact,
-      required this.date,
-      required this.mois,
-      required this.heure,
-      required this.destination,
-      required this.depart,
-      required this.prixDuTicket,
-      required this.moisAnnee,
-      required this.annee,
-      this.typeVoyage = 'standard'});
+  const Tickets({
+    super.key,
+    required this.idDate,
+    required this.nombreDeTicket,
+    required this.place,
+    required this.id,
+    required this.nom,
+    required this.contact,
+    required this.date,
+    required this.mois,
+    required this.heure,
+    required this.destination,
+    required this.depart,
+    required this.prixDuTicket,
+    required this.moisAnnee,
+    required this.annee,
+    this.typeVoyage = 'standard',
+  });
   final String idDate;
   final String id;
   final int nombreDeTicket;
@@ -58,6 +59,7 @@ class _TicketsState extends State<Tickets> {
 
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
     return PopScope(
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop && !_isNavigating) await _netoyageEnCasDeFermeture();
@@ -71,10 +73,8 @@ class _TicketsState extends State<Tickets> {
             'Ticket(s) commandé(s)',
             style: TextStyle(color: Colors.white),
           ),
-          iconTheme: const IconThemeData(
-            color: Colors.white,
-          ),
-          backgroundColor: Config.colors.homeDrawerBackground,
+          iconTheme: IconThemeData(color: c.homeAccent),
+          backgroundColor: c.authButtonDisabled,
         ),
         body: SafeArea(
           child: Padding(
@@ -83,8 +83,9 @@ class _TicketsState extends State<Tickets> {
               itemCount: widget.nombreDeTicket,
               itemBuilder: (BuildContext context, int index) {
                 int numDePlace = widget.place[index];
-                listeDeVerification
-                    .add(numDePlace); // Ajoute les places à vérifier
+                listeDeVerification.add(
+                  numDePlace,
+                ); // Ajoute les places à vérifier
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: TicketMaterial(
@@ -113,11 +114,14 @@ class _TicketsState extends State<Tickets> {
           width: MediaQuery.of(context).size.width * 0.55,
           child: ElevatedButton(
             onPressed: () async {
-              DateFormat formatInitiale =
-                  DateFormat('EEEE d MMMM yyyy', 'fr_FR');
+              DateFormat formatInitiale = DateFormat(
+                'EEEE d MMMM yyyy',
+                'fr_FR',
+              );
               DateTime _dateCalcule = formatInitiale.parse(widget.date);
-              String _dateformatee =
-                  DateFormat('yyyy-MM-dd HH:mm:ss').format(_dateCalcule);
+              String _dateformatee = DateFormat(
+                'yyyy-MM-dd HH:mm:ss',
+              ).format(_dateCalcule);
               DateTime dateFormatee = DateTime.parse(_dateformatee).toUtc();
 
               if (mounted) {
@@ -155,7 +159,7 @@ class _TicketsState extends State<Tickets> {
                 await Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ChoixPaiement(
+                    builder: (context) => Reservation(
                       idDate: widget.idDate,
                       nombreDeTicket: widget.nombreDeTicket,
                       prixUnitaire: widget.prixDuTicket,
@@ -198,15 +202,16 @@ class _TicketsState extends State<Tickets> {
     );
   }
 
-  Widget _buildLeft(String id, String nom, String contact, String date,
-      String heure, int? numeroDePlace) {
+  Widget _buildLeft(
+    String id,
+    String nom,
+    String contact,
+    String date,
+    String heure,
+    int? numeroDePlace,
+  ) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 2,
-        top: 8,
-        right: 2,
-        bottom: 2,
-      ),
+      padding: const EdgeInsets.only(left: 2, top: 8, right: 2, bottom: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -221,15 +226,14 @@ class _TicketsState extends State<Tickets> {
                     const Text(
                       "Départ du : ",
                       style: TextStyle(
-                          decorationColor: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 100, 99, 99)),
+                        decorationColor: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 100, 99, 99),
+                      ),
                     ),
                     Text(
                       date,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -239,9 +243,10 @@ class _TicketsState extends State<Tickets> {
                     const Text(
                       "Heure de départ : ",
                       style: TextStyle(
-                          decorationColor: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 100, 99, 99)),
+                        decorationColor: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 100, 99, 99),
+                      ),
                     ),
                     Text(
                       heure,
@@ -249,7 +254,7 @@ class _TicketsState extends State<Tickets> {
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
-                    )
+                    ),
                   ],
                 ),
                 Row(
@@ -258,10 +263,11 @@ class _TicketsState extends State<Tickets> {
                     const Text(
                       "Siège : ",
                       style: TextStyle(
-                          fontSize: 16,
-                          decorationColor: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 100, 99, 99)),
+                        fontSize: 16,
+                        decorationColor: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 100, 99, 99),
+                      ),
                     ),
                     Text(
                       "N° $numeroDePlace",
@@ -269,12 +275,12 @@ class _TicketsState extends State<Tickets> {
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
-                    )
+                    ),
                   ],
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -289,26 +295,10 @@ class _TicketsState extends State<Tickets> {
           color: Config.colors.vertB,
           fontFamily: 'Lobster',
           shadows: const [
-            Shadow(
-              color: Colors.white,
-              offset: Offset(1, 1),
-              blurRadius: 1,
-            ),
-            Shadow(
-              color: Colors.white,
-              offset: Offset(-1, -1),
-              blurRadius: 1,
-            ),
-            Shadow(
-              color: Colors.white,
-              offset: Offset(1, -1),
-              blurRadius: 1,
-            ),
-            Shadow(
-              color: Colors.white,
-              offset: Offset(-1, 1),
-              blurRadius: 1,
-            ),
+            Shadow(color: Colors.white, offset: Offset(1, 1), blurRadius: 1),
+            Shadow(color: Colors.white, offset: Offset(-1, -1), blurRadius: 1),
+            Shadow(color: Colors.white, offset: Offset(1, -1), blurRadius: 1),
+            Shadow(color: Colors.white, offset: Offset(-1, 1), blurRadius: 1),
           ],
         ),
       ),

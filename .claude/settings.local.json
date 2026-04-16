@@ -7,7 +7,9 @@
       "Bash(dart pub:*)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\([k for k in d['packages'] if 'lints' in k]\\)\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d['packages']['flutter_lints'], indent=2\\)\\)\")",
-      "Bash(python -c \"import sys; content=sys.stdin.read\\(\\); print\\(content[content.find\\('flutter_lints'\\):content.find\\('flutter_lints'\\)+200] if 'flutter_lints' in content else 'NOT IN LOCK'\\)\")"
+      "Bash(python -c \"import sys; content=sys.stdin.read\\(\\); print\\(content[content.find\\('flutter_lints'\\):content.find\\('flutter_lints'\\)+200] if 'flutter_lints' in content else 'NOT IN LOCK'\\)\")",
+      "WebFetch(domain:pub.dev)",
+      "Bash(dart analyze:*)"
     ]
   }
 }
