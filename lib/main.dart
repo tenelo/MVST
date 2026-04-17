@@ -11,9 +11,7 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/firebase_options.dart';
 import 'package:mvst/models/mesFonctions.dart';
-import 'package:mvst/screens/home_v1.dart';
 import 'package:mvst/screens/home.dart';
-import 'package:mvst/screens/home_v3.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -133,8 +131,7 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
   }
 
   Future<void> _navigateBasedOnTermsAcceptance() async {
-    await Future.delayed(const Duration(seconds: 2));
-    _checkTermsAcceptance(context);
+    await Future.delayed(const Duration(seconds: 2));    _checkTermsAcceptance(context);
   }
 
   @override

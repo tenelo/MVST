@@ -12,7 +12,6 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
 import 'package:mvst/screens/home.dart';
-import 'package:mvst/screens/home_v1.dart';
 import 'package:mvst/screens/choixPlaceVip.dart';
 
 String? dateFormatee, idMois, idMoisAnnee, idAnnee;
@@ -300,9 +299,6 @@ class _CommandeState extends State<Commande> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    final Color headerColor = _isVip
-        ? const Color(0xFF12122A)
-        : c.homeButtonPrimary;
     final Color accentColor = _isVip ? const Color(0xFFFFD700) : Colors.white;
 
     return GestureDetector(

@@ -9,10 +9,10 @@ import 'package:intl/intl.dart';
 // ── Catégories disponibles ─────────────────────────────────────────────────
 const List<_Categorie> _categories = [
   _Categorie('Amélioration', Icons.build_circle_outlined),
-  _Categorie('Nouveau trajet', Icons.map_outlined),
   _Categorie('Problème', Icons.warning_amber_outlined),
   _Categorie('Compliment', Icons.star_outline_rounded),
   _Categorie('Autre', Icons.chat_bubble_outline_rounded),
+  _Categorie('Nouveau trajet', Icons.map_outlined),
 ];
 
 class _Categorie {
@@ -63,6 +63,7 @@ class _SuggestionsState extends State<Suggestions>
   bool _isLoading = false;
   bool _loadingProfil = true;
   late TabController _tabController;
+  late Stream<QuerySnapshot> _suggestionsStream;
 
   static const int _maxChars = 500;
 
@@ -71,6 +72,11 @@ class _SuggestionsState extends State<Suggestions>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _message.addListener(() => setState(() {}));
+    // Stream initialisé une seule fois pour éviter le flash lors des rebuilds
+    _suggestionsStream = FirebaseFirestore.instance
+        .collection('suggestions')
+        .where('idUtilisateur', isEqualTo: widget.idUtilisateur)
+        .snapshots();
     _chargerProfil();
   }
 
@@ -501,11 +507,7 @@ class _SuggestionsState extends State<Suggestions>
   // ── Onglet 2 : Historique ─────────────────────────────────────────────────
   Widget _buildHistorique(AppColors c) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('suggestions')
-          .where('idUtilisateur', isEqualTo: widget.idUtilisateur)
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+      stream: _suggestionsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -513,7 +515,15 @@ class _SuggestionsState extends State<Suggestions>
           );
         }
 
-        final docs = snapshot.data?.docs ?? [];
+        final docs = (snapshot.data?.docs ?? [])
+          ..sort((a, b) {
+            final ta = (a.data() as Map<String, dynamic>)['createdAt'];
+            final tb = (b.data() as Map<String, dynamic>)['createdAt'];
+            if (ta == null && tb == null) return 0;
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return (tb as Timestamp).compareTo(ta as Timestamp);
+          });
 
         if (docs.isEmpty) {
           return Center(

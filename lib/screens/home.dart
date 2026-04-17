@@ -1047,7 +1047,6 @@ class _RouteRowState extends State<_RouteRow> {
         : c.homeTextPrimary.withValues(alpha: 0.4);
     final Color iconBg = accent.withValues(alpha: 0.10);
     final Color btnColor = isVip ? _kVipGold : c.homeButtonPrimary;
-    final Color btnText = isVip ? _kVipBg : Colors.white;
 
     return InkWell(
       onTap: _loading ? null : _onTap,

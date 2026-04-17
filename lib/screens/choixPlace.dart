@@ -79,15 +79,27 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
 
   @override
   void dispose() {
-    listeDesPlacesOccupees.clear();
-    if (listeDeVerification.isNotEmpty && socket.connected) {
-      socket.emit('liberer_places', {
-        'depart': widget.depart,
-        'destination': widget.destination,
-        'date': widget.idDate,
-        'heure': widget.heure,
-        'numerosDePlace': listeDeVerification,
-      });
+listeDesPlacesOccupees.clear();
+    if (listeDeVerification.isNotEmpty) {
+      if (socket.connected) {
+        socket.emit('liberer_places', {
+          'depart': widget.depart,
+          'destination': widget.destination,
+          'date': widget.idDate,
+          'heure': widget.heure,
+          'numerosDePlace': listeDeVerification,
+        });
+      } else {
+        http.post(
+          Uri.parse('https://mvst.tenelo.cloud/process_places_temporaires.php'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'documentId':
+                '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h',
+            'places': listeDeVerification,
+          }),
+        );
+      }
     }
     listeDesPlacesChoisies.clear();
     listeDeVerification.clear();
@@ -121,6 +133,16 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
           _seconds--;
         } else {
           _timer.cancel();
+          if (listeDeVerification.isNotEmpty && socket.connected) {
+            socket.emit('liberer_places', {
+              'depart': widget.depart,
+              'destination': widget.destination,
+              'date': widget.idDate,
+              'heure': widget.heure,
+              'numerosDePlace': listeDeVerification,
+            });
+            listeDeVerification.clear();
+          }
           socket.off('place_prise');
           socket.off('place_liberee');
           socket.offAny();
@@ -158,6 +180,70 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     }
   }
 
+  // void _connecterSocket() {
+  //   socket = IO.io(
+  //     'https://mvst.tenelo.cloud',
+  //     IO.OptionBuilder()
+  //         .setTransports(['websocket', 'polling'])
+  //         .disableAutoConnect()
+  //         .build(),
+  //   );
+  //   _socket = socket;
+  //   socket.connect();
+
+  //   socket.onConnect((_) {
+  //     if (!mounted) return;
+  //     _socket = socket;
+  //     socket.emit('rejoindre_room', {
+  //       'depart': widget.depart,
+  //       'destination': widget.destination,
+  //       'date': widget.idDate,
+  //       'heure': widget.heure,
+  //       'mois': widget.mois,
+  //       'moisAnnee': widget.moisAnnee,
+  //       'annee': widget.annee,
+  //     });
+  //   });
+
+  //   socket.onConnectError((err) {});
+  //   socket.onError((err) {});
+
+  //   socket.onReconnect((_) {
+  //     if (!mounted) return;
+  //     socket.emit('rejoindre_room', {
+  //       'depart': widget.depart,
+  //       'destination': widget.destination,
+  //       'date': widget.idDate,
+  //       'heure': widget.heure,
+  //       'mois': widget.mois,
+  //       'moisAnnee': widget.moisAnnee,
+  //       'annee': widget.annee,
+  //     });
+  //   });
+
+  //   socket.on('place_prise', (data) {
+  //     if (!mounted) return;
+  //     final int numeroDePlace = data['numeroDePlace'];
+  //     setState(() {
+  //       if (!listeDesPlacesOccupees.contains(numeroDePlace)) {
+  //         listeDesPlacesOccupees.add(numeroDePlace);
+  //       }
+  //     });
+  //   });
+
+  //   socket.on('place_liberee', (data) {
+  //     if (!mounted) return;
+  //     final List<dynamic> numerosDePlace = data['numerosDePlace'];
+  //     setState(() {
+  //       for (var place in numerosDePlace) {
+  //         listeDesPlacesOccupees.remove(place);
+  //       }
+  //     });
+  //   });
+
+  //   socket.onDisconnect((_) {});
+  // }
+
   void _connecterSocket() {
     socket = IO.io(
       'https://mvst.tenelo.cloud',
@@ -167,8 +253,8 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
           .build(),
     );
     _socket = socket;
-    socket.connect();
 
+    // ── Enregistrer TOUS les listeners AVANT connect() ────────────────────
     socket.onConnect((_) {
       if (!mounted) return;
       _socket = socket;
@@ -220,6 +306,23 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     });
 
     socket.onDisconnect((_) {});
+
+    // ── connect() APRÈS tous les listeners ────────────────────────────────
+    socket.connect();
+
+    // ── Forcer rejoindre_room après connexion ─────────────────────────────
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      socket.emit('rejoindre_room', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'mois': widget.mois,
+        'moisAnnee': widget.moisAnnee,
+        'annee': widget.annee,
+      });
+    });
   }
 
   // ── Helper pour construire un widget Places avec la liste à jour ──────────

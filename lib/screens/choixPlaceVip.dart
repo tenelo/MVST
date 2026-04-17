@@ -87,14 +87,26 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
   @override
   void dispose() {
     listeDesPlacesOccupees.clear();
-    if (listeDeVerification.isNotEmpty && socket.connected) {
-      socket.emit('liberer_places', {
-        'depart': widget.depart,
-        'destination': widget.destination,
-        'date': widget.idDate,
-        'heure': widget.heure,
-        'numerosDePlace': listeDeVerification,
-      });
+    if (listeDeVerification.isNotEmpty) {
+      if (socket.connected) {
+        socket.emit('liberer_places', {
+          'depart': widget.depart,
+          'destination': widget.destination,
+          'date': widget.idDate,
+          'heure': widget.heure,
+          'numerosDePlace': listeDeVerification,
+        });
+      } else {
+        http.post(
+          Uri.parse('https://mvst.tenelo.cloud/process_places_temporaires.php'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'documentId':
+                '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h',
+            'places': listeDeVerification,
+          }),
+        );
+      }
     }
     listeDesPlacesChoisies.clear();
     listeDeVerification.clear();
@@ -130,7 +142,16 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
           _seconds--;
         } else {
           _timer.cancel();
-          socket.off('places_chargees');
+          if (listeDeVerification.isNotEmpty && socket.connected) {
+            socket.emit('liberer_places', {
+              'depart': widget.depart,
+              'destination': widget.destination,
+              'date': widget.idDate,
+              'heure': widget.heure,
+              'numerosDePlace': listeDeVerification,
+            });
+            listeDeVerification.clear();
+          }
           socket.off('place_prise');
           socket.off('place_liberee');
           socket.offAny();
@@ -173,12 +194,11 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     socket = IO.io(
       'https://mvst.tenelo.cloud',
       IO.OptionBuilder()
-          .setTransports(['websocket'])
+          .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
           .build(),
     );
-        _socket = socket;
-    socket.connect();
+    _socket = socket;
 
     socket.onConnect((_) {
       if (!mounted) return;
@@ -232,7 +252,26 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
       });
     });
 
+    socket.onConnectError((err) {});
+    socket.onError((err) {});
     socket.onDisconnect((_) {});
+
+    // ── connect() APRÈS tous les listeners ────────────────────────────────
+    socket.connect();
+
+    // ── Forcer rejoindre_room après connexion ─────────────────────────────
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      socket.emit('rejoindre_room', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'mois': widget.mois,
+        'moisAnnee': widget.moisAnnee,
+        'annee': widget.annee,
+      });
+    });
   }
 
   @override
@@ -497,7 +536,16 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
 
   // ── Helper rangée de 2 places ──────────────────────────────────────────────
   Widget _rangee2(List<int> numeros) {
-    return Row(children: numeros.map((n) => PlacesVip(numero: n)).toList());
+    return Row(
+      children: numeros
+          .map(
+            (n) => PlacesVip(
+              key: ValueKey('vip_${n}_${listeDesPlacesOccupees.contains(n)}'),
+              numero: n,
+            ),
+          )
+          .toList(),
+    );
   }
 
   // ── Navigation vers tickets ────────────────────────────────────────────────
