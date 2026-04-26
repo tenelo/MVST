@@ -72,8 +72,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     listeDesPlacesChoisies.clear();
     listeDeVerification.clear();
     listeDesPlacesOccupees.clear();
-    _chargerPlacesViaHttp();
-    _connecterSocket();
+    _chargerPlacesEtConnecterSocket();
     startCountdown();
   }
 
@@ -151,6 +150,11 @@ listeDesPlacesOccupees.clear();
         }
       });
     });
+  }
+
+  Future<void> _chargerPlacesEtConnecterSocket() async {
+    await _chargerPlacesViaHttp();
+    if (mounted) _connecterSocket();
   }
 
   Future<void> _chargerPlacesViaHttp() async {
@@ -719,189 +723,168 @@ class Places extends StatefulWidget {
 }
 
 class _PlacesState extends State<Places> {
-  Color couleurSelection = const Color.fromARGB(255, 182, 214, 251);
-  Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
-  String etat = "cliquable";
-  bool isLoading = false;
+  bool _selectionne = false;
+  bool _isLoading = false;
+  bool _occupe = false;
+
+  static const Color _couleurDispo = Color.fromARGB(226, 10, 41, 66);
+  static const Color _couleurPrise = Color.fromARGB(255, 182, 214, 251);
 
   @override
   void initState() {
     super.initState();
-    verification();
+    _occupe = widget.placesOccupees.contains(widget.numero);
   }
 
   @override
   void dispose() {
-    _netoyageEnCasDeFermeture();
-    super.dispose();
-  }
-
-  void verification() {
-    if (widget.placesOccupees.contains(widget.numero)) {
-      couleurInitiale = couleurSelection;
-      etat = "nonCliquable";
-    }
-  }
-
-  Future<bool> _netoyageEnCasDeFermeture() async {
-    if (listeDeVerification.isNotEmpty && _socket != null) {
+    if (listeDeVerification.contains(widget.numero) && _socket != null) {
       _socket!.emit('liberer_places', {
         'depart': _depart,
         'destination': _destination,
         'date': _date,
         'heure': _heure,
-        'numerosDePlace': listeDeVerification,
+        'numerosDePlace': [widget.numero],
       });
+      listeDeVerification.remove(widget.numero);
     }
-    listeDeVerification.clear();
-    return true;
+    super.dispose();
   }
-
-  List<bool> selection = List.filled(62, false);
 
   @override
   Widget build(BuildContext context) {
     final BlocCompteur counterBloc = BlocProvider.of<BlocCompteur>(context);
 
-    // ── Couleur dynamique selon placesOccupees passé par le parent ───────────
-    final bool estOccupee = widget.placesOccupees.contains(widget.numero);
-    final Color couleurAffichee = selection[widget.numero % 62]
-        ? couleurSelection
-        : estOccupee
-        ? couleurSelection
-        : couleurInitiale;
-
-    if (estOccupee && etat == "cliquable") {
-      etat = "nonCliquable";
+    // Mise à jour temps réel depuis listeDesPlacesOccupees
+    if (listeDesPlacesOccupees.contains(widget.numero) && !_occupe) {
+      _occupe = true;
+      _selectionne = false;
     }
 
-    return WillPopScope(
-      onWillPop: _netoyageEnCasDeFermeture,
-      child: GestureDetector(
-        onTap: () async {
-          if (etat == "cliquable") {
-            setState(() {
-              isLoading = true;
-              selection[widget.numero] = !selection[widget.numero];
+    final Color couleurSiege =
+        (_selectionne || _occupe) ? _couleurPrise : _couleurDispo;
+
+    return GestureDetector(
+      onTap: () async {
+        if (_occupe) return;
+        setState(() {
+          _isLoading = true;
+          _selectionne = !_selectionne;
+        });
+        try {
+          if (_selectionne) {
+            _socket?.emit('choisir_place', {
+              'depart': _depart,
+              'destination': _destination,
+              'date': _date,
+              'heure': _heure,
+              'mois': _mois,
+              'moisAnnee': _moisAnnee,
+              'annee': _annee,
+              'numeroDePlace': widget.numero,
             });
-
-            try {
-              if (selection[widget.numero]) {
-                _socket?.emit('choisir_place', {
-                  'depart': _depart,
-                  'destination': _destination,
-                  'date': _date,
-                  'heure': _heure,
-                  'mois': _mois,
-                  'moisAnnee': _moisAnnee,
-                  'annee': _annee,
-                  'numeroDePlace': widget.numero,
-                });
-
-                _socket?.once('place_confirmee', (data) {
-                  if (data['numeroDePlace'] == widget.numero) {
-                    if (mounted) setState(() => isLoading = false);
-                    counterBloc.add(EventIcrement());
-                    listeDesPlacesChoisies.add(widget.numero);
-                    listeDeVerification.add(widget.numero);
-                  }
-                });
-
-                _socket?.once('place_echec', (data) {
-                  if (data['numeroDePlace'] == widget.numero) {
-                    if (mounted) {
-                      setState(() {
-                        selection[widget.numero] = false;
-                        isLoading = false;
-                      });
-                    }
-                    showAlertDialog(context);
-                  }
-                });
-              } else {
-                _socket?.emit('liberer_places', {
-                  'depart': _depart,
-                  'destination': _destination,
-                  'date': _date,
-                  'heure': _heure,
-                  'numerosDePlace': [widget.numero],
-                });
-                counterBloc.add(EventDecrement());
-                listeDesPlacesChoisies.remove(widget.numero);
-                listeDeVerification.remove(widget.numero);
-                setState(() => isLoading = false);
+            _socket?.once('place_confirmee', (data) {
+              if (data['numeroDePlace'] == widget.numero) {
+                if (mounted) setState(() => _isLoading = false);
+                counterBloc.add(EventIcrement());
+                listeDesPlacesChoisies.add(widget.numero);
+                listeDeVerification.add(widget.numero);
               }
-            } catch (error) {
-              setState(() => isLoading = false);
-            }
+            });
+            _socket?.once('place_echec', (data) {
+              if (data['numeroDePlace'] == widget.numero) {
+                if (mounted) {
+                  setState(() {
+                    _selectionne = false;
+                    _isLoading = false;
+                    _occupe = true;
+                  });
+                }
+                showAlertDialog(context);
+              }
+            });
+          } else {
+            _socket?.emit('liberer_places', {
+              'depart': _depart,
+              'destination': _destination,
+              'date': _date,
+              'heure': _heure,
+              'numerosDePlace': [widget.numero],
+            });
+            counterBloc.add(EventDecrement());
+            listeDesPlacesChoisies.remove(widget.numero);
+            listeDeVerification.remove(widget.numero);
+            setState(() => _isLoading = false);
           }
-        },
-        child: Container(
-          margin: EdgeInsets.all(petitEcran ? 0.5 : 1.0),
-          padding: EdgeInsets.all(petitEcran ? 0.5 : 0.8),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              if (isLoading)
-                CircularProgressIndicator(color: Config.colors.couleurDfond)
-              else
-                Card(
-                  color: couleurAffichee, // ← utilise la couleur dynamique
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SizedBox(
-                    height: petitEcran ? 33 : 38,
-                    width: petitEcran ? 33 : 38,
-                    child: Center(
-                      child: Text(
-                        widget.numero.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+        } catch (e) {
+          setState(() => _isLoading = false);
+        }
+      },
+      child: Container(
+        margin: EdgeInsets.all(petitEcran ? 0.5 : 1.0),
+        padding: EdgeInsets.all(petitEcran ? 0.5 : 0.8),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (_isLoading)
+              CircularProgressIndicator(color: Config.colors.couleurDfond)
+            else
+              Card(
+                color: couleurSiege,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SizedBox(
+                  height: petitEcran ? 33 : 38,
+                  width: petitEcran ? 33 : 38,
+                  child: Center(
+                    child: Text(
+                      widget.numero.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
-              Positioned(
-                left: -3,
-                child: Card(
-                  color: const Color.fromARGB(255, 182, 214, 251),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: SizedBox(
-                    height: petitEcran ? 19 : 21,
-                    width: petitEcran ? 5 : 6,
-                  ),
+              ),
+            Positioned(
+              left: -3,
+              child: Card(
+                color: const Color.fromARGB(255, 182, 214, 251),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: SizedBox(
+                  height: petitEcran ? 19 : 21,
+                  width: petitEcran ? 5 : 6,
                 ),
               ),
-              Positioned(
-                right: -3,
-                child: Card(
-                  color: const Color.fromARGB(255, 182, 214, 251),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: SizedBox(
-                    height: petitEcran ? 19 : 21,
-                    width: petitEcran ? 5 : 6,
-                  ),
+            ),
+            Positioned(
+              right: -3,
+              child: Card(
+                color: const Color.fromARGB(255, 182, 214, 251),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: SizedBox(
+                  height: petitEcran ? 19 : 21,
+                  width: petitEcran ? 5 : 6,
                 ),
               ),
-              Positioned(
-                top: -4,
-                child: Card(
-                  color: const Color.fromARGB(255, 182, 214, 251),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const SizedBox(height: 6, width: 26),
+            ),
+            Positioned(
+              top: -4,
+              child: Card(
+                color: const Color.fromARGB(255, 182, 214, 251),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
+                child: const SizedBox(height: 6, width: 26),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

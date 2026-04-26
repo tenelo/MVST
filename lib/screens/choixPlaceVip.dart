@@ -18,12 +18,12 @@ import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 
 String? _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
 IO.Socket? _socket;
-// ── Couleurs VIP ───────────────────────────────────────────────────────────────
-const Color _vipOr = Color(0xFFFFD700);
-const Color _vipFond = Color(0xFF1A1A2E);
-const Color _vipSiege = Color(0xFF2C2C54);
-const Color _vipSiegeSelectionne = Color(0xFFFFD700);
-const Color _vipSiegeOccupe = Color(0xFF8B6914);
+// ── Couleurs VIP (palette Émeraude Impérial) ───────────────────────────────────
+const Color _vipOr = Color(0xFF00D87E); // émeraude vif
+const Color _vipFond = Color(0xFF050E08); // forêt noire
+const Color _vipSiege = Color(0xFF0A1E10); // jade profond
+const Color _vipSiegeSelectionne = Color(0xFF00D87E); // émeraude sélectionné
+const Color _vipSiegeOccupe = Color(0xFF1A3A20); // vert sombre occupé
 
 class ChoixPlacesVip extends StatefulWidget {
   const ChoixPlacesVip({
@@ -79,8 +79,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     listeDesPlacesChoisies.clear();
     listeDeVerification.clear();
     listeDesPlacesOccupees.clear();
-    _chargerPlacesViaHttp();
-    _connecterSocket();
+    _chargerPlacesEtConnecterSocket();
     startCountdown();
   }
 
@@ -160,6 +159,11 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         }
       });
     });
+  }
+
+  Future<void> _chargerPlacesEtConnecterSocket() async {
+    await _chargerPlacesViaHttp();
+    if (mounted) _connecterSocket();
   }
 
   // ── Chargement initial via HTTP ───────────────────────────────────────────
@@ -284,7 +288,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
       appBar: AppBar(
         toolbarHeight: screenHeight * 0.06,
         iconTheme: const IconThemeData(color: _vipOr),
-        backgroundColor: const Color(0xFF0D0D1A),
+        backgroundColor: const Color(0xFF030904),
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -345,9 +349,6 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
               child: Center(
                 child: SingleChildScrollView(
                   child: SizedBox(
-                    height: petitEcran
-                        ? MediaQuery.of(context).size.height * 0.95
-                        : MediaQuery.of(context).size.height * 0.90,
                     width: petitEcran
                         ? MediaQuery.of(context).size.width * 0.80
                         : MediaQuery.of(context).size.width * 0.75,
@@ -359,7 +360,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
                           borderRadius: const BorderRadius.all(
                             Radius.circular(50),
                           ),
-                          color: const Color(0xFF16213E),
+                          color: const Color(0xFF0A1E10),
                         ),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 8.0),

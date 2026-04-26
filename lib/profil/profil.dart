@@ -1,7 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:mvst/config/app_colors.dart';
 import 'package:mvst/config/config.dart';
+
+const String _apiBase = 'https://mvst.tenelo.cloud';
 
 class Profil extends StatefulWidget {
   const Profil({
@@ -23,20 +27,18 @@ class _ProfilState extends State<Profil> {
   final TextEditingController _residence = TextEditingController();
 
   Future<Map<String, dynamic>?> getUserData(String userId) async {
-    final firestore = FirebaseFirestore.instance;
     try {
-      final snap = await firestore
-          .collection('utilisateurs')
-          .where('id', isEqualTo: userId)
-          .limit(1)
-          .get();
-      if (snap.docs.isNotEmpty) {
-        return snap.docs.first.data();
+      final resp = await http.get(
+        Uri.parse('$_apiBase/get_utilisateur.php?id=$userId'),
+      ).timeout(const Duration(seconds: 8));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        if (data['success'] == true && data['utilisateur'] != null) {
+          return data['utilisateur'] as Map<String, dynamic>;
+        }
       }
-      return null;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) {}
+    return null;
   }
 
   // ── Deux initiales depuis nom + prénoms ───────────────────────────────────
@@ -126,7 +128,7 @@ class _ProfilState extends State<Profil> {
                     onPressed: () {
                       editerDocument(
                         context,
-                        userData['id'],
+                        widget.idUtilisateur,
                         _nom.text.trim(),
                         _prenoms.text.trim(),
                         _telephone.text.trim(),
@@ -469,21 +471,27 @@ class _ProfilState extends State<Profil> {
 
 Future<void> editerDocument(
   BuildContext ctx,
-  String documentId,
+  String idUtilisateur,
   String nom,
   String prenoms,
   String telephone,
   String residence,
 ) async {
-  final firestore = FirebaseFirestore.instance;
   try {
-    await firestore.collection('utilisateurs').doc(documentId).update({
-      'nom': nom,
-      'prenoms': prenoms,
-      'telephone': telephone,
-      'residence': residence,
-    });
-    if (ctx.mounted) {
+    final resp = await http.post(
+      Uri.parse('$_apiBase/update_utilisateur.php'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'idUtilisateur': idUtilisateur,
+        'nom': nom,
+        'prenoms': prenoms,
+        'telephone': telephone,
+        'residence': residence,
+      }),
+    ).timeout(const Duration(seconds: 8));
+    if (resp.statusCode != 200) return;
+    final data = jsonDecode(resp.body);
+    if (data['success'] == true && ctx.mounted) {
       ScaffoldMessenger.of(ctx).showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 4),

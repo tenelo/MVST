@@ -66,7 +66,17 @@ class _MesTicketsState extends State<MesTickets> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success']) {
-          return List<Map<String, dynamic>>.from(data['tickets']);
+          final tickets = List<Map<String, dynamic>>.from(data['tickets']);
+          tickets.sort((a, b) {
+            final dateA = a['datePourCalcule'] != null
+                ? DateTime.tryParse(a['datePourCalcule']) ?? DateTime(0)
+                : DateTime(0);
+            final dateB = b['datePourCalcule'] != null
+                ? DateTime.tryParse(b['datePourCalcule']) ?? DateTime(0)
+                : DateTime(0);
+            return dateB.compareTo(dateA);
+          });
+          return tickets;
         } else {
           throw Exception(data['message']);
         }
@@ -220,24 +230,24 @@ class _MesTicketsState extends State<MesTickets> {
     final bool isDatePassed = _isTicketDatePassed(ticket['date']);
 
     // Si la date est passée, appliquer un filtre gris
-    final Color cardBg = isVip
-        ? (isDatePassed ? Colors.grey[800]! : const Color(0xFF12122A))
-        : (isDatePassed ? Colors.grey[300]! : c.homeBandeauBackground);
+    final Color cardBg = isDatePassed
+        ? Colors.grey[300]!
+        : c.homeBandeauBackground;
 
-    final Color accentColor = isVip
-        ? (isDatePassed ? Colors.grey[500]! : const Color(0xFFFFD700))
-        : (isDatePassed
-              ? Colors.grey[400]!
-              : (isRecent
-                    ? c.homeButtonPrimary
-                    : c.homeTextPrimary.withValues(alpha: 0.4)));
+    final Color vertVip = const Color(0xFF00D87E);
+
+    final Color accentColor = isDatePassed
+        ? Colors.grey[400]!
+        : (isRecent
+              ? c.homeButtonPrimary
+              : c.homeTextPrimary.withValues(alpha: 0.4));
 
     final Color textColor = isVip
-        ? (isDatePassed ? Colors.grey[400]! : Colors.white)
+        ? (isDatePassed ? Colors.grey[400]! : c.homeTextPrimary)
         : (isDatePassed ? Colors.black : c.homeTextPrimary);
 
     final Color subTextColor = isVip
-        ? (isDatePassed ? Colors.grey[500]! : Colors.white54)
+        ? (isDatePassed ? Colors.grey[500]! : c.homeTextPrimary)
         : (isDatePassed ? Colors.black : c.homeTextPrimary);
 
     void ouvrirDetails() => Navigator.push(
@@ -271,7 +281,7 @@ class _MesTicketsState extends State<MesTickets> {
       flexLefSize: 72,
       flexMaskSize: 6,
       flexRightSize: 22,
-      colorShadow: accentColor,
+      colorShadow: isVip ? vertVip : accentColor,
       shadowSize: 3,
       tapHandler: ouvrirDetails,
 
@@ -320,13 +330,13 @@ class _MesTicketsState extends State<MesTickets> {
                       vertical: 1,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFD700),
+                      color: const Color(0xFF00D87E),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(
                       '★ VIP',
                       style: TextStyle(
-                        color: Color(0xFF12122A),
+                        color: Color(0xFF050E08),
                         fontWeight: FontWeight.bold,
                         fontSize: 9,
                       ),
@@ -404,6 +414,7 @@ class _MesTicketsState extends State<MesTickets> {
               'MVST',
               style: TextStyle(
                 color: accentColor,
+                //color: isVip ? vertVip : accentColor,
                 fontFamily: 'Lobster',
                 fontSize: screenWidth * 0.048,
               ),
@@ -414,7 +425,10 @@ class _MesTicketsState extends State<MesTickets> {
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: accentColor, width: 0.8),
+                border: Border.all(
+                  color: isVip ? vertVip : accentColor,
+                  width: 0.8,
+                ),
               ),
               child: Text(
                 'Détails',

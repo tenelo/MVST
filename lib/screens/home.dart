@@ -19,11 +19,11 @@ import 'package:mvst/screens/detailsImages.dart';
 import 'package:mvst/screens/infos.dart';
 import 'package:mvst/screens/mestickets.dart';
 import 'package:mvst/screens/suggestions.dart';
+import 'package:mvst/screens/vip_accueil_design_vert.dart';
 import 'package:mvst/screens/tableauDesTickets.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 // ── Couleurs VIP figées (indépendantes du thème) ───────────────────────────
-const Color _kVipBg = Color(0xFF07070F);
 const Color _kVipCard = Color(0xFF11111F);
 const Color _kVipGold = Color(0xFFFFD700);
 const Color _kVipGoldDim = Color(0xFFB8860B);
@@ -58,6 +58,8 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   User? _currentUser;
+  String _nomUtilisateur = '';
+  String _prenomsUtilisateur = '';
 
   @override
   void initState() {
@@ -72,8 +74,125 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     });
     BlocProvider.of<BlocCompteur>(context).add(EventInitialise());
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      if (mounted) setState(() => _currentUser = user);
+      if (mounted) {
+        setState(() => _currentUser = user);
+        if (user != null) _chargerNomEtPrenoms(user.uid);
+      }
     });
+  }
+
+  Future<void> _onReserverVip(String depart, String destination) async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const Login()),
+      );
+      return;
+    }
+    try {
+      final user = FirebaseAuth.instance.currentUser!;
+      final res = await http.post(
+        Uri.parse('https://mvst.tenelo.cloud/verifierUtilisateur.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'idUtilisateur': user.uid}),
+      );
+      if (res.statusCode != 200 || !mounted) return;
+      final data = json.decode(res.body);
+      if (data['success'] == false) return;
+      if ((data['points'] ?? 0) == 0) {
+        final c = Config.colors;
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: c.homeCardBackground,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                const SizedBox(width: 8),
+                Text(
+                  'Accès restreint',
+                  style: TextStyle(
+                    color: c.homeTextPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'Votre profil est soumis à une restriction.\nVeuillez contacter l\'administrateur MVST Mobile.',
+              style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.8)),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      final prixRes = await http.post(
+        Uri.parse('https://mvst.tenelo.cloud/getPrixDesTickets.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'type': 'vip'}),
+      );
+      if (prixRes.statusCode != 200 || !mounted) return;
+      final prixData = json.decode(prixRes.body);
+      if (prixData['success'] != true) return;
+      prixDesBillets.clear();
+      for (final item in List<Map<String, dynamic>>.from(prixData['heures'])) {
+        prixDesBillets[item['axe']] = item['prix'];
+      }
+      final prix = prixDesBillets['$depart $destination'];
+      if (prix == null || !mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Commande(
+            idUtilisateur: user.uid,
+            nom: data['nom'] ?? '',
+            prenoms: data['prenoms'] ?? '',
+            telephone: data['telephone'] ?? '',
+            prixDuBillet: prix,
+            depart: depart,
+            destination: destination,
+            typeVoyage: 'vip',
+            ongletOrigine: 2,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) afficherErreur(context, e);
+    }
+  }
+
+  Future<void> _chargerNomEtPrenoms(String uid) async {
+    try {
+      final res = await http.post(
+        Uri.parse('https://mvst.tenelo.cloud/verifierUtilisateur.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'idUtilisateur': uid}),
+      );
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        if (data['success'] == true && mounted) {
+          setState(() {
+            _nomUtilisateur = data['nom'] ?? '';
+            _prenomsUtilisateur = data['prenoms'] ?? '';
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -82,14 +201,24 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  /// Retourne les deux initiales (nom + prénom) ou une seule si mononyme.
-  String _initiales(String? displayName) {
-    if (displayName == null || displayName.trim().isEmpty) return 'U';
-    final parts = displayName.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  String _initiales() {
+    final n = _nomUtilisateur.isNotEmpty
+        ? _nomUtilisateur[0].toUpperCase()
+        : '';
+    final p = _prenomsUtilisateur.isNotEmpty
+        ? _prenomsUtilisateur[0].toUpperCase()
+        : '';
+    if (n.isNotEmpty && p.isNotEmpty) return '$n$p';
+    if (n.isNotEmpty) return n;
+    // fallback Firebase displayName
+    final dn = _currentUser?.displayName?.trim();
+    if (dn != null && dn.isNotEmpty) {
+      final parts = dn.split(RegExp(r'\s+'));
+      if (parts.length >= 2)
+        return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      return parts[0][0].toUpperCase();
     }
-    return parts[0][0].toUpperCase();
+    return 'U';
   }
 
   // ── Build ────────────────────────────────────────────────────────────────
@@ -171,7 +300,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 backgroundColor: c.homeBandeauBorder.withValues(alpha: 0.20),
                 child: _currentUser != null
                     ? Text(
-                        _initiales(_currentUser!.displayName),
+                        _initiales(),
                         style: TextStyle(
                           fontFamily: 'Lobster',
                           color: c.couleurInitiales,
@@ -268,62 +397,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
 
   // ── Onglet VIP ────────────────────────────────────────────────────────────
   Widget _buildAccueilVip(BuildContext context) {
-    final double w = MediaQuery.of(context).size.width;
-    final grouped = _groupByDepart(_kRoutes);
-
-    return Container(
-      color: _kVipBg,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          // Carousel promos — tout en haut
-          const _PromoStrip(isVip: true),
-          _buildHeroBand(context, isVip: true),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-            child: Row(
-              children: [
-                const Text(
-                  '✦ ',
-                  style: TextStyle(color: _kVipGold, fontSize: 14),
-                ),
-                Text(
-                  'Lignes Classe VIP',
-                  style: TextStyle(
-                    color: _kVipGold,
-                    fontWeight: FontWeight.w800,
-                    fontSize: w * 0.043,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 2, 20, 20),
-            child: Text(
-              'Sièges spacieux · Confort absolu · QR instantané',
-              style: TextStyle(
-                color: _kVipGoldDim.withValues(alpha: 0.75),
-                fontSize: w * 0.030,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-
-          ...grouped.entries.map(
-            (e) => _buildOriginGroup(
-              context,
-              depart: e.key,
-              destinations: e.value,
-              typeVoyage: 'vip',
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
+    return VipAccueilVert(onReserver: _onReserverVip);
   }
 
   // ── Bandeau héro ─────────────────────────────────────────────────────────
@@ -471,7 +545,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(width: 8),
-              Text(
+                Text(
                   depart == 'Abidjan'
                       ? "A partir d'${depart.toUpperCase()}"
                       : "A partir de ${depart.toUpperCase()}",
@@ -606,7 +680,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                       : Icons.star_outline_rounded,
                   size: 22,
                   color: _tabController.index == 2
-                      ? _kVipGold
+                      //? _kVipGold
+                      ? Color.fromARGB(255, 2, 136, 80)
                       : c.homeTabUnselected,
                 ),
                 text: 'VIP',
@@ -766,10 +841,20 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   thickness: 1,
                 ),
                 _buildDrawerItem(
-                  icon: Icons.power_settings_new,
-                  label: 'Déconnexion',
-                  onTap: () => _deconnexion(context),
-                  isDestructive: true,
+                  icon: _currentUser != null
+                      ? Icons.power_settings_new
+                      : Icons.login_rounded,
+                  label: _currentUser != null ? 'Déconnexion' : 'Se connecter',
+                  onTap: _currentUser != null
+                      ? () => _deconnexion(context)
+                      : () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const Login()),
+                          );
+                        },
+                  isDestructive: _currentUser != null,
                 ),
               ],
             ),
@@ -930,7 +1015,11 @@ class _RouteRowState extends State<_RouteRow> {
           if (mounted) _showRestrictedDialog();
           return null;
         }
-        return {'nom': data['nom'] ?? '', 'telephone': data['telephone'] ?? ''};
+        return {
+          'nom': data['nom'] ?? '',
+          'prenoms': data['prenoms'] ?? '',
+          'telephone': data['telephone'] ?? '',
+        };
       }
     } catch (_) {}
     return null;
@@ -1018,7 +1107,7 @@ class _RouteRowState extends State<_RouteRow> {
           builder: (_) => Commande(
             idUtilisateur: FirebaseAuth.instance.currentUser!.uid,
             nom: userData['nom'],
-            prenoms: '',
+            prenoms: userData['prenoms'] ?? '',
             telephone: userData['telephone'],
             prixDuBillet: prix,
             depart: widget.depart,
@@ -1143,8 +1232,7 @@ class _RouteRowState extends State<_RouteRow> {
 // • isVip: true → teinte dorée pour l'onglet VIP.
 // ════════════════════════════════════════════════════════════════════════════
 class _PromoStrip extends StatefulWidget {
-  const _PromoStrip({this.isVip = false});
-  final bool isVip;
+  const _PromoStrip();
 
   @override
   State<_PromoStrip> createState() => _PromoStripState();
@@ -1214,11 +1302,8 @@ class _PromoStripState extends State<_PromoStrip> {
     if (_loading || _images.isEmpty) return const SizedBox.shrink();
 
     final c = Config.colors;
-    final bool isVip = widget.isVip;
-    final Color accent = isVip ? _kVipGold : c.homeButtonPrimary;
-    final Color dotInactive = isVip
-        ? _kVipGold.withValues(alpha: 0.22)
-        : c.homeButtonPrimary.withValues(alpha: 0.20);
+    final Color accent = c.homeButtonPrimary;
+    final Color dotInactive = c.homeButtonPrimary.withValues(alpha: 0.20);
 
     return Padding(
       // Espace uniquement si des images sont présentes

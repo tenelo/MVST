@@ -240,30 +240,37 @@ class _CommandeState extends State<Commande> {
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
-              colorScheme: _isVip
-                  ? const ColorScheme.dark(
-                      primary: Color(0xFFFFD700),
-                      onPrimary: Color(0xFF1A1A2E),
-                      surface: Color(0xFF16213E),
-                      onSurface: Color(0xFFFFD700),
-                    )
-                  : ColorScheme.light(
-                      primary: c.homeButtonPrimary,
-                      onPrimary: Colors.white,
-                      surface: Colors.white,
-                    ),
+              colorScheme: ColorScheme.light(
+                primary: c.homeButtonPrimary,
+                onPrimary: Colors.white,
+                surface: Colors.white,
+              ),
+              datePickerTheme: DatePickerThemeData(
+                dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return Colors.white;
+                  }
+                  if (states.contains(WidgetState.disabled)) return null;
+                  // date active (les 2 seules disponibles) → couleur accent
+                  return _isVip ? const Color(0xFF00D87E) : c.bleuFonce2;
+                }),
+                dayStyle: TextStyle(fontWeight: FontWeight.bold),
+                // Couleur du cercle de sélection
+                dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return _isVip
+                        ? const Color(0xFF00D87E)
+                        : c.homeButtonPrimary;
+                  }
+                  return null;
+                }),
+              ),
               textButtonTheme: TextButtonThemeData(
                 style: TextButton.styleFrom(
-                  foregroundColor: _isVip
-                      ? const Color(0xFFFFD700)
-                      : c.homeButtonPrimary,
+                  foregroundColor: c.homeButtonPrimary,
                 ),
               ),
-              dialogTheme: DialogThemeData(
-                backgroundColor: _isVip
-                    ? const Color(0xFF1A1A2E)
-                    : Colors.white,
-              ),
+              dialogTheme: DialogThemeData(backgroundColor: Colors.white),
             ),
             child: MediaQuery(
               data: MediaQuery.of(
@@ -299,7 +306,7 @@ class _CommandeState extends State<Commande> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    final Color accentColor = _isVip ? const Color(0xFFFFD700) : Colors.white;
+    final Color accentColor = Colors.white;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -319,6 +326,7 @@ class _CommandeState extends State<Commande> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Départ
                   Flexible(
                     child: Text(
                       widget.depart,
@@ -332,12 +340,14 @@ class _CommandeState extends State<Commande> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
+                    // Icon de bus
                     child: Icon(
                       Icons.airport_shuttle_sharp,
                       color: c.homeAccent,
                       size: 14,
                     ),
                   ),
+                  // Destination
                   Flexible(
                     child: Text(
                       widget.destination,
@@ -349,6 +359,8 @@ class _CommandeState extends State<Commande> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.star_rounded, color: c.homeAccent, size: 16),
                   const Expanded(child: SizedBox()),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -359,6 +371,7 @@ class _CommandeState extends State<Commande> {
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
+                    // Prix du billet
                     child: Text(
                       '${widget.prixDuBillet} f',
                       style: TextStyle(
@@ -388,14 +401,10 @@ class _CommandeState extends State<Commande> {
                       horizontal: 16,
                     ),
                     decoration: BoxDecoration(
-                      color: _isVip
-                          ? const Color(0xFF12122A)
-                          : c.homeGrandeCarte,
+                      color: c.homeGrandeCarte,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: _isVip
-                            ? const Color(0xFFFFD700)
-                            : c.homeBordurePetiteCarte,
+                        color: c.homeBordurePetiteCarte,
                         width: 1,
                       ),
                     ),
@@ -407,9 +416,7 @@ class _CommandeState extends State<Commande> {
                             Text(
                               widget.depart,
                               style: TextStyle(
-                                color: _isVip
-                                    ? const Color(0xFFFFD700)
-                                    : c.homeButtonPrimary,
+                                color: c.homeButtonPrimary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: screenWidth * 0.038,
                               ),
@@ -417,9 +424,7 @@ class _CommandeState extends State<Commande> {
                             Text(
                               'Départ',
                               style: TextStyle(
-                                color: _isVip
-                                    ? Colors.white54
-                                    : c.homeTextPrimary.withValues(alpha: 0.5),
+                                color: c.homeTextPrimary.withValues(alpha: 0.5),
                                 fontSize: 11,
                               ),
                             ),
@@ -427,9 +432,7 @@ class _CommandeState extends State<Commande> {
                         ),
                         Icon(
                           Icons.arrow_forward,
-                          color: _isVip
-                              ? const Color(0xFFFFD700)
-                              : c.homeButtonPrimary,
+                          color: c.homeButtonPrimary,
                           size: 18,
                         ),
                         Column(
@@ -437,9 +440,7 @@ class _CommandeState extends State<Commande> {
                             Text(
                               widget.destination,
                               style: TextStyle(
-                                color: _isVip
-                                    ? const Color(0xFFFFD700)
-                                    : c.homeButtonPrimary,
+                                color: c.homeButtonPrimary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: screenWidth * 0.038,
                               ),
@@ -447,9 +448,7 @@ class _CommandeState extends State<Commande> {
                             Text(
                               'Destination',
                               style: TextStyle(
-                                color: _isVip
-                                    ? Colors.white54
-                                    : c.homeTextPrimary.withValues(alpha: 0.5),
+                                color: c.homeTextPrimary.withValues(alpha: 0.5),
                                 fontSize: 11,
                               ),
                             ),
@@ -465,9 +464,7 @@ class _CommandeState extends State<Commande> {
                   Text(
                     'Informations du passager',
                     style: TextStyle(
-                      color: _isVip
-                          ? const Color(0xFFB8860B)
-                          : c.homeButtonPrimary,
+                      color: c.homeButtonPrimary,
                       fontWeight: FontWeight.bold,
                       fontSize: screenWidth * 0.040,
                     ),
@@ -586,11 +583,7 @@ class _CommandeState extends State<Commande> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isVip
-                            ? _isLoading
-                                  ? const Color(0xFFB8860B)
-                                  : const Color(0xFFFFD700)
-                            : _isLoading
+                        backgroundColor: _isLoading
                             ? c.authButtonDisabled.withValues(alpha: 0.5)
                             : c.authButtonDisabled,
                         elevation: 0,
@@ -622,7 +615,7 @@ class _CommandeState extends State<Commande> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      cursorColor: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
+      cursorColor: c.homeButtonPrimary,
       style: TextStyle(color: c.homeTextPrimary, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
@@ -630,17 +623,13 @@ class _CommandeState extends State<Commande> {
           color: c.homeTextPrimary.withValues(alpha: 0.8),
           fontSize: 15,
         ),
-        prefixIcon: Icon(
-          icone,
-          color: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
-          size: 18,
-        ),
+        prefixIcon: Icon(icone, color: c.homeButtonPrimary, size: 18),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 10,
           horizontal: 12,
         ),
         filled: true,
-        fillColor: _isVip ? const Color(0xFF1A1A2E) : c.homeGrandeCarte,
+        fillColor: c.homeGrandeCarte,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
@@ -650,17 +639,12 @@ class _CommandeState extends State<Commande> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-            color: _isVip
-                ? const Color(0xFFFFD700).withValues(alpha: 0.3)
-                : c.homeBordurePetiteCarte.withValues(alpha: 0.3),
+            color: c.homeBordurePetiteCarte.withValues(alpha: 0.3),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
-            width: 1.5,
-          ),
+          borderSide: BorderSide(color: c.homeButtonPrimary, width: 1.5),
         ),
       ),
       validator: validator,
@@ -671,7 +655,7 @@ class _CommandeState extends State<Commande> {
     return TextFormField(
       controller: _dateController,
       readOnly: true,
-      cursorColor: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
+      cursorColor: c.homeButtonPrimary,
       style: TextStyle(color: c.homeTextPrimary, fontSize: 15),
       onTap: () => _selectionDate(context),
       validator: (value) {
@@ -686,7 +670,7 @@ class _CommandeState extends State<Commande> {
         ),
         prefixIcon: Icon(
           Icons.calendar_month_outlined,
-          color: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
+          color: c.homeButtonPrimary,
           size: 18,
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -694,7 +678,7 @@ class _CommandeState extends State<Commande> {
           horizontal: 12,
         ),
         filled: true,
-        fillColor: _isVip ? const Color(0xFF1A1A2E) : c.homeGrandeCarte,
+        fillColor: c.homeGrandeCarte,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
@@ -704,17 +688,12 @@ class _CommandeState extends State<Commande> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-            color: _isVip
-                ? const Color(0xFFFFD700).withValues(alpha: 0.3)
-                : c.homeBordurePetiteCarte.withValues(alpha: 0.3),
+            color: c.homeBordurePetiteCarte.withValues(alpha: 0.3),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
-            width: 1.5,
-          ),
+          borderSide: BorderSide(color: c.homeButtonPrimary, width: 1.5),
         ),
       ),
     );
@@ -723,8 +702,8 @@ class _CommandeState extends State<Commande> {
   Widget _buildDropdownHeure(dynamic c) {
     return DropdownButtonFormField<String>(
       initialValue: heureDeDepart,
-      dropdownColor: _isVip ? const Color(0xFF1A1A2E) : c.homeCardBackground,
-      iconEnabledColor: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
+      dropdownColor: c.homeCardBackground,
+      iconEnabledColor: c.homeButtonPrimary,
       style: TextStyle(color: c.homeTextPrimary, fontSize: 15),
       onChanged: (value) => setState(() => heureDeDepart = value),
       validator: (value) {
@@ -739,7 +718,7 @@ class _CommandeState extends State<Commande> {
         ),
         prefixIcon: Icon(
           Icons.access_time_outlined,
-          color: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
+          color: c.homeButtonPrimary,
           size: 18,
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -747,7 +726,7 @@ class _CommandeState extends State<Commande> {
           horizontal: 12,
         ),
         filled: true,
-        fillColor: _isVip ? const Color(0xFF1A1A2E) : c.homeGrandeCarte,
+        fillColor: c.homeGrandeCarte,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
@@ -757,17 +736,12 @@ class _CommandeState extends State<Commande> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-            color: _isVip
-                ? const Color(0xFFFFD700).withValues(alpha: 0.3)
-                : c.homeBordurePetiteCarte.withValues(alpha: 0.3),
+            color: c.homeBordurePetiteCarte.withValues(alpha: 0.3),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: _isVip ? const Color(0xFFFFD700) : c.homeButtonPrimary,
-            width: 1.5,
-          ),
+          borderSide: BorderSide(color: c.homeButtonPrimary, width: 1.5),
         ),
       ),
       items: listeHeures.map((String h) {
@@ -776,7 +750,7 @@ class _CommandeState extends State<Commande> {
           child: Text(
             h,
             style: TextStyle(
-              color: _isVip ? const Color(0xFFFFD700) : c.homeTextPrimary,
+              color: c.homeTextPrimary,
               fontWeight: FontWeight.w600,
             ),
           ),
