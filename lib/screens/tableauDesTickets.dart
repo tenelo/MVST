@@ -19,50 +19,88 @@ class TableauDeTickets extends StatefulWidget {
 class _TableauDeTicketsState extends State<TableauDeTickets> {
   int _rowsPerPage = 20;
   bool _isLoading = true;
+  bool _isLoadingMore = false;
   List<Map<String, dynamic>> donnees = [];
   List<Map<String, dynamic>> _filtre = [];
+  int _total = 0;
+  bool _toutCharge = false;
   final TextEditingController _rechercheParDate = TextEditingController();
   final TextEditingController _rechercheParDestination =
       TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    recuperationDeMesTickets();
+    _chargerPremierePage();
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _rechercheParDate.dispose();
     _rechercheParDestination.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> recuperationDeMesTickets() async {
+  Future<void> _chargerPremierePage() async {
     if (mounted) setState(() => _isLoading = true);
+    await _chargerPage(0);
+  }
+
+  Future<void> _chargerPage(int offset) async {
     try {
-      final response = await http.post(
-        Uri.parse(
-          'https://mvst.tenelo.cloud/recuperation_mes_tickets_tableau.php',
-        ),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({"idUtilisateur": widget.idUtilisateur}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/recuperation_mes_tickets_tableau.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({
+              "idUtilisateur": widget.idUtilisateur,
+              "offset": offset,
+              "limit": 150,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          final liste = List<Map<String, dynamic>>.from(data['tickets']);
-          if (mounted)
+          final nouveaux = List<Map<String, dynamic>>.from(data['tickets']);
+          if (mounted) {
             setState(() {
-              donnees = liste;
-              _filtre = liste;
+              if (offset == 0) {
+                donnees = nouveaux;
+              } else {
+                donnees.addAll(nouveaux);
+              }
+              _total = data['total'] ?? donnees.length;
+              _toutCharge = donnees.length >= _total;
+              _filtre = donnees;
             });
+          }
         }
       }
     } catch (e) {
       if (mounted) afficherErreur(context, e);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  void _onScroll() {
+    if (_isLoadingMore || _toutCharge) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      setState(() => _isLoadingMore = true);
+      _chargerPage(donnees.length);
     }
   }
 
@@ -83,13 +121,13 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
   @override
   Widget build(BuildContext context) {
     final c = Config.colors;
+    final double w = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: c.homeBackground,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ───────────────────────────────────────────────────
             Row(
               children: [
                 Expanded(
@@ -97,20 +135,19 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                     controller: _rechercheParDate,
                     hint: 'Recherche par date',
                     icon: Icons.calendar_today_outlined,
+                    w: w,
                   ),
                 ),
-
                 Expanded(
                   child: _buildSearchField(
                     controller: _rechercheParDestination,
                     hint: 'Par destination',
                     icon: Icons.location_on_outlined,
+                    w: w,
                   ),
                 ),
               ],
             ),
-
-            // ── Tableau ───────────────────────────────────────────────────
             Expanded(
               child: _isLoading
                   ? Center(
@@ -125,7 +162,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                         children: [
                           Icon(
                             Icons.history,
-                            color: c.homeButtonPrimary.withValues(alpha:0.3),
+                            color: c.homeButtonPrimary.withValues(alpha: 0.3),
                             size: 64,
                           ),
                           const SizedBox(height: 16),
@@ -134,13 +171,14 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                             style: TextStyle(
                               color: c.homeTextPrimary,
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: w * 0.041,
                             ),
                           ),
                         ],
                       ),
                     )
                   : SingleChildScrollView(
+                      controller: _scrollController,
                       child: SizedBox(
                         width: double.infinity,
                         child: Theme(
@@ -151,25 +189,24 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                               headingTextStyle: TextStyle(
                                 color: c.homeButtonPrimary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: w * 0.033,
                               ),
                               dataTextStyle: TextStyle(
                                 color: c.homeTextPrimary,
-                                fontSize: 13,
+                                fontSize: w * 0.033,
                               ),
                             ),
                           ),
                           child: PaginatedDataTable(
                             header: Text(
                               textAlign: TextAlign.center,
-                              'Nombre total de tickets : ${donnees.length}',
+                              'Nombre total de tickets : $_total',
                               style: TextStyle(
                                 color: c.homeButtonPrimary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 15,
+                                fontSize: w * 0.038,
                               ),
                             ),
-
                             horizontalMargin: 10,
                             columnSpacing: 16,
                             showFirstLastButtons: true,
@@ -230,7 +267,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
                               ),
                             ],
                             rowsPerPage: _rowsPerPage,
-                            availableRowsPerPage: const [5, 10, 20],
+                            availableRowsPerPage: const [5, 10, 20, 50, 100],
                             onRowsPerPageChanged: (int? value) {
                               if (value != null) {
                                 setState(() => _rowsPerPage = value);
@@ -252,6 +289,7 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    required double w,
   }) {
     return Padding(
       padding: const EdgeInsets.only(
@@ -263,16 +301,12 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
       child: TextField(
         controller: controller,
         onChanged: (_) => _filtrer(),
-        style: TextStyle(
-          //color: Config.colors.homeTextPrimary,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(fontSize: w * 0.031, fontWeight: FontWeight.bold),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
-            color: Config.colors.homeTextPrimary.withValues(alpha:0.4),
-            fontSize: 12,
+            color: Config.colors.homeTextPrimary.withValues(alpha: 0.4),
+            fontSize: w * 0.031,
             fontWeight: FontWeight.w500,
           ),
           prefixIcon: Icon(
@@ -281,7 +315,6 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
             size: 16,
           ),
           filled: true,
-          //fillColor: Config.colors.homeGrandeCarte,
           contentPadding: const EdgeInsets.symmetric(
             vertical: 2,
             horizontal: 2,

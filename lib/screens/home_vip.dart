@@ -1,27 +1,9 @@
 import 'package:flutter/material.dart';
 
-// ══════════════════════════════════════════════════════════════════════════════
-// DESIGN 1 — ÉMERAUDE IMPÉRIAL
-// Palette : vert émeraude + or antique sur fond forêt noire
-// Remplace le contenu de _buildAccueilVip() dans home.dart
-// ══════════════════════════════════════════════════════════════════════════════
-
-const Color _bg = Color(0xFF050E08); // forêt noire
-const Color _card = Color(0xFF0A1E10); // jade profond
-const Color _em = Color(0xFF00D87E); // émeraude brillant
-const Color _emDim = Color(0xFF3FA86A); // émeraude atténué
-const Color _gold = Color(0xFFC8A227); // or antique
-const Color _border = Color(0xFF134827); // bordure jade
+const Color _em = Color(0xFF00D87E);
+const Color _emDark = Color(0xFF019A5A);
+const Color _gold = Color(0xFFC8A227);
 const Color _white = Colors.white;
-
-const List<Map<String, String>> _kRoutes = [
-  {'depart': 'Ferké', 'destination': 'Abidjan'},
-  {'depart': 'Ferké', 'destination': 'Bouaké'},
-  {'depart': 'Bouaké', 'destination': 'Ferké'},
-  {'depart': 'Bouaké', 'destination': 'Abidjan'},
-  {'depart': 'Abidjan', 'destination': 'Ferké'},
-  {'depart': 'Abidjan', 'destination': 'Bouaké'},
-];
 
 Map<String, List<String>> _group(List<Map<String, String>> routes) {
   final Map<String, List<String>> g = {};
@@ -31,34 +13,47 @@ Map<String, List<String>> _group(List<Map<String, String>> routes) {
   return g;
 }
 
-// ── Widget principal (drop-in pour l'onglet VIP) ──────────────────────────────
-class VipAccueilVert extends StatelessWidget {
-  /// [onReserver] est appelé avec (depart, destination) quand on tape "Réserver"
-  const VipAccueilVert({super.key, this.onReserver});
+// ── Widget principal ──────────────────────────────────────────────────────────
+class HomeVip extends StatelessWidget {
+  const HomeVip({super.key, this.onReserver, required this.routes});
   final void Function(String depart, String destination)? onReserver;
+  final List<Map<String, String>> routes;
 
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    final grouped = _group(_kRoutes);
+    final grouped = _group(routes);
 
-    return Container(
-      //color: _bg,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          _HeroBand(w: w),
-          _SectionHeader(w: w),
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        _HeroBand(w: w),
+        _SectionHeader(w: w),
+        if (routes.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: Text(
+                'Aucune ligne VIP disponible',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF00D87E).withValues(alpha: 0.5),
+                  fontSize: w * 0.038,
+                ),
+              ),
+            ),
+          )
+        else
           ...grouped.entries.map(
             (e) => _OriginGroup(
               depart: e.key,
               destinations: e.value,
+              w: w,
               onReserver: onReserver,
             ),
           ),
-          const SizedBox(height: 32),
-        ],
-      ),
+        SizedBox(height: w * 0.08),
+      ],
     );
   }
 }
@@ -72,7 +67,7 @@ class _HeroBand extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(22, 30, 22, w * 0.07),
+      padding: EdgeInsets.fromLTRB(w * 0.055, w * 0.075, w * 0.055, w * 0.07),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -86,10 +81,13 @@ class _HeroBand extends StatelessWidget {
         children: [
           // Badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            padding: EdgeInsets.symmetric(
+              horizontal: w * 0.030,
+              vertical: w * 0.012,
+            ),
             decoration: BoxDecoration(
               color: _em.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(w * 0.075),
               border: Border.all(
                 color: _em.withValues(alpha: 0.30),
                 width: 0.9,
@@ -98,12 +96,12 @@ class _HeroBand extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.airline_seat_recline_extra,
                   color: _em,
-                  size: 13,
+                  size: w * 0.033,
                 ),
-                const SizedBox(width: 7),
+                SizedBox(width: w * 0.018),
                 Text(
                   'MVST VIP — Voyage Premium',
                   style: TextStyle(
@@ -135,16 +133,16 @@ class _HeroBand extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 32,
+                width: w * 0.08,
                 height: 2,
                 decoration: BoxDecoration(
                   color: _gold,
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: w * 0.015),
               Container(
-                width: 10,
+                width: w * 0.025,
                 height: 2,
                 decoration: BoxDecoration(
                   color: _gold.withValues(alpha: 0.4),
@@ -155,19 +153,22 @@ class _HeroBand extends StatelessWidget {
           ),
           SizedBox(height: w * 0.04),
 
-          // Pills
-          Row(
-            children: [
-              Wrap(
-                spacing: 2,
-                // runSpacing: 6,
-                children: [
-                  '★ Grand confort',
-                  '🌿 Éco Premium',
-                  '🎫 QR instantané',
-                ].map((label) => _Pill(label: label)).toList(),
-              ),
-            ],
+          // Pills — Wrap directement sans Row autour
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Wrap(
+                  spacing: w * 0.010,
+                  runSpacing: w * 0.010,
+                  children: [
+                    '★ Grand confort',
+                    '🌿 Éco Premium',
+                    '🎫 QR instantané',
+                  ].map((label) => _Pill(label: label, w: w)).toList(),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -175,23 +176,26 @@ class _HeroBand extends StatelessWidget {
   }
 }
 
+// ── Pill ──────────────────────────────────────────────────────────────────────
 class _Pill extends StatelessWidget {
   final String label;
-  const _Pill({required this.label});
+  final double w;
+  const _Pill({required this.label, required this.w});
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: w * 0.030, vertical: w * 0.016),
       decoration: BoxDecoration(
-        color: Color.fromARGB(255, 1, 154, 90).withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(30),
+        color: _emDark.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(w * 0.075),
         border: Border.all(color: _em.withValues(alpha: 0.28), width: 0.8),
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           color: _em,
-          fontSize: 12,
+          fontSize: w * 0.028,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -203,18 +207,19 @@ class _Pill extends StatelessWidget {
 class _SectionHeader extends StatelessWidget {
   final double w;
   const _SectionHeader({required this.w});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 6),
+      padding: EdgeInsets.fromLTRB(w * 0.05, w * 0.055, w * 0.05, w * 0.015),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 3,
-                height: 20,
+                width: w * 0.008,
+                height: w * 0.050,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [_em, _gold],
@@ -224,11 +229,11 @@ class _SectionHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: w * 0.025),
               Text(
                 'Lignes Classe VIP',
                 style: TextStyle(
-                  // color: _white,
+                  color: const Color.fromARGB(255, 5, 111, 1),
                   fontWeight: FontWeight.w800,
                   fontSize: w * 0.044,
                   letterSpacing: -0.4,
@@ -236,14 +241,13 @@ class _SectionHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 5),
+          SizedBox(height: w * 0.012),
           Padding(
-            padding: const EdgeInsets.only(left: 13),
+            padding: EdgeInsets.only(left: w * 0.033),
             child: Text(
               'Sièges spacieux · Confort absolu · Départ garanti',
               style: TextStyle(
-                color: Colors.grey[800],
-                //color: _emDim.withValues(alpha: 0.75),
+                color: const Color.fromARGB(255, 3, 51, 1),
                 fontSize: w * 0.030,
                 letterSpacing: 0.3,
               ),
@@ -259,62 +263,57 @@ class _SectionHeader extends StatelessWidget {
 class _OriginGroup extends StatelessWidget {
   final String depart;
   final List<String> destinations;
+  final double w;
   final void Function(String, String)? onReserver;
 
   const _OriginGroup({
     required this.depart,
     required this.destinations,
+    required this.w,
     this.onReserver,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      padding: EdgeInsets.fromLTRB(w * 0.04, w * 0.01, w * 0.04, w * 0.035),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Label ville
           Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            padding: EdgeInsets.only(left: w * 0.01, bottom: w * 0.02),
             child: Row(
               children: [
                 Container(
-                  width: 8,
-                  height: 8,
+                  width: w * 0.02,
+                  height: w * 0.02,
                   decoration: const BoxDecoration(
                     color: _em,
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: w * 0.02),
                 Text(
                   depart == 'Abidjan'
                       ? "A partir d'${depart.toUpperCase()}"
                       : "A partir de ${depart.toUpperCase()}",
-                  style: const TextStyle(
-                    color: Color.fromARGB(255, 1, 154, 90),
+                  style: TextStyle(
+                    color: _emDark,
                     fontWeight: FontWeight.w800,
-                    fontSize: 10.5,
+                    fontSize: w * 0.026,
                     letterSpacing: 1.8,
                   ),
                 ),
               ],
             ),
           ),
-
-          // Carte regroupant les lignes
           Container(
             decoration: BoxDecoration(
-              //color: _card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Color.fromARGB(255, 1, 154, 90),
-                width: 1,
-              ),
+              borderRadius: BorderRadius.circular(w * 0.04),
+              border: Border.all(color: _emDark, width: 1),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(w * 0.04),
               child: Column(
                 children: List.generate(destinations.length, (i) {
                   final isLast = i == destinations.length - 1;
@@ -323,15 +322,16 @@ class _OriginGroup extends StatelessWidget {
                       _RouteRow(
                         depart: depart,
                         destination: destinations[i],
+                        w: w,
                         onTap: () => onReserver?.call(depart, destinations[i]),
                       ),
                       if (!isLast)
                         Divider(
                           height: 0.7,
                           thickness: 1,
-                          color: Color.fromARGB(255, 1, 191, 112),
-                          indent: 60,
-                          endIndent: 16,
+                          color: _em.withValues(alpha: 0.4),
+                          indent: w * 0.15,
+                          endIndent: w * 0.04,
                         ),
                     ],
                   );
@@ -349,11 +349,13 @@ class _OriginGroup extends StatelessWidget {
 class _RouteRow extends StatelessWidget {
   final String depart;
   final String destination;
+  final double w;
   final VoidCallback? onTap;
 
   const _RouteRow({
     required this.depart,
     required this.destination,
+    required this.w,
     this.onTap,
   });
 
@@ -362,69 +364,69 @@ class _RouteRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: EdgeInsets.symmetric(
+          horizontal: w * 0.04,
+          vertical: w * 0.033,
+        ),
         child: Row(
           children: [
-            // Icône
             Container(
-              width: 38,
-              height: 38,
+              width: w * 0.095,
+              height: w * 0.095,
               decoration: BoxDecoration(
                 color: _em.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(w * 0.028),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.airline_seat_recline_extra,
-                color: Color.fromARGB(255, 1, 154, 90),
-                size: 19,
+                color: _emDark,
+                size: w * 0.048,
               ),
             ),
-            const SizedBox(width: 14),
-
-            // Texte trajet
+            SizedBox(width: w * 0.035),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '$depart → $destination',
-                    style: const TextStyle(
-                      // color: _white,
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: 15,
+                      fontSize: w * 0.037,
                       letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: w * 0.005),
                   Text(
                     'Ligne $depart $destination',
                     style: TextStyle(
                       color: _white.withValues(alpha: 0.30),
                       fontStyle: FontStyle.italic,
-                      fontSize: 10,
+                      fontSize: w * 0.025,
                     ),
                   ),
                 ],
               ),
             ),
-
-            // Bouton Réserver — émeraude avec halo
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              padding: EdgeInsets.symmetric(
+                horizontal: w * 0.030,
+                vertical: w * 0.018,
+              ),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF00D87E), Color(0xFF00A85F)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(w * 0.055),
               ),
-              child: const Text(
+              child: Text(
                 'Réserver',
                 style: TextStyle(
                   color: _white,
                   fontWeight: FontWeight.w800,
-                  fontSize: 11,
+                  fontSize: w * 0.027,
                 ),
               ),
             ),

@@ -118,11 +118,11 @@ class _TicketsState extends State<Tickets> {
                 'EEEE d MMMM yyyy',
                 'fr_FR',
               );
-              DateTime _dateCalcule = formatInitiale.parse(widget.date);
-              String _dateformatee = DateFormat(
+              DateTime dateCalcule = formatInitiale.parse(widget.date);
+              String dateformatee = DateFormat(
                 'yyyy-MM-dd HH:mm:ss',
-              ).format(_dateCalcule);
-              DateTime dateFormatee = DateTime.parse(_dateformatee).toUtc();
+              ).format(dateCalcule);
+              DateTime dateFormatee = DateTime.parse(dateformatee).toUtc();
 
               if (mounted) {
                 setState(() {
@@ -192,7 +192,7 @@ class _TicketsState extends State<Tickets> {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   )
                 : const Text(
-                    "Passer au paiement",
+                    "Réserver maintenant",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
           ),

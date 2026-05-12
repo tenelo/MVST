@@ -7,7 +7,6 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesFonctions.dart';
-import 'package:mvst/screens/choixPlace.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class Reservation extends StatefulWidget {
@@ -28,6 +27,7 @@ class Reservation extends StatefulWidget {
     required this.heure,
     required this.destination,
     required this.depart,
+    // Par défaut, le type de voyage est 'standard'. Si c'est une réservation VIP, il faut passer 'vip' lors de la création de l'instance.
     this.typeVoyage = 'standard',
   });
 
@@ -75,7 +75,7 @@ class _ReservationState extends State<Reservation> {
 
   void _connecterSocket() {
     _socket = io.io(
-      'https://mvst.tenelo.cloud',
+      kBaseUrl,
       io.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
@@ -83,12 +83,16 @@ class _ReservationState extends State<Reservation> {
     );
     _socket.connect();
   }
+// dans le payload, on envoie un documentId unique pour chaque réservation, basé sur le trajet, la date, l'heure et l'idDate. Cela permettra aux admins de suivre les réservations en temps réel et d'identifier facilement chaque ticket acheté.
+// typeVoyage est envoyé pour différencier les réservations VIP des standard, ce qui peut être utile pour les statistiques et la gestion des places.
+// par defaut, le statut est 'valide' et l'etatScanne est 'nonScanné', ce qui correspond à une réservation fraîchement confirmée. Ces champs pourront être mis à jour plus tard par les admins lors du processus de validation et de scan des tickets.
+// le typeVoyage par défaut est 'standard',
 
   Future<void> _confirmerReservation() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
-    final url = Uri.parse('https://mvst.tenelo.cloud/ajouterTickets.php');
+    final url = Uri.parse('$kBaseUrl/ajouterTickets.php');
 
     try {
       final payload = {
@@ -113,14 +117,13 @@ class _ReservationState extends State<Reservation> {
         url,
         headers: {'Content-Type': 'application/json'},
         body: json.encode(payload),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
         if (data['success'] == true) {
           listeDeVerification.clear();
-          listeDesPlacesChoisies.clear();
 
           // ── Notifier les admins en temps réel ────────────────────────────
           final documentId =
@@ -201,7 +204,6 @@ class _ReservationState extends State<Reservation> {
 
   Future<void> _nettoyer() async {
     listeDeVerification.clear();
-    listeDesPlacesChoisies.clear();
   }
 
   @override

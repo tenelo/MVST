@@ -33,6 +33,7 @@ dependencies:
   pdf: ^3.12.0
   permission_handler: ^12.0.1
   firebase_auth: ^6.2.0
+  firebase_crashlytics: ^5.0.8
   carousel_slider: ^5.1.2
   modal_progress_hud_nsn: ^0.5.1
   get: ^4.7.3
@@ -48,7 +49,11 @@ dependencies:
 
 #--------------------
 
+  flutter_secure_storage: ^9.2.2
+  local_auth: ^2.3.0
+
   intl: any
+  google_fonts: ^8.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -92,3 +97,6 @@ flutter:
     - family: Lobster
       fonts:
         - asset: fonts/Lobster-Regular.ttf
+    - family: PlayfairDisplay
+      fonts:
+        - asset: fonts/PlayfairDisplay-VariableFont_wght.ttf

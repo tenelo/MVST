@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesFonctions.dart';
 import 'package:mvst/qrcode/creationQrCode.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -80,6 +81,8 @@ class _VipDetailsTicketsState extends State<VipDetailsTickets> {
   @override
   void dispose() {
     _etatScannController.close();
+    socket.off('ticket_valide');
+    socket.offAny();
     socket.disconnect();
     socket.dispose();
     super.dispose();
@@ -87,7 +90,7 @@ class _VipDetailsTicketsState extends State<VipDetailsTickets> {
 
   void _connecterSocket() {
     socket = io.io(
-      'https://mvst.tenelo.cloud',
+      kBaseUrl,
       io.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
@@ -134,13 +137,13 @@ class _VipDetailsTicketsState extends State<VipDetailsTickets> {
   Future<void> _rafraichirEtat() async {
     try {
       final response = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/etatTicket.php'),
+        Uri.parse('$kBaseUrl/etatTicket.php'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'documentId': widget.idTicket,
           'place': widget.place,
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && mounted) {

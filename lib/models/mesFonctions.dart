@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mvst/config/config.dart';
 import 'package:intl/intl.dart';
 
 // ─── Listes globales des places ───────────────────────────────────────────────
@@ -30,9 +31,9 @@ class ConvertirHeure {
 // (utilisateur ayant abandonné le processus d'achat)
 Future<void> suppressionPlacesTemporaires() async {
   const String apiUrl =
-      'https://mvst.tenelo.cloud/process_places_temporaires.php';
+      '$kBaseUrl/process_places_temporaires.php';
   try {
-    final response = await http.get(Uri.parse(apiUrl));
+    final response = await http.get(Uri.parse(apiUrl)).timeout(const Duration(seconds: 10));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data["success"]) {

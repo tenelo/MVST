@@ -20,7 +20,7 @@ class BlocCompteur extends Bloc<EventCompteur, CompteurState> {
     //le Bloc émet un UpdatedCompteurState
     //avec la valeur de panier décrémentée de 1.
     on<EventDecrement>((event, emit) {
-      emit(UpdatedCompteurState(state.tickets - 1));
+      if (state.tickets > 0) emit(UpdatedCompteurState(state.tickets - 1));
     });
 
     // Chaque fois qu'un EventInitialise est émis, le Bloc

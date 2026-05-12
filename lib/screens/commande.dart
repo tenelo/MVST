@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
+import 'package:mvst/authentification/pin_unlock.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
@@ -15,6 +16,7 @@ import 'package:mvst/screens/home.dart';
 import 'package:mvst/screens/choixPlaceVip.dart';
 
 String? dateFormatee, idMois, idMoisAnnee, idAnnee;
+final Color vertVip = Color(0xFF00D87E);
 
 class Commande extends StatefulWidget {
   const Commande({
@@ -252,18 +254,28 @@ class _CommandeState extends State<Commande> {
                   }
                   if (states.contains(WidgetState.disabled)) return null;
                   // date active (les 2 seules disponibles) → couleur accent
-                  return _isVip ? const Color(0xFF00D87E) : c.bleuFonce2;
+                  return _isVip ? vertVip : c.bleuFonce2;
                 }),
-                dayStyle: TextStyle(fontWeight: FontWeight.bold),
+                dayStyle: const TextStyle(fontWeight: FontWeight.bold),
                 // Couleur du cercle de sélection
                 dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
-                    return _isVip
-                        ? const Color(0xFF00D87E)
-                        : c.homeButtonPrimary;
+                    return _isVip ? vertVip : c.homeButtonPrimary;
                   }
                   return null;
                 }),
+                cancelButtonStyle: TextButton.styleFrom(
+                  textStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                confirmButtonStyle: ElevatedButton.styleFrom(
+                  textStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _isVip ? vertVip : c.homeTextPrimary,
+                  ),
+                ),
               ),
               textButtonTheme: TextButtonThemeData(
                 style: TextButton.styleFrom(
@@ -360,7 +372,9 @@ class _CommandeState extends State<Commande> {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Icon(Icons.star_rounded, color: c.homeAccent, size: 16),
+                  if (_isVip) ...[
+                    Icon(Icons.star_rounded, color: c.homeAccent, size: 16),
+                  ],
                   const Expanded(child: SizedBox()),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -519,47 +533,62 @@ class _CommandeState extends State<Commande> {
                       onPressed: _isLoading
                           ? null
                           : () async {
-                              if (formKey.currentState!.validate()) {
-                                setState(() => _isLoading = true);
-                                counterBloc.add(EventInitialise());
-                                listeDesPlacesChoisies.clear();
-                                Navigator.push(
+                              if (!formKey.currentState!.validate()) return;
+
+                              // Code secret requis avant le choix de place
+                              final sessionOk = await sessionValide();
+                              if (!sessionOk && mounted) {
+                                bool pinSuccess = false;
+                                await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => _isVip
-                                        ? ChoixPlacesVip(
-                                            idDate: dateFormatee!,
-                                            id: widget.idUtilisateur!,
-                                            depart: widget.depart,
-                                            destination: widget.destination,
-                                            nom: nomController.text,
-                                            contact: contactController.text,
-                                            date: _dateController.text,
-                                            heure: heureDeDepart!,
-                                            prixDuBillet: widget.prixDuBillet,
-                                            mois: idMois!,
-                                            moisAnnee: idMoisAnnee!,
-                                            annee: idAnnee!,
-                                          )
-                                        : ChoixPlaces(
-                                            idDate: dateFormatee!,
-                                            id: widget.idUtilisateur!,
-                                            depart: widget.depart,
-                                            destination: widget.destination,
-                                            nom: nomController.text,
-                                            contact: contactController.text,
-                                            date: _dateController.text,
-                                            heure: heureDeDepart!,
-                                            prixDuBillet: widget.prixDuBillet,
-                                            mois: idMois!,
-                                            moisAnnee: idMoisAnnee!,
-                                            annee: idAnnee!,
-                                          ),
+                                    builder: (_) => PinUnlock(
+                                      apresAuthentification: () =>
+                                          pinSuccess = true,
+                                    ),
                                   ),
-                                ).then(
-                                  (_) => setState(() => _isLoading = false),
                                 );
+                                if (!pinSuccess || !mounted) return;
                               }
+
+                              setState(() => _isLoading = true);
+                              counterBloc.add(EventInitialise());
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => _isVip
+                                      ? ChoixPlacesVip(
+                                          idDate: dateFormatee!,
+                                          id: widget.idUtilisateur!,
+                                          depart: widget.depart,
+                                          destination: widget.destination,
+                                          nom: nomController.text,
+                                          contact: contactController.text,
+                                          date: _dateController.text,
+                                          heure: heureDeDepart!,
+                                          prixDuBillet: widget.prixDuBillet,
+                                          mois: idMois!,
+                                          moisAnnee: idMoisAnnee!,
+                                          annee: idAnnee!,
+                                          typeVoyage: widget.typeVoyage,
+                                        )
+                                      : ChoixPlaces(
+                                          idDate: dateFormatee!,
+                                          id: widget.idUtilisateur!,
+                                          depart: widget.depart,
+                                          destination: widget.destination,
+                                          nom: nomController.text,
+                                          contact: contactController.text,
+                                          date: _dateController.text,
+                                          heure: heureDeDepart!,
+                                          prixDuBillet: widget.prixDuBillet,
+                                          mois: idMois!,
+                                          moisAnnee: idMoisAnnee!,
+                                          annee: idAnnee!,
+                                          typeVoyage: widget.typeVoyage,
+                                        ),
+                                ),
+                              ).then((_) => setState(() => _isLoading = false));
                             },
                       icon: _isLoading
                           ? SizedBox(
@@ -761,11 +790,13 @@ class _CommandeState extends State<Commande> {
 
   Future<void> _recupHeuresDeDeparts() async {
     try {
-      final response = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/recuperationHeure.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'type': widget.typeVoyage}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/recuperationHeure.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'type': widget.typeVoyage}),
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {

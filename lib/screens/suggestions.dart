@@ -6,18 +6,18 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/config/app_colors.dart';
 import 'package:mvst/config/config.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 // ── Constantes ────────────────────────────────────────────────────────────────
-const String _apiUrl = 'https://mvst.tenelo.cloud/api_suggestions.php';
+const String _apiUrl = '$kBaseUrl/api_suggestions.php';
 
 // ── Catégories disponibles ─────────────────────────────────────────────────
 const List<_Categorie> _categories = [
-  _Categorie('Amélioration',  Icons.build_circle_outlined),
-  _Categorie('Problème',      Icons.warning_amber_outlined),
-  _Categorie('Compliment',    Icons.star_outline_rounded),
-  _Categorie('Autre',         Icons.chat_bubble_outline_rounded),
-  _Categorie('Nouveau trajet',Icons.map_outlined),
+  _Categorie('Amélioration', Icons.build_circle_outlined),
+  _Categorie('Problème', Icons.warning_amber_outlined),
+  _Categorie('Compliment', Icons.star_outline_rounded),
+  _Categorie('Autre', Icons.chat_bubble_outline_rounded),
+  _Categorie('Nouveau trajet', Icons.map_outlined),
 ];
 
 class _Categorie {
@@ -28,9 +28,17 @@ class _Categorie {
 
 // ── Statuts ────────────────────────────────────────────────────────────────
 const Map<String, _StatutInfo> _statuts = {
-  'en_attente': _StatutInfo('En attente', Color(0xFFF59E0B), Icons.hourglass_empty_rounded),
-  'lu':         _StatutInfo('Lu',         Color(0xFF3B82F6), Icons.drafts_outlined),
-  'traite':     _StatutInfo('Traité',     Color(0xFF10B981), Icons.check_circle_outline_rounded),
+  'en_attente': _StatutInfo(
+    'En attente',
+    Color(0xFFF59E0B),
+    Icons.hourglass_empty_rounded,
+  ),
+  'lu': _StatutInfo('Lu', Color(0xFF3B82F6), Icons.drafts_outlined),
+  'traite': _StatutInfo(
+    'Traité',
+    Color(0xFF10B981),
+    Icons.check_circle_outline_rounded,
+  ),
 };
 
 class _StatutInfo {
@@ -63,15 +71,15 @@ class _Suggestion {
   });
 
   factory _Suggestion.fromJson(Map<String, dynamic> j) => _Suggestion(
-        id:            (j['id'] as num).toInt(),
-        nom:           j['nom']           ?? '',
-        telephone:     j['telephone']     ?? '',
-        message:       j['message']       ?? '',
-        categorie:     j['categorie']     ?? 'Autre',
-        idutilisateur: j['idutilisateur'] ?? '',
-        statut:        j['statut']        ?? 'en_attente',
-        createdat:     DateTime.tryParse(j['createdat'] ?? '') ?? DateTime.now(),
-      );
+    id: (j['id'] as num).toInt(),
+    nom: j['nom'] ?? '',
+    telephone: j['telephone'] ?? '',
+    message: j['message'] ?? '',
+    categorie: j['categorie'] ?? 'Autre',
+    idutilisateur: j['idutilisateur'] ?? '',
+    statut: j['statut'] ?? 'en_attente',
+    createdat: DateTime.tryParse(j['createdat'] ?? '') ?? DateTime.now(),
+  );
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -99,7 +107,7 @@ class _SuggestionsState extends State<Suggestions>
 
   late TabController _tabController;
   List<_Suggestion> _suggestions = [];
-  late IO.Socket _socket;
+  late io.Socket _socket;
 
   static const int _maxChars = 500;
 
@@ -131,10 +139,10 @@ class _SuggestionsState extends State<Suggestions>
       final snap = await _fetchProfilFirestore();
       if (mounted) {
         setState(() {
-          _nomUtilisateur       = snap['nom']       ?? '';
-          _prenomsUtilisateur   = snap['prenoms']   ?? '';
+          _nomUtilisateur = snap['nom'] ?? '';
+          _prenomsUtilisateur = snap['prenoms'] ?? '';
           _telephoneUtilisateur = snap['telephone'] ?? '';
-          _loadingProfil        = false;
+          _loadingProfil = false;
         });
       }
     } catch (_) {
@@ -146,11 +154,13 @@ class _SuggestionsState extends State<Suggestions>
     // Import lazy pour éviter la dépendance directe au top du fichier
     // si Firestore est déjà dans l'app pour d'autres usages
     try {
-      final resp = await http.get(
-        Uri.parse(
-          'https://mvst.tenelo.cloud/get_utilisateur.php?id=${widget.idUtilisateur}',
-        ),
-      ).timeout(const Duration(seconds: 5));
+      final resp = await http
+          .get(
+            Uri.parse(
+              '$kBaseUrl/get_utilisateur.php?id=${widget.idUtilisateur}',
+            ),
+          )
+          .timeout(const Duration(seconds: 5));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         if (data['success'] == true && data['utilisateur'] != null) {
@@ -166,9 +176,13 @@ class _SuggestionsState extends State<Suggestions>
     if (_loadingSuggestions) return;
     setState(() => _loadingSuggestions = true);
     try {
-      final resp = await http.get(
-        Uri.parse('$_apiUrl?action=get_by_user&idutilisateur=${widget.idUtilisateur}'),
-      ).timeout(const Duration(seconds: 10));
+      final resp = await http
+          .get(
+            Uri.parse(
+              '$_apiUrl?action=get_by_user&idutilisateur=${widget.idUtilisateur}',
+            ),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -179,16 +193,17 @@ class _SuggestionsState extends State<Suggestions>
           setState(() => _suggestions = list);
         }
       }
-    } catch (_) {} finally {
+    } catch (_) {
+    } finally {
       if (mounted) setState(() => _loadingSuggestions = false);
     }
   }
 
   // ── Socket.IO ─────────────────────────────────────────────────────────────
   void _connecterSocket() {
-    _socket = IO.io(
-      'https://mvst.tenelo.cloud',
-      IO.OptionBuilder()
+    _socket = io.io(
+      kBaseUrl,
+      io.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
           .build(),
@@ -205,7 +220,7 @@ class _SuggestionsState extends State<Suggestions>
     // L'admin a changé le statut d'une suggestion
     _socket.on('statut_suggestion_change', (data) {
       if (!mounted) return;
-      final int id     = (data['id'] as num).toInt();
+      final int id = (data['id'] as num).toInt();
       final String statut = data['statut'] ?? '';
       setState(() {
         for (final s in _suggestions) {
@@ -233,45 +248,50 @@ class _SuggestionsState extends State<Suggestions>
     }
 
     try {
-      final resp = await http.post(
-        Uri.parse(_apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'action':        'add',
-          'nom':           _nomUtilisateur.isNotEmpty
-              ? '$_nomUtilisateur${_prenomsUtilisateur.isNotEmpty ? " $_prenomsUtilisateur" : ""}'
-              : 'Utilisateur',
-          'telephone':     _telephoneUtilisateur.isNotEmpty ? _telephoneUtilisateur : '-',
-          'message':       _messageCtrl.text.trim(),
-          'categorie':     _categorieSelectionnee,
-          'idutilisateur': widget.idUtilisateur,
-        }),
-      ).timeout(const Duration(seconds: 10));
+      final resp = await http
+          .post(
+            Uri.parse(_apiUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'action': 'add',
+              'nom': _nomUtilisateur.isNotEmpty
+                  ? '$_nomUtilisateur${_prenomsUtilisateur.isNotEmpty ? " $_prenomsUtilisateur" : ""}'
+                  : 'Utilisateur',
+              'telephone': _telephoneUtilisateur.isNotEmpty
+                  ? _telephoneUtilisateur
+                  : '-',
+              'message': _messageCtrl.text.trim(),
+              'categorie': _categorieSelectionnee,
+              'idutilisateur': widget.idUtilisateur,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         if (data['success'] == true) {
           final newSugg = _Suggestion(
-            id:            data['id'] as int,
-            nom:           _nomUtilisateur,
-            telephone:     _telephoneUtilisateur,
-            message:       _messageCtrl.text.trim(),
-            categorie:     _categorieSelectionnee,
+            id: data['id'] as int,
+            nom: _nomUtilisateur,
+            telephone: _telephoneUtilisateur,
+            message: _messageCtrl.text.trim(),
+            categorie: _categorieSelectionnee,
             idutilisateur: widget.idUtilisateur,
-            statut:        'en_attente',
-            createdat:     DateTime.tryParse(data['createdat'] ?? '') ?? DateTime.now(),
+            statut: 'en_attente',
+            createdat:
+                DateTime.tryParse(data['createdat'] ?? '') ?? DateTime.now(),
           );
 
           // Notifier les admins en temps réel
           _socket.emit('nouvelle_suggestion', {
-            'id':            newSugg.id,
-            'nom':           newSugg.nom,
-            'telephone':     newSugg.telephone,
-            'message':       newSugg.message,
-            'categorie':     newSugg.categorie,
+            'id': newSugg.id,
+            'nom': newSugg.nom,
+            'telephone': newSugg.telephone,
+            'message': newSugg.message,
+            'categorie': newSugg.categorie,
             'idutilisateur': newSugg.idutilisateur,
-            'statut':        newSugg.statut,
-            'createdat':     data['createdat'],
+            'statut': newSugg.statut,
+            'createdat': data['createdat'],
           });
 
           if (mounted) {
@@ -316,15 +336,17 @@ class _SuggestionsState extends State<Suggestions>
     if (confirm != true || !mounted) return;
 
     try {
-      final resp = await http.post(
-        Uri.parse(_apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'action':        'delete',
-          'id':            s.id,
-          'idutilisateur': widget.idUtilisateur,
-        }),
-      ).timeout(const Duration(seconds: 8));
+      final resp = await http
+          .post(
+            Uri.parse(_apiUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'action': 'delete',
+              'id': s.id,
+              'idutilisateur': widget.idUtilisateur,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
 
       final data = jsonDecode(resp.body);
       if (data['success'] == true) {
@@ -337,28 +359,41 @@ class _SuggestionsState extends State<Suggestions>
 
   void _afficherSucces() {
     final c = Config.colors;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      duration: const Duration(seconds: 4),
-      backgroundColor: c.homeButtonPrimary,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      content: const Row(children: [
-        Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-        SizedBox(width: 10),
-        Text('Suggestion envoyée, merci !',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-      ]),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 4),
+        backgroundColor: c.homeButtonPrimary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+            SizedBox(width: 10),
+            Text(
+              'Suggestion envoyée, merci !',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _afficherErreur() {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      backgroundColor: Colors.redAccent,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      content: const Text('Erreur lors de l\'envoi, réessayez.',
-          style: TextStyle(color: Colors.white)),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: const Text(
+          'Erreur lors de l\'envoi, réessayez.',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -394,19 +429,23 @@ class _SuggestionsState extends State<Suggestions>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 8),
-                              Text('Suggestions',
-                                  style: TextStyle(
-                                    color: c.homeAccent,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Lobster',
-                                  )),
+                              Text(
+                                'Suggestions',
+                                style: TextStyle(
+                                  color: c.homeAccent,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Lobster',
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text('Votre avis améliore le service',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.75),
-                                    fontSize: 13,
-                                  )),
+                              Text(
+                                'Votre avis améliore le service',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.75),
+                                  fontSize: 13,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -422,8 +461,13 @@ class _SuggestionsState extends State<Suggestions>
                         indicatorColor: Colors.white,
                         indicatorWeight: 3,
                         labelColor: Colors.white,
-                        unselectedLabelColor: Colors.white.withValues(alpha: 0.55),
-                        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        unselectedLabelColor: Colors.white.withValues(
+                          alpha: 0.55,
+                        ),
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                         tabs: const [
                           Tab(text: 'Nouvelle suggestion'),
                           Tab(text: 'Mes envois'),
@@ -444,7 +488,8 @@ class _SuggestionsState extends State<Suggestions>
   // ── Onglet 1 : Formulaire ─────────────────────────────────────────────────
   Widget _buildFormulaire(AppColors c) {
     final int restants = _maxChars - _messageCtrl.text.length;
-    final bool pret = _messageCtrl.text.trim().isNotEmpty &&
+    final bool pret =
+        _messageCtrl.text.trim().isNotEmpty &&
         _messageCtrl.text.length <= _maxChars;
 
     return SingleChildScrollView(
@@ -459,36 +504,59 @@ class _SuggestionsState extends State<Suggestions>
               color: c.homeButtonPrimary.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Row(children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: c.homeButtonPrimary.withValues(alpha: 0.15),
-                child: Icon(Icons.person_outline, color: c.homeButtonPrimary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _nomUtilisateur.isNotEmpty
-                        ? '$_nomUtilisateur${_prenomsUtilisateur.isNotEmpty ? " $_prenomsUtilisateur" : ""}'
-                        : 'Utilisateur',
-                    style: TextStyle(color: c.homeTextPrimary, fontWeight: FontWeight.w600, fontSize: 14),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: c.homeButtonPrimary.withValues(alpha: 0.15),
+                  child: Icon(
+                    Icons.person_outline,
+                    color: c.homeButtonPrimary,
+                    size: 20,
                   ),
-                  if (_telephoneUtilisateur.isNotEmpty)
-                    Text(_telephoneUtilisateur,
-                        style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.5), fontSize: 12)),
-                ],
-              )),
-            ]),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _nomUtilisateur.isNotEmpty
+                            ? '$_nomUtilisateur${_prenomsUtilisateur.isNotEmpty ? " $_prenomsUtilisateur" : ""}'
+                            : 'Utilisateur',
+                        style: TextStyle(
+                          color: c.homeTextPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (_telephoneUtilisateur.isNotEmpty)
+                        Text(
+                          _telephoneUtilisateur,
+                          style: TextStyle(
+                            color: c.homeTextPrimary.withValues(alpha: 0.5),
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 24),
 
           // Catégories
-          Text('CATÉGORIE',
-              style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.45),
-                  fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.1)),
+          Text(
+            'CATÉGORIE',
+            style: TextStyle(
+              color: c.homeTextPrimary.withValues(alpha: 0.45),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
           const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -498,10 +566,14 @@ class _SuggestionsState extends State<Suggestions>
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
-                    onTap: () => setState(() => _categorieSelectionnee = cat.label),
+                    onTap: () =>
+                        setState(() => _categorieSelectionnee = cat.label),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: selected
                             ? c.homeButtonPrimary
@@ -514,15 +586,28 @@ class _SuggestionsState extends State<Suggestions>
                           width: 1.2,
                         ),
                       ),
-                      child: Row(children: [
-                        Icon(cat.icon, size: 14, color: selected ? Colors.white : c.homeButtonPrimary),
-                        const SizedBox(width: 6),
-                        Text(cat.label,
+                      child: Row(
+                        children: [
+                          Icon(
+                            cat.icon,
+                            size: 14,
+                            color: selected
+                                ? Colors.white
+                                : c.homeButtonPrimary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            cat.label,
                             style: TextStyle(
-                              color: selected ? Colors.white : c.homeButtonPrimary,
-                              fontSize: 12, fontWeight: FontWeight.w600,
-                            )),
-                      ]),
+                              color: selected
+                                  ? Colors.white
+                                  : c.homeButtonPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -533,33 +618,56 @@ class _SuggestionsState extends State<Suggestions>
           const SizedBox(height: 24),
 
           // Message
-          Text('VOTRE MESSAGE',
-              style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.45),
-                  fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.1)),
+          Text(
+            'VOTRE MESSAGE',
+            style: TextStyle(
+              color: c.homeTextPrimary.withValues(alpha: 0.45),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
           const SizedBox(height: 10),
           TextField(
             controller: _messageCtrl,
             focusNode: _messageFocus,
             maxLines: 7,
             maxLength: _maxChars,
-            style: TextStyle(color: c.homeTextPrimary, fontSize: 14, height: 1.5),
+            style: TextStyle(
+              color: c.homeTextPrimary,
+              fontSize: 14,
+              height: 1.5,
+            ),
             decoration: InputDecoration(
-              hintText: 'Décrivez votre suggestion, idée ou problème rencontré...',
-              hintStyle: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.35), fontSize: 13),
+              hintText:
+                  'Décrivez votre suggestion, idée ou problème rencontré...',
+              hintStyle: TextStyle(
+                color: c.homeTextPrimary.withValues(alpha: 0.35),
+                fontSize: 13,
+              ),
               filled: true,
               fillColor: c.homeCardBackground,
               counterStyle: TextStyle(
-                color: restants < 50 ? Colors.redAccent : c.homeTextPrimary.withValues(alpha: 0.4),
+                color: restants < 50
+                    ? Colors.redAccent
+                    : c.homeTextPrimary.withValues(alpha: 0.4),
                 fontSize: 11,
               ),
               contentPadding: const EdgeInsets.all(16),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: c.homeButtonPrimary, width: 1.5)),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: c.homeButtonPrimary, width: 1.5),
+              ),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: c.homeTextPrimary.withValues(alpha: 0.08))),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: c.homeTextPrimary.withValues(alpha: 0.08),
+                ),
+              ),
             ),
           ),
 
@@ -570,15 +678,28 @@ class _SuggestionsState extends State<Suggestions>
             child: FilledButton.icon(
               onPressed: (_isLoading || !pret) ? null : _envoyer,
               icon: _isLoading
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Icon(Icons.send_rounded, size: 18),
               label: Text(_isLoading ? 'Envoi...' : 'Envoyer la suggestion'),
               style: FilledButton.styleFrom(
-                backgroundColor: pret ? c.homeButtonPrimary : c.homeButtonPrimary.withValues(alpha: 0.4),
+                backgroundColor: pret
+                    ? c.homeButtonPrimary
+                    : c.homeButtonPrimary.withValues(alpha: 0.4),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
@@ -590,17 +711,31 @@ class _SuggestionsState extends State<Suggestions>
   // ── Onglet 2 : Historique ─────────────────────────────────────────────────
   Widget _buildHistorique(AppColors c) {
     if (_loadingSuggestions) {
-      return Center(child: CircularProgressIndicator(color: c.homeButtonPrimary));
+      return Center(
+        child: CircularProgressIndicator(color: c.homeButtonPrimary),
+      );
     }
 
     if (_suggestions.isEmpty) {
       return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.inbox_outlined, size: 56, color: c.homeButtonPrimary.withValues(alpha: 0.25)),
-          const SizedBox(height: 12),
-          Text('Aucune suggestion envoyée',
-              style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.5), fontSize: 14)),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 56,
+              color: c.homeButtonPrimary.withValues(alpha: 0.25),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Aucune suggestion envoyée',
+              style: TextStyle(
+                color: c.homeTextPrimary.withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -618,9 +753,14 @@ class _SuggestionsState extends State<Suggestions>
 
   Widget _buildCarteHistorique(AppColors c, _Suggestion s) {
     final statutInfo = _statuts[s.statut] ?? _statuts['en_attente']!;
-    final catInfo    = _categories.firstWhere((x) => x.label == s.categorie,
-        orElse: () => _categories.last);
-    final date = DateFormat('d MMM y · HH:mm', 'fr_FR').format(s.createdat.toLocal());
+    final catInfo = _categories.firstWhere(
+      (x) => x.label == s.categorie,
+      orElse: () => _categories.last,
+    );
+    final date = DateFormat(
+      'd MMM y · HH:mm',
+      'fr_FR',
+    ).format(s.createdat.toLocal());
 
     return Dismissible(
       key: ValueKey(s.id),
@@ -645,66 +785,121 @@ class _SuggestionsState extends State<Suggestions>
           boxShadow: [
             BoxShadow(
               color: c.homeButtonPrimary.withValues(alpha: 0.06),
-              blurRadius: 12, offset: const Offset(0, 3),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // En-tête : catégorie + statut animé
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: c.homeButtonPrimary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(catInfo.icon, size: 12, color: c.homeButtonPrimary),
-                  const SizedBox(width: 5),
-                  Text(s.categorie,
-                      style: TextStyle(color: c.homeButtonPrimary, fontSize: 11, fontWeight: FontWeight.w600)),
-                ]),
-              ),
-              const Spacer(),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: Container(
-                  key: ValueKey(s.statut),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statutInfo.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // En-tête : catégorie + statut animé
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: c.homeButtonPrimary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          catInfo.icon,
+                          size: 12,
+                          color: c.homeButtonPrimary,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          s.categorie,
+                          style: TextStyle(
+                            color: c.homeButtonPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(statutInfo.icon, size: 12, color: statutInfo.color),
-                    const SizedBox(width: 5),
-                    Text(statutInfo.label,
-                        style: TextStyle(color: statutInfo.color, fontSize: 11, fontWeight: FontWeight.w600)),
-                  ]),
+                  const Spacer(),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Container(
+                      key: ValueKey(s.statut),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statutInfo.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            statutInfo.icon,
+                            size: 12,
+                            color: statutInfo.color,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            statutInfo.label,
+                            style: TextStyle(
+                              color: statutInfo.color,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+              Text(
+                s.message,
+                style: TextStyle(
+                  color: c.homeTextPrimary,
+                  fontSize: 13,
+                  height: 1.5,
                 ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
-            ]),
+              const SizedBox(height: 8),
 
-            const SizedBox(height: 10),
-            Text(s.message,
-                style: TextStyle(color: c.homeTextPrimary, fontSize: 13, height: 1.5),
-                maxLines: 3, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 8),
-
-            Row(children: [
-              Text(date,
-                  style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.4), fontSize: 11)),
-              const Spacer(),
-              // Bouton supprimer discret
-              GestureDetector(
-                onTap: () => _supprimer(s),
-                child: Icon(Icons.delete_outline, size: 18,
-                    color: Colors.red.withValues(alpha: 0.5)),
+              Row(
+                children: [
+                  Text(
+                    date,
+                    style: TextStyle(
+                      color: c.homeTextPrimary.withValues(alpha: 0.4),
+                      fontSize: 11,
+                    ),
+                  ),
+                  const Spacer(),
+                  // Bouton supprimer discret
+                  GestureDetector(
+                    onTap: () => _supprimer(s),
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: Colors.red.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
               ),
-            ]),
-          ]),
+            ],
+          ),
         ),
       ),
     );

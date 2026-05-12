@@ -9,8 +9,7 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesFonctions.dart';
-import 'package:mvst/screens/choixPlace.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class ChoixPaiement extends StatefulWidget {
   const ChoixPaiement({
@@ -58,7 +57,7 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
   bool _isNavigating = false;
 
   // ── Socket.IO ─────
-  late IO.Socket socket;
+  late io.Socket socket;
 
   @override
   void initState() {
@@ -77,9 +76,9 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
   }
 
   void _connecterSocket() {
-    socket = IO.io(
-      'https://mvst.tenelo.cloud',
-      IO.OptionBuilder()
+    socket = io.io(
+      kBaseUrl,
+      io.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
           .build(),
@@ -94,7 +93,7 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       _isLoading = true;
     });
 
-    final url = Uri.parse('https://mvst.tenelo.cloud/ajouterTickets.php');
+    final url = Uri.parse('$kBaseUrl/ajouterTickets.php');
 
     try {
       // Construire le payload pour l'envoi des données
@@ -117,11 +116,13 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       };
 
       // Envoyer la requête POST
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(payload),
-      );
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(payload),
+          )
+          .timeout(const Duration(seconds: 10));
       // Vérifier la réponse du serveur
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -129,7 +130,6 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
         if (data['success'] == true) {
           // Nettoyer et afficher un message en cas de succès
           listeDeVerification.clear();
-          listeDesPlacesChoisies.clear();
           messageEnCasDeSucces(context);
 
           // ── Notifier les admins en temps réel ──────────────────────────
@@ -373,168 +373,168 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
                 )
               : SingleChildScrollView(
                   child: Container(
-                  color: const Color.fromARGB(197, 177, 241, 249),
-                  constraints: BoxConstraints(minHeight: screenHeight),
-                  width: screenWidth,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.06,
-                      vertical: screenHeight * 0.050,
-                    ),
-                    child: Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(screenWidth * 0.001),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // ── Image carte de paiement ──────────────────────
-                            SizedBox(
-                              height: screenHeight * 0.24,
-                              width: double.infinity,
-                              child: Card(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.0),
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    image: DecorationImage(
-                                      image: AssetImage(
-                                        'assets/images/credAA.png',
+                    color: const Color.fromARGB(197, 177, 241, 249),
+                    constraints: BoxConstraints(minHeight: screenHeight),
+                    width: screenWidth,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.06,
+                        vertical: screenHeight * 0.050,
+                      ),
+                      child: Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(screenWidth * 0.001),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // ── Image carte de paiement ──────────────────────
+                              SizedBox(
+                                height: screenHeight * 0.24,
+                                width: double.infinity,
+                                child: Card(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15.0),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      image: DecorationImage(
+                                        image: AssetImage(
+                                          'assets/images/credAA.png',
+                                        ),
+                                        fit: BoxFit.cover,
                                       ),
-                                      fit: BoxFit.cover,
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
 
-                            SizedBox(height: screenHeight * 0.030),
-                            // ── Boîte des informations ───────────────────────
-                            SizedBox(
-                              width: double.infinity,
-                              child: Card(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4.0),
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth * 0.03,
-                                    vertical: screenHeight * 0.015,
+                              SizedBox(height: screenHeight * 0.030),
+                              // ── Boîte des informations ───────────────────────
+                              SizedBox(
+                                width: double.infinity,
+                                child: Card(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4.0),
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "2% — un ticket de 8.000 coûtera 8.160",
-                                        style: TextStyle(
-                                          color: const Color.fromARGB(
-                                            255,
-                                            119,
-                                            118,
-                                            118,
-                                          ),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: screenWidth * 0.030,
-                                        ),
-                                      ),
-                                      SizedBox(height: screenHeight * 0.004),
-                                      Text(
-                                        "2.5% — un ticket de 8.000 coûtera 8.200",
-                                        style: TextStyle(
-                                          color: const Color.fromARGB(
-                                            255,
-                                            119,
-                                            118,
-                                            118,
-                                          ),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: screenWidth * 0.030,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            SizedBox(height: screenHeight * 0.045),
-
-                            // ── Choix des paiements ──────────────────────────
-                            Card(
-                              color: Colors.white70,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildOperateur(
-                                    context,
-                                    initialiseBloc,
-                                    image: 'assets/images/wave.png',
-                                    label: 'frais 2%',
-                                    titre: 'Paiement par WAVE',
-                                    pourcentage: 2 / 100,
-                                    shadowColor: Colors.lightBlueAccent,
-                                    screenWidth: screenWidth,
-                                    screenHeight: screenHeight,
-                                  ),
-                                  _buildOperateur(
-                                    context,
-                                    initialiseBloc,
-                                    image: 'assets/images/mtn.png',
-                                    label: 'frais 2.5%',
-                                    titre: 'Paiement par MTN',
-                                    pourcentage: 2.5 / 100,
-                                    shadowColor: Colors.yellowAccent,
-                                    screenWidth: screenWidth,
-                                    screenHeight: screenHeight,
-                                  ),
-                                  _buildOperateur(
-                                    context,
-                                    initialiseBloc,
-                                    image: 'assets/images/orange.png',
-                                    label: 'frais 2.5%',
-                                    titre: 'Paiement par Orange',
-                                    pourcentage: 2.5 / 100,
-                                    shadowColor: Colors.deepOrangeAccent,
-                                    screenWidth: screenWidth,
-                                    screenHeight: screenHeight,
-                                  ),
-                                  _buildOperateur(
-                                    context,
-                                    initialiseBloc,
-                                    image: 'assets/images/moov.png',
-                                    label: 'frais 2.5%',
-                                    titre: 'Paiement par MooV',
-                                    pourcentage: 2.5 / 100,
-                                    shadowColor: const Color.fromARGB(
-                                      255,
-                                      12,
-                                      92,
-                                      196,
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.03,
+                                      vertical: screenHeight * 0.015,
                                     ),
-                                    screenWidth: screenWidth,
-                                    screenHeight: screenHeight,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "2% — un ticket de 8.000 coûtera 8.160",
+                                          style: TextStyle(
+                                            color: const Color.fromARGB(
+                                              255,
+                                              119,
+                                              118,
+                                              118,
+                                            ),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: screenWidth * 0.030,
+                                          ),
+                                        ),
+                                        SizedBox(height: screenHeight * 0.004),
+                                        Text(
+                                          "2.5% — un ticket de 8.000 coûtera 8.200",
+                                          style: TextStyle(
+                                            color: const Color.fromARGB(
+                                              255,
+                                              119,
+                                              118,
+                                              118,
+                                            ),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: screenWidth * 0.030,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
-
-                            if (_isLoading) ...[
-                              SizedBox(height: screenHeight * 0.010),
-                              Center(
-                                child: CircularProgressIndicator(
-                                  color: Config.colors.couleurDfond,
                                 ),
                               ),
+
+                              SizedBox(height: screenHeight * 0.045),
+
+                              // ── Choix des paiements ──────────────────────────
+                              Card(
+                                color: Colors.white70,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildOperateur(
+                                      context,
+                                      initialiseBloc,
+                                      image: 'assets/images/wave.png',
+                                      label: 'frais 2%',
+                                      titre: 'Paiement par WAVE',
+                                      pourcentage: 2 / 100,
+                                      shadowColor: Colors.lightBlueAccent,
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                    ),
+                                    _buildOperateur(
+                                      context,
+                                      initialiseBloc,
+                                      image: 'assets/images/mtn.png',
+                                      label: 'frais 2.5%',
+                                      titre: 'Paiement par MTN',
+                                      pourcentage: 2.5 / 100,
+                                      shadowColor: Colors.yellowAccent,
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                    ),
+                                    _buildOperateur(
+                                      context,
+                                      initialiseBloc,
+                                      image: 'assets/images/orange.png',
+                                      label: 'frais 2.5%',
+                                      titre: 'Paiement par Orange',
+                                      pourcentage: 2.5 / 100,
+                                      shadowColor: Colors.deepOrangeAccent,
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                    ),
+                                    _buildOperateur(
+                                      context,
+                                      initialiseBloc,
+                                      image: 'assets/images/moov.png',
+                                      label: 'frais 2.5%',
+                                      titre: 'Paiement par MooV',
+                                      pourcentage: 2.5 / 100,
+                                      shadowColor: const Color.fromARGB(
+                                        255,
+                                        12,
+                                        92,
+                                        196,
+                                      ),
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              if (_isLoading) ...[
+                                SizedBox(height: screenHeight * 0.010),
+                                Center(
+                                  child: CircularProgressIndicator(
+                                    color: Config.colors.couleurDfond,
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
         ),
       ),
     );
@@ -636,7 +636,6 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       });
     }
     listeDeVerification.clear();
-    listeDesPlacesChoisies.clear();
     return true;
   }
 }

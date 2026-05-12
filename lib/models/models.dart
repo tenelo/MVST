@@ -3,7 +3,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/mesFonctions.dart';
@@ -22,8 +22,7 @@ class _CarouselState extends State<Carousel> {
   bool isLoading = false;
   bool erreurConnexion = false;
   List<ImageModel> images = [];
-  final String baseUrl = 'https://mvst.tenelo.cloud/';
-  IO.Socket? _socket;
+  io.Socket? _socket;
 
   @override
   void initState() {
@@ -43,9 +42,9 @@ class _CarouselState extends State<Carousel> {
     if (_socket != null && _socket!.connected) return;
 
     try {
-      _socket = IO.io(
-        'https://mvst.tenelo.cloud',
-        IO.OptionBuilder()
+      _socket = io.io(
+        kBaseUrl,
+        io.OptionBuilder()
             .setTransports(['websocket'])
             .disableAutoConnect()
             .build(),
@@ -72,7 +71,7 @@ class _CarouselState extends State<Carousel> {
 
   //   try {
   //     _socket = IO.io(
-  //       'https://mvst.tenelo.cloud',
+  //       kBaseUrl,
   //       IO.OptionBuilder()
   //           .setTransports(['websocket'])
   //           .disableAutoConnect()
@@ -97,9 +96,9 @@ class _CarouselState extends State<Carousel> {
       erreurConnexion = false;
     });
     try {
-      final response = await http.get(
-        Uri.parse('https://mvst.tenelo.cloud/getImages.php'),
-      );
+      final response = await http
+          .get(Uri.parse('$kBaseUrl/getImages.php'))
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -166,7 +165,7 @@ class _CarouselState extends State<Carousel> {
       child: CarouselSlider.builder(
         itemCount: images.length,
         itemBuilder: (BuildContext context, int index, int realIndex) {
-          final String url = baseUrl + images[index].lien_image;
+          final String url = '$kBaseUrl/${images[index].lien_image}';
           final String titre = images[index].titre;
           final String description = images[index].description;
           return GestureDetector(
@@ -220,8 +219,13 @@ class _CarouselState extends State<Carousel> {
   }
 }
 
-
-Widget carte( BuildContext context, String depart, String destA, String destB, double width) {
+Widget carte(
+  BuildContext context,
+  String depart,
+  String destA,
+  String destB,
+  double width,
+) {
   final c = Config.colors;
   return Container(
     decoration: BoxDecoration(
@@ -259,7 +263,13 @@ Widget carte( BuildContext context, String depart, String destA, String destB, d
   );
 }
 
-Widget carteVip(BuildContext context, String depart, String destA, String destB, double width) {
+Widget carteVip(
+  BuildContext context,
+  String depart,
+  String destA,
+  String destB,
+  double width,
+) {
   return Container(
     decoration: BoxDecoration(
       color: const Color.fromARGB(255, 34, 89, 64),
@@ -296,8 +306,6 @@ Widget carteVip(BuildContext context, String depart, String destA, String destB,
   );
 }
 
-
-
 // ── PetitesCartes ──────────────────────────────────────────────────────────────
 // ignore: must_be_immutable
 class PetitesCartes extends StatefulWidget {
@@ -325,11 +333,13 @@ class _PetitesCartesState extends State<PetitesCartes> {
     if (user == null) return null;
 
     try {
-      final response = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/verifierUtilisateur.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'idUtilisateur': user.uid}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/verifierUtilisateur.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'idUtilisateur': user.uid}),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -367,7 +377,9 @@ class _PetitesCartesState extends State<PetitesCartes> {
                   ),
                   content: Text(
                     'Votre profil est soumis à une restriction.\nVeuillez contacter l\'administrateur MVST Mobile.',
-                    style: TextStyle(color: c.homeTextPrimary.withValues(alpha:0.8)),
+                    style: TextStyle(
+                      color: c.homeTextPrimary.withValues(alpha: 0.8),
+                    ),
                   ),
                   actions: <Widget>[
                     TextButton(
@@ -400,11 +412,13 @@ class _PetitesCartesState extends State<PetitesCartes> {
   // ── Récupération prix selon le type de voyage ─────────────────────────────
   Future<void> recuperationAffectationPrix() async {
     try {
-      final response = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/getPrixDesTickets.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'type': widget.typeVoyage}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/getPrixDesTickets.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'type': widget.typeVoyage}),
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
@@ -432,7 +446,7 @@ class _PetitesCartesState extends State<PetitesCartes> {
     final bool isVip = widget.typeVoyage == 'vip';
     final Color cardColor = isVip
         ? const Color(0xFF1A3D2B)
-        : c.homeCardBackground.withValues(alpha:0.85);
+        : c.homeCardBackground.withValues(alpha: 0.85);
     final Color borderColor = isVip
         ? const Color(0xFFFFD700)
         : c.homeBordurePetiteCarte;

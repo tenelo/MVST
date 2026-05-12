@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mvst/models/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,14 +16,12 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 
-String? _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
-IO.Socket? _socket;
-// ── Couleurs VIP (palette Émeraude Impérial) ───────────────────────────────────
-const Color _vipOr = Color(0xFF00D87E); // émeraude vif
-const Color _vipFond = Color(0xFF050E08); // forêt noire
-const Color _vipSiege = Color(0xFF0A1E10); // jade profond
-const Color _vipSiegeSelectionne = Color(0xFF00D87E); // émeraude sélectionné
-const Color _vipSiegeOccupe = Color(0xFF1A3A20); // vert sombre occupé
+// ── Couleurs VIP (palette Émeraude Lumière) ───────────────────────────────────
+const Color _vipOr = Color(0xFF00D87E);
+const Color _vipFond = Color.fromARGB(255, 255, 255, 255);
+const Color _vipSiege = Color.fromARGB(255, 227, 246, 237);
+const Color _vipSiegeSelectionne = Color(0xFF00D87E);
+const Color _vipSiegeReserve = Color.fromARGB(255, 198, 197, 197);
 
 class ChoixPlacesVip extends StatefulWidget {
   const ChoixPlacesVip({
@@ -40,6 +38,7 @@ class ChoixPlacesVip extends StatefulWidget {
     required this.annee,
     required this.heure,
     required this.prixDuBillet,
+    required this.typeVoyage,
   });
 
   final String idDate;
@@ -54,7 +53,7 @@ class ChoixPlacesVip extends StatefulWidget {
   final String depart;
   final String destination;
   final int prixDuBillet;
-
+  final String typeVoyage;
   @override
   State<ChoixPlacesVip> createState() => _ChoixPlacesVipState();
 }
@@ -63,55 +62,48 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
   int _seconds = 90;
   late Timer _timer;
   bool _isLoading = true;
-  late IO.Socket socket;
+  late io.Socket socket;
+
+  // ── État centralisé ───────────────────────────────────────────────────────
+  final Set<int> _selectedSeats = {}; // confirmées par le serveur
+  final Set<int> _loadingSeats = {}; // en attente de réponse serveur
+  Set<int> _occupiedSeats = {}; // occupées par d'autres voyageurs
 
   @override
   void initState() {
     super.initState();
-    _date = widget.idDate;
-    _mois = widget.mois;
-    _moisAnnee = widget.moisAnnee;
-    _annee = widget.annee;
-    _heure = widget.heure;
-    _depart = widget.depart;
-    _destination = widget.destination;
-
-    listeDesPlacesChoisies.clear();
-    listeDeVerification.clear();
-    listeDesPlacesOccupees.clear();
     _chargerPlacesEtConnecterSocket();
     startCountdown();
   }
 
   @override
   void dispose() {
-    listeDesPlacesOccupees.clear();
-    if (listeDeVerification.isNotEmpty) {
+    if (_selectedSeats.isNotEmpty) {
       if (socket.connected) {
         socket.emit('liberer_places', {
           'depart': widget.depart,
           'destination': widget.destination,
           'date': widget.idDate,
           'heure': widget.heure,
-          'numerosDePlace': listeDeVerification,
+          'numerosDePlace': _selectedSeats.toList(),
         });
       } else {
         http.post(
-          Uri.parse('https://mvst.tenelo.cloud/process_places_temporaires.php'),
+          Uri.parse('$kBaseUrl/process_places_temporaires.php'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'documentId':
                 '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h',
-            'places': listeDeVerification,
+            'places': _selectedSeats.toList(),
           }),
         );
       }
     }
-    listeDesPlacesChoisies.clear();
-    listeDeVerification.clear();
     socket.off('places_chargees');
     socket.off('place_prise');
     socket.off('place_liberee');
+    socket.off('place_confirmee');
+    socket.off('place_echec');
     socket.off('connect');
     socket.offAny();
     socket.disconnect();
@@ -120,12 +112,23 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     super.dispose();
   }
 
+  // Appelé uniquement quand le timer atteint zéro (expiration de session)
   void stopCountdown() {
     _timer.cancel();
-    listeDesPlacesOccupees.clear();
+    if (_selectedSeats.isNotEmpty && socket.connected) {
+      socket.emit('liberer_places', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'numerosDePlace': _selectedSeats.toList(),
+      });
+    }
     socket.off('places_chargees');
     socket.off('place_prise');
     socket.off('place_liberee');
+    socket.off('place_confirmee');
+    socket.off('place_echec');
     socket.offAny();
     socket.disconnect();
   }
@@ -140,21 +143,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         if (_seconds > 0) {
           _seconds--;
         } else {
-          _timer.cancel();
-          if (listeDeVerification.isNotEmpty && socket.connected) {
-            socket.emit('liberer_places', {
-              'depart': widget.depart,
-              'destination': widget.destination,
-              'date': widget.idDate,
-              'heure': widget.heure,
-              'numerosDePlace': listeDeVerification,
-            });
-            listeDeVerification.clear();
-          }
-          socket.off('place_prise');
-          socket.off('place_liberee');
-          socket.offAny();
-          socket.disconnect();
+          stopCountdown();
           Navigator.pop(context);
         }
       });
@@ -166,22 +155,23 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     if (mounted) _connecterSocket();
   }
 
-  // ── Chargement initial via HTTP ───────────────────────────────────────────
   Future<void> _chargerPlacesViaHttp() async {
     try {
       final documentId =
           '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
-      final response = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/placesAssises.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'documentId': documentId}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/placesAssises.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'documentId': documentId}),
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (mounted) {
           setState(() {
-            listeDesPlacesOccupees = List<int>.from(
-              (data['places'] ?? []).map((p) => p['place']),
+            _occupiedSeats = Set<int>.from(
+              (data['places'] ?? []).map((p) => p['place'] as int),
             );
             _isLoading = false;
           });
@@ -195,18 +185,16 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
   }
 
   void _connecterSocket() {
-    socket = IO.io(
-      'https://mvst.tenelo.cloud',
-      IO.OptionBuilder()
+    socket = io.io(
+      kBaseUrl,
+      io.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
           .build(),
     );
-    _socket = socket;
 
     socket.onConnect((_) {
       if (!mounted) return;
-      _socket = socket;
 
       final documentId =
           '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
@@ -222,48 +210,72 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
       });
 
       Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          socket.emit('charger_places', {'documentId': documentId});
-        }
+        if (mounted) socket.emit('charger_places', {'documentId': documentId});
       });
     });
 
+    // Données complètes de la salle (reçues après charger_places)
     socket.on('places_chargees', (data) {
       if (!mounted) return;
+      final newOccupied = Set<int>.from(
+        (data['placesOccupees'] ?? []).map((p) => p as int),
+      );
+      // Ne pas écraser les places déjà sélectionnées / en cours par ce voyageur
+      newOccupied.removeAll(_selectedSeats);
+      newOccupied.removeAll(_loadingSeats);
       setState(() {
-        listeDesPlacesOccupees = List<int>.from(data['placesOccupees'] ?? []);
+        _occupiedSeats = newOccupied;
         _isLoading = false;
       });
     });
 
+    // ── Mises à jour temps réel des autres voyageurs ──────────────────────────
     socket.on('place_prise', (data) {
       if (!mounted) return;
-      final int numeroDePlace = data['numeroDePlace'];
-      setState(() {
-        if (!listeDesPlacesOccupees.contains(numeroDePlace)) {
-          listeDesPlacesOccupees.add(numeroDePlace);
-        }
-      });
+      final int place = data['numeroDePlace'];
+      if (_selectedSeats.contains(place) || _loadingSeats.contains(place))
+        return;
+      setState(() => _occupiedSeats.add(place));
     });
 
     socket.on('place_liberee', (data) {
       if (!mounted) return;
-      final List<dynamic> numerosDePlace = data['numerosDePlace'];
+      final List<dynamic> places = data['numerosDePlace'];
       setState(() {
-        for (var place in numerosDePlace) {
-          listeDesPlacesOccupees.remove(place);
+        for (final p in places) {
+          _occupiedSeats.remove(p as int);
         }
       });
+    });
+
+    // ── Réponses aux demandes de sélection de CE voyageur ────────────────────
+    socket.on('place_confirmee', (data) {
+      if (!mounted) return;
+      final int place = data['numeroDePlace'];
+      if (!_loadingSeats.contains(place)) return;
+      setState(() {
+        _loadingSeats.remove(place);
+        _selectedSeats.add(place);
+      });
+      BlocProvider.of<BlocCompteur>(context).add(EventIcrement());
+    });
+
+    socket.on('place_echec', (data) {
+      if (!mounted) return;
+      final int place = data['numeroDePlace'];
+      setState(() {
+        _loadingSeats.remove(place);
+        _occupiedSeats.add(place);
+      });
+      showAlertDialog(context);
     });
 
     socket.onConnectError((err) {});
     socket.onError((err) {});
     socket.onDisconnect((_) {});
 
-    // ── connect() APRÈS tous les listeners ────────────────────────────────
     socket.connect();
 
-    // ── Forcer rejoindre_room après connexion ─────────────────────────────
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       socket.emit('rejoindre_room', {
@@ -278,8 +290,117 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     });
   }
 
+  // ── Logique de sélection centralisée ─────────────────────────────────────────
+  void _onSeatTap(int numero) {
+    if (_occupiedSeats.contains(numero) || _loadingSeats.contains(numero)) {
+      return;
+    }
+
+    if (_selectedSeats.contains(numero)) {
+      setState(() => _selectedSeats.remove(numero));
+      socket.emit('liberer_places', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'numerosDePlace': [numero],
+      });
+      BlocProvider.of<BlocCompteur>(context).add(EventDecrement());
+    } else {
+      setState(() => _loadingSeats.add(numero));
+      socket.emit('choisir_place', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'mois': widget.mois,
+        'moisAnnee': widget.moisAnnee,
+        'annee': widget.annee,
+        'numeroDePlace': numero,
+        'typeVoyage': widget.typeVoyage,
+      });
+    }
+  }
+
+  void _naviguerVersTickets(BuildContext context, CompteurState state) {
+    if (_selectedSeats.isNotEmpty) {
+      // Le socket reste connecté pendant la navigation
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Tickets(
+            idDate: widget.idDate,
+            nombreDeTicket: state.tickets,
+            place: _selectedSeats.toList(),
+            id: widget.id,
+            nom: widget.nom,
+            contact: widget.contact,
+            date: widget.date,
+            mois: widget.mois,
+            moisAnnee: widget.moisAnnee,
+            annee: widget.annee,
+            heure: widget.heure,
+            depart: widget.depart,
+            destination: widget.destination,
+            prixDuTicket: widget.prixDuBillet,
+            typeVoyage: widget.typeVoyage,
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Center(
+              child: Text(
+                'Aucune place',
+                style: TextStyle(color: _vipOr, fontWeight: FontWeight.bold),
+              ),
+            ),
+            content: const Text(
+              'Vous n\'avez choisi aucune place.',
+              style: TextStyle(color: Colors.black54),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(color: _vipOr, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  Widget _rangee2(List<int> numeros) {
+    return Row(
+      children: numeros
+          .map(
+            (n) => PlacesVip(
+              key: ValueKey(n),
+              numero: n,
+              isSelected: _selectedSeats.contains(n),
+              isLoading: _loadingSeats.contains(n),
+              isOccupied: _occupiedSeats.contains(n),
+              onTap: () => _onSeatTap(n),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
@@ -287,35 +408,38 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
       backgroundColor: _vipFond,
       appBar: AppBar(
         toolbarHeight: screenHeight * 0.06,
-        iconTheme: const IconThemeData(color: _vipOr),
-        backgroundColor: const Color(0xFF030904),
+        iconTheme: IconThemeData(color: c.homeAccent),
+        backgroundColor: c.vertB,
+        elevation: 0,
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.star, color: _vipOr, size: 16),
             const SizedBox(width: 6),
-            Text(
-              "${widget.depart} → ${widget.destination}  ${widget.heure} h",
-              style: TextStyle(
-                color: _vipOr,
-                fontWeight: FontWeight.bold,
-                fontSize: screenWidth * 0.038,
+            Flexible(
+              child: Text(
+                "${widget.depart} → ${widget.destination}  ${widget.heure} h",
+                style: TextStyle(
+                  color: _vipOr,
+                  fontWeight: FontWeight.bold,
+                  fontSize: screenWidth * 0.038,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
         actions: [
-          // ── Chrono ──────────────────────────────────────────────────
           Padding(
             padding: EdgeInsets.only(right: screenWidth * 0.02),
             child: Center(
               child: Text(
                 '$_seconds s',
                 style: TextStyle(
-                  color: _seconds <= 10 ? Colors.red : _vipOr,
+                  color: _seconds <= 10 ? Colors.red : c.homeAccent,
                   fontWeight: FontWeight.bold,
-                  fontSize: screenWidth * 0.035,
+                  fontSize: screenWidth * 0.040,
                 ),
               ),
             ),
@@ -345,13 +469,11 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _vipOr))
           : Container(
-              color: _vipFond,
+              color: const Color(0xFFF0FBF5),
               child: Center(
                 child: SingleChildScrollView(
                   child: SizedBox(
-                    width: petitEcran
-                        ? MediaQuery.of(context).size.width * 0.80
-                        : MediaQuery.of(context).size.width * 0.75,
+                    width: petitEcran ? screenWidth * 0.72 : screenWidth * 0.76,
                     child: Padding(
                       padding: const EdgeInsets.all(4.0),
                       child: Container(
@@ -360,7 +482,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
                           borderRadius: const BorderRadius.all(
                             Radius.circular(50),
                           ),
-                          color: const Color(0xFF0A1E10),
+                          color: const Color.fromARGB(255, 227, 252, 237),
                         ),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 8.0),
@@ -370,11 +492,9 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  PlacesVipReservees(numero: 50),
-                                  PlacesVipReservees(numero: 49),
-                                  const SizedBox(width: 35),
-                                  PlacesVipReservees(numero: 48),
-                                  PlacesVipReservees(numero: 47),
+                                  _rangee2([50, 49]),
+                                  SizedBox(width: screenWidth * 0.09),
+                                  _rangee2([48, 47]),
                                 ],
                               ),
 
@@ -392,7 +512,6 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
                                       _rangee2([37, 38]),
                                       _rangee2([33, 34]),
                                       _rangee2([29, 30]),
-                                      // Porte arrière gauche
                                       Padding(
                                         padding: const EdgeInsets.only(
                                           right: 8.0,
@@ -413,7 +532,6 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
                                           PlacesVipReservees(numero: 2),
                                         ],
                                       ),
-                                      // Porte avant gauche
                                       Padding(
                                         padding: const EdgeInsets.only(
                                           left: 10,
@@ -425,7 +543,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
                                   ),
 
                                   // ── COULOIR ───────────────────────────────
-                                  const SizedBox(width: 35),
+                                  SizedBox(width: screenWidth * 0.09),
 
                                   // ── RANGÉE DROITE ─────────────────────────
                                   Column(
@@ -436,9 +554,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
                                       _rangee2([39, 40]),
                                       _rangee2([35, 36]),
                                       _rangee2([31, 32]),
-                                      SizedBox(height: 4),
-                                      // Espace porte arrière
-                                      //const SizedBox(height: 47),
+                                      const SizedBox(height: 4),
                                       _rangee2([27, 28]),
                                       _rangee2([23, 24]),
                                       _rangee2([19, 20]),
@@ -457,14 +573,13 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
                                           PlacesVipChauffeur(),
                                         ],
                                       ),
-                                      // Volant droite
                                       Padding(
                                         padding: const EdgeInsets.only(
                                           top: 4.0,
                                         ),
                                         child: Container(
-                                          height: 40,
-                                          width: 50,
+                                          height: screenWidth * 0.10,
+                                          width: screenWidth * 0.13,
                                           decoration: const BoxDecoration(
                                             image: DecorationImage(
                                               image: AssetImage(
@@ -534,205 +649,51 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
       ),
     );
   }
-
-  // ── Helper rangée de 2 places ──────────────────────────────────────────────
-  Widget _rangee2(List<int> numeros) {
-    return Row(
-      children: numeros
-          .map(
-            (n) => PlacesVip(
-              key: ValueKey('vip_${n}_${listeDesPlacesOccupees.contains(n)}'),
-              numero: n,
-            ),
-          )
-          .toList(),
-    );
-  }
-
-  // ── Navigation vers tickets ────────────────────────────────────────────────
-  void _naviguerVersTickets(BuildContext context, CompteurState state) {
-    if (listeDesPlacesChoisies.isNotEmpty) {
-      stopCountdown();
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Tickets(
-            idDate: widget.idDate,
-            nombreDeTicket: state.tickets,
-            place: listeDesPlacesChoisies.toList(),
-            id: widget.id,
-            nom: widget.nom,
-            contact: widget.contact,
-            date: widget.date,
-            mois: widget.mois,
-            moisAnnee: widget.moisAnnee,
-            annee: widget.annee,
-            heure: widget.heure,
-            depart: widget.depart,
-            destination: widget.destination,
-            prixDuTicket: widget.prixDuBillet,
-            typeVoyage: 'vip',
-          ),
-        ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: _vipFond,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Center(
-              child: Text(
-                'Aucune place',
-                style: TextStyle(color: _vipOr, fontWeight: FontWeight.bold),
-              ),
-            ),
-            content: const Text(
-              'Vous n\'avez choisi aucune place.',
-              style: TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text(
-                  'OK',
-                  style: TextStyle(color: _vipOr, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    }
-  }
 }
 
-// ── Place VIP cliquable ────────────────────────────────────────────────────────
-class PlacesVip extends StatefulWidget {
-  const PlacesVip({super.key, required this.numero});
+// ── Place VIP cliquable (stateless : tout l'état vient du parent) ─────────────
+class PlacesVip extends StatelessWidget {
+  const PlacesVip({
+    super.key,
+    required this.numero,
+    required this.isSelected,
+    required this.isLoading,
+    required this.isOccupied,
+    required this.onTap,
+  });
   final int numero;
-
-  @override
-  State<PlacesVip> createState() => _PlacesVipState();
-}
-
-class _PlacesVipState extends State<PlacesVip> {
-  bool _selectionne = false;
-  bool _isLoading = false;
-  bool _occupe = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _occupe = listeDesPlacesOccupees.contains(widget.numero);
-  }
-
-  @override
-  void dispose() {
-    if (listeDeVerification.contains(widget.numero) && _socket != null) {
-      _socket!.emit('liberer_places', {
-        'depart': _depart,
-        'destination': _destination,
-        'date': _date,
-        'heure': _heure,
-        'numerosDePlace': [widget.numero],
-      });
-      listeDeVerification.remove(widget.numero);
-    }
-    super.dispose();
-  }
+  final bool isSelected;
+  final bool isLoading;
+  final bool isOccupied;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double siegeSize = petitEcran
-        ? screenWidth * 0.085
-        : screenWidth * 0.090;
-    final BlocCompteur counterBloc = BlocProvider.of<BlocCompteur>(context);
+        ? screenWidth * 0.090
+        : screenWidth * 0.093;
 
-    // Mise à jour temps réel
-    if (listeDesPlacesOccupees.contains(widget.numero) && !_occupe) {
-      _occupe = true;
-      _selectionne = false;
-    }
-
-    final Color couleur = _occupe
-        ? _vipSiegeOccupe
-        : _selectionne
+    final Color couleur = isOccupied
+        ? _vipSiegeSelectionne
+        : isSelected
         ? _vipSiegeSelectionne
         : _vipSiege;
 
-    final Color textColor = _selectionne ? _vipFond : _vipOr;
+    final Color textColor = isSelected
+        ? Colors.white
+        : isOccupied
+        ? Colors.white
+        : const Color(0xFF006B3C);
 
     return GestureDetector(
-      onTap: () async {
-        if (_occupe) return;
-        setState(() {
-          _isLoading = true;
-          _selectionne = !_selectionne;
-        });
-
-        try {
-          if (_selectionne) {
-            _socket?.emit('choisir_place', {
-              'depart': _depart,
-              'destination': _destination,
-              'date': _date,
-              'heure': _heure,
-              'mois': _mois,
-              'moisAnnee': _moisAnnee,
-              'annee': _annee,
-              'numeroDePlace': widget.numero,
-            });
-
-            _socket?.once('place_confirmee', (data) {
-              if (data['numeroDePlace'] == widget.numero) {
-                if (mounted) setState(() => _isLoading = false);
-                counterBloc.add(EventIcrement());
-                listeDesPlacesChoisies.add(widget.numero);
-                listeDeVerification.add(widget.numero);
-              }
-            });
-
-            _socket?.once('place_echec', (data) {
-              if (data['numeroDePlace'] == widget.numero) {
-                if (mounted) {
-                  setState(() {
-                    _selectionne = false;
-                    _isLoading = false;
-                    _occupe = true;
-                  });
-                }
-                showAlertDialog(context);
-              }
-            });
-          } else {
-            _socket?.emit('liberer_places', {
-              'depart': _depart,
-              'destination': _destination,
-              'date': _date,
-              'heure': _heure,
-              'numerosDePlace': [widget.numero],
-            });
-            counterBloc.add(EventDecrement());
-            listeDesPlacesChoisies.remove(widget.numero);
-            listeDeVerification.remove(widget.numero);
-            setState(() => _isLoading = false);
-          }
-        } catch (e) {
-          setState(() => _isLoading = false);
-        }
-      },
+      onTap: onTap,
       child: Container(
         margin: EdgeInsets.all(screenWidth * 0.003),
-        padding: EdgeInsets.all(screenWidth * 0.002),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (_isLoading)
+            if (isLoading)
               SizedBox(
                 height: siegeSize,
                 width: siegeSize,
@@ -742,15 +703,12 @@ class _PlacesVipState extends State<PlacesVip> {
                 ),
               )
             else
-              // ── Siège principal ──────────────────────────────────────
               Card(
                 color: couleur,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                    color: _occupe
-                        ? Colors.transparent
-                        : _vipOr.withOpacity(0.5),
+                    color: isOccupied ? Colors.transparent : _vipOr,
                     width: 0.5,
                   ),
                 ),
@@ -759,21 +717,20 @@ class _PlacesVipState extends State<PlacesVip> {
                   width: siegeSize,
                   child: Center(
                     child: Text(
-                      widget.numero.toString(),
+                      numero.toString(),
                       style: TextStyle(
                         color: textColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: screenWidth * 0.028,
+                        fontSize: screenWidth * 0.030,
                       ),
                     ),
                   ),
                 ),
               ),
-            // ── Accoudoir gauche ─────────────────────────────────────
             Positioned(
               left: -screenWidth * 0.005,
               child: Card(
-                color: _vipOr.withOpacity(0.6),
+                color: _vipOr,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -783,11 +740,10 @@ class _PlacesVipState extends State<PlacesVip> {
                 ),
               ),
             ),
-            // ── Accoudoir droit ──────────────────────────────────────
             Positioned(
               right: -screenWidth * 0.005,
               child: Card(
-                color: _vipOr.withOpacity(0.6),
+                color: _vipOr,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -797,11 +753,10 @@ class _PlacesVipState extends State<PlacesVip> {
                 ),
               ),
             ),
-            // ── Appuie-tête ──────────────────────────────────────────
             Positioned(
               top: -screenWidth * 0.008,
               child: Card(
-                color: _vipOr.withOpacity(0.6),
+                color: _vipOr,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -828,7 +783,7 @@ class PlacesVipReservees extends StatelessWidget {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double siegeSize = petitEcran
         ? screenWidth * 0.085
-        : screenWidth * 0.090;
+        : screenWidth * 0.095;
 
     return Container(
       margin: EdgeInsets.all(screenWidth * 0.003),
@@ -837,7 +792,7 @@ class PlacesVipReservees extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Card(
-            color: _vipSiegeOccupe,
+            color: _vipSiegeReserve,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -847,10 +802,9 @@ class PlacesVipReservees extends StatelessWidget {
               child: Center(
                 child: Text(
                   numero.toString(),
-                  style: TextStyle(
-                    color: Colors.white54,
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: screenWidth * 0.028,
                   ),
                 ),
               ),
@@ -859,7 +813,7 @@ class PlacesVipReservees extends StatelessWidget {
           Positioned(
             left: -screenWidth * 0.005,
             child: Card(
-              color: _vipOr.withOpacity(0.3),
+              color: _vipOr,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -872,7 +826,7 @@ class PlacesVipReservees extends StatelessWidget {
           Positioned(
             right: -screenWidth * 0.005,
             child: Card(
-              color: _vipOr.withOpacity(0.3),
+              color: _vipOr,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -885,7 +839,7 @@ class PlacesVipReservees extends StatelessWidget {
           Positioned(
             top: -screenWidth * 0.008,
             child: Card(
-              color: _vipOr.withOpacity(0.3),
+              color: _vipOr,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -907,6 +861,7 @@ class PlacesVipChauffeur extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
     final double screenWidth = MediaQuery.of(context).size.width;
     final double siegeSize = petitEcran
         ? screenWidth * 0.085
@@ -919,7 +874,7 @@ class PlacesVipChauffeur extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Card(
-            color: Config.colors.vertB,
+            color: c.vertB,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -928,7 +883,7 @@ class PlacesVipChauffeur extends StatelessWidget {
           Positioned(
             left: -screenWidth * 0.005,
             child: Card(
-              color: _vipOr.withOpacity(0.6),
+              color: _vipOr,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -941,7 +896,7 @@ class PlacesVipChauffeur extends StatelessWidget {
           Positioned(
             right: -screenWidth * 0.005,
             child: Card(
-              color: _vipOr.withOpacity(0.6),
+              color: _vipOr,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -954,7 +909,7 @@ class PlacesVipChauffeur extends StatelessWidget {
           Positioned(
             top: -screenWidth * 0.008,
             child: Card(
-              color: _vipOr.withOpacity(0.6),
+              color: _vipOr,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),

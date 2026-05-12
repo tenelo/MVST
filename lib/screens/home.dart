@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,29 +13,19 @@ import 'package:mvst/models/mesFonctions.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/profil/profil.dart';
 import 'package:mvst/screens/commande.dart';
+import 'package:mvst/screens/carousel.dart';
+import 'package:mvst/screens/cartes_lignes_trajets.dart';
 import 'package:mvst/screens/conditionsDutilisation.dart';
-import 'package:mvst/screens/detailsImages.dart';
 import 'package:mvst/screens/infos.dart';
 import 'package:mvst/screens/mestickets.dart';
 import 'package:mvst/screens/suggestions.dart';
-import 'package:mvst/screens/vip_accueil_design_vert.dart';
+import 'package:mvst/screens/home_vip.dart';
 import 'package:mvst/screens/tableauDesTickets.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
 
 // ── Couleurs VIP figées (indépendantes du thème) ───────────────────────────
 const Color _kVipCard = Color(0xFF11111F);
 const Color _kVipGold = Color(0xFFFFD700);
 const Color _kVipGoldDim = Color(0xFFB8860B);
-
-// ── Routes disponibles ─────────────────────────────────────────────────────
-const List<Map<String, String>> _kRoutes = [
-  {'depart': 'Ferké', 'destination': 'Abidjan'},
-  {'depart': 'Ferké', 'destination': 'Bouaké'},
-  {'depart': 'Bouaké', 'destination': 'Ferké'},
-  {'depart': 'Bouaké', 'destination': 'Abidjan'},
-  {'depart': 'Abidjan', 'destination': 'Ferké'},
-  {'depart': 'Abidjan', 'destination': 'Bouaké'},
-];
 
 Map<String, List<String>> _groupByDepart(List<Map<String, String>> routes) {
   final Map<String, List<String>> grouped = {};
@@ -60,6 +49,10 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   User? _currentUser;
   String _nomUtilisateur = '';
   String _prenomsUtilisateur = '';
+  List<Map<String, String>> _lignesStandard = [];
+  List<Map<String, String>> _lignesVip = [];
+  bool _loadingLignes = true;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -73,6 +66,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       if (mounted) setState(() {});
     });
     BlocProvider.of<BlocCompteur>(context).add(EventInitialise());
+    _chargerLignes();
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (mounted) {
         setState(() => _currentUser = user);
@@ -89,13 +83,16 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       );
       return;
     }
+
     try {
       final user = FirebaseAuth.instance.currentUser!;
-      final res = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/verifierUtilisateur.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'idUtilisateur': user.uid}),
-      );
+      final res = await http
+          .post(
+            Uri.parse('$kBaseUrl/verifierUtilisateur.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'idUtilisateur': user.uid}),
+          )
+          .timeout(const Duration(seconds: 10));
       if (res.statusCode != 200 || !mounted) return;
       final data = json.decode(res.body);
       if (data['success'] == false) return;
@@ -141,11 +138,13 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         );
         return;
       }
-      final prixRes = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/getPrixDesTickets.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'type': 'vip'}),
-      );
+      final prixRes = await http
+          .post(
+            Uri.parse('$kBaseUrl/getPrixDesTickets.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'type': 'vip'}),
+          )
+          .timeout(const Duration(seconds: 10));
       if (prixRes.statusCode != 200 || !mounted) return;
       final prixData = json.decode(prixRes.body);
       if (prixData['success'] != true) return;
@@ -178,11 +177,13 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
 
   Future<void> _chargerNomEtPrenoms(String uid) async {
     try {
-      final res = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/verifierUtilisateur.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'idUtilisateur': uid}),
-      );
+      final res = await http
+          .post(
+            Uri.parse('$kBaseUrl/verifierUtilisateur.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'idUtilisateur': uid}),
+          )
+          .timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == true && mounted) {
@@ -195,9 +196,54 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     } catch (_) {}
   }
 
+  Future<void> _chargerLignes() async {
+    try {
+      final res = await http
+          .get(Uri.parse('$kBaseUrl/api_lignes.php?type=all'))
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        if (data['success'] == true && mounted) {
+          final lignes = List<Map<String, dynamic>>.from(data['lignes']);
+          final standard = lignes
+              .where((l) => l['type'] == 'standard')
+              .map(
+                (l) => {
+                  'depart': l['depart'].toString(),
+                  'destination': l['destination'].toString(),
+                },
+              )
+              .toList();
+          final vip = lignes
+              .where((l) => l['type'] == 'vip')
+              .map(
+                (l) => {
+                  'depart': l['depart'].toString(),
+                  'destination': l['destination'].toString(),
+                },
+              )
+              .toList();
+          setState(() {
+            _lignesStandard = standard;
+            _lignesVip = vip;
+            _loadingLignes = false;
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingLignes = false);
+    }
+  }
+
+  Future<void> _recharger() async {
+    await _chargerLignes();
+    // Si tu veux aussi recharger d'autres données, ajoute-les ici
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -214,8 +260,9 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     final dn = _currentUser?.displayName?.trim();
     if (dn != null && dn.isNotEmpty) {
       final parts = dn.split(RegExp(r'\s+'));
-      if (parts.length >= 2)
+      if (parts.length >= 2) {
         return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      }
       return parts[0][0].toUpperCase();
     }
     return 'U';
@@ -236,7 +283,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           _currentUser != null
               ? MesTickets(idUtilisateur: _currentUser!.uid)
               : const Login(),
-          _buildAccueilVip(context),
+          _currentUser != null ? _buildAccueilVip(context) : const Login(),
           _currentUser != null
               ? TableauDeTickets(idUtilisateur: _currentUser!.uid)
               : const Login(),
@@ -334,70 +381,110 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   Widget _buildAccueil(BuildContext context) {
     final c = Config.colors;
     final double w = MediaQuery.of(context).size.width;
-    final grouped = _groupByDepart(_kRoutes);
+    final grouped = _groupByDepart(_lignesStandard);
 
     return Container(
       color: c.homeBackground,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          // Carousel promos — tout en haut, directement sous l'AppBar
-          const _PromoStrip(),
-          _buildHeroBand(context, isVip: false),
+      child: RefreshIndicator(
+        color: c.homeButtonPrimary,
+        onRefresh: _recharger,
+        child: ListView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          children: [
+            const PromoStripWidget(),
+            _buildHeroBand(context, isVip: false),
 
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Choisir un itinéraire',
-                  style: TextStyle(
-                    color: c.homeTextPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: w * 0.043,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: c.homeButtonPrimary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${_kRoutes.length} lignes',
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                w * 0.052,
+                w * 0.041,
+                w * 0.052,
+                w * 0.010,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Choisir un itinéraire',
                     style: TextStyle(
-                      color: c.homeButtonPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11,
+                      color: c.homeTextPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: w * 0.043,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  if (!_loadingLignes)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: w * 0.026,
+                        vertical: w * 0.010,
+                      ),
+                      decoration: BoxDecoration(
+                        color: c.homeButtonPrimary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(w * 0.051),
+                      ),
+                      child: Text(
+                        '${_lignesStandard.length} lignes',
+                        style: TextStyle(
+                          color: c.homeButtonPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: w * 0.028,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            if (_loadingLignes)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: CircularProgressIndicator(color: c.homeButtonPrimary),
+                ),
+              )
+            else if (_lignesStandard.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Text(
+                    'Aucune ligne disponible',
+                    style: TextStyle(
+                      color: c.homeTextPrimary.withValues(alpha: 0.5),
+                      fontSize: w * 0.038,
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
+              )
+            else
+              ...grouped.entries.map(
+                (e) => _buildOriginGroup(
+                  context,
+                  depart: e.key,
+                  destinations: e.value,
+                  typeVoyage: 'standard',
+                ),
+              ),
 
-          ...grouped.entries.map(
-            (e) => _buildOriginGroup(
-              context,
-              depart: e.key,
-              destinations: e.value,
-              typeVoyage: 'standard',
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
 
   // ── Onglet VIP ────────────────────────────────────────────────────────────
   Widget _buildAccueilVip(BuildContext context) {
-    return VipAccueilVert(onReserver: _onReserverVip);
+    if (_loadingLignes) {
+      return Center(child: CircularProgressIndicator(color: _kVipGold));
+    }
+    return RefreshIndicator(
+      color: _kVipGold,
+      onRefresh: _recharger,
+      child: HomeVip(onReserver: _onReserverVip, routes: _lignesVip),
+    );
   }
 
   // ── Bandeau héro ─────────────────────────────────────────────────────────
@@ -411,14 +498,15 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     final Color titleColor = isVip ? _kVipGold : c.homeButtonPrimary;
     final Color textColor = isVip ? Colors.white : c.homeTextPrimary;
 
-    final List<_Pill> pills = isVip
-        ? const [_Pill('★ Premium', ''), _Pill('🛋️ Grand confort', '')]
-        : const [_Pill('⚡ Temps réel', ''), _Pill('🎫 QR Code', '')];
+    final List<_Pill> pills = const [
+      _Pill('⚡ Temps réel', ''),
+      _Pill('🎫 QR Code', ''),
+    ];
 
     return Container(
       width: double.infinity,
       color: bg,
-      padding: EdgeInsets.fromLTRB(20, 22, 20, w * 0.065),
+      padding: EdgeInsets.fromLTRB(w * 0.052, w * 0.056, w * 0.052, w * 0.065),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -441,7 +529,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                       ? Icons.airline_seat_recline_extra
                       : Icons.directions_bus_filled_rounded,
                   color: titleColor,
-                  size: 13,
+                  size: w * 0.033,
                 ),
                 const SizedBox(width: 2),
                 Text(
@@ -476,31 +564,38 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           SizedBox(height: w * 0.04),
 
           // Pills caractéristiques
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: pills
-                .map((p) => _buildHeroPill(p.label, titleColor))
-                .toList(),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: pills
+                      .map((p) => _buildHeroPill(p.label, titleColor, w))
+                      .toList(),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeroPill(String label, Color color) {
+  Widget _buildHeroPill(String label, Color color, double w) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: w * 0.026, vertical: w * 0.015),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(w * 0.077),
         border: Border.all(color: color.withValues(alpha: 0.25), width: 0.8),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
-          fontSize: 12,
+          fontSize: w * 0.031,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -515,6 +610,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     required String typeVoyage,
   }) {
     final c = Config.colors;
+    final double w = MediaQuery.of(context).size.width;
     final bool isVip = typeVoyage == 'vip';
 
     final Color dotColor = isVip ? _kVipGold : c.homeButtonPrimary;
@@ -527,24 +623,24 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         : c.homeTextPrimary.withValues(alpha: 0.07);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      padding: EdgeInsets.fromLTRB(w * 0.042, 0, w * 0.042, w * 0.036),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // En-tête ville de départ
           Padding(
-            padding: const EdgeInsets.only(left: 2, bottom: 8),
+            padding: EdgeInsets.only(left: w * 0.005, bottom: w * 0.020),
             child: Row(
               children: [
                 Container(
-                  width: 7,
-                  height: 7,
+                  width: w * 0.018,
+                  height: w * 0.018,
                   decoration: BoxDecoration(
                     color: dotColor,
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: w * 0.020),
                 Text(
                   depart == 'Abidjan'
                       ? "A partir d'${depart.toUpperCase()}"
@@ -552,7 +648,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   style: TextStyle(
                     color: dotColor,
                     fontWeight: FontWeight.w800,
-                    fontSize: 10.5,
+                    fontSize: w * 0.027,
                     letterSpacing: 1.8,
                   ),
                 ),
@@ -564,7 +660,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           Container(
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(w * 0.042),
               border: Border.all(color: cardBorder, width: 1),
               boxShadow: [
                 BoxShadow(
@@ -577,13 +673,13 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(w * 0.042),
               child: Column(
                 children: List.generate(destinations.length, (i) {
                   final isLast = i == destinations.length - 1;
                   return Column(
                     children: [
-                      _RouteRow(
+                      CartesLignesTrajets(
                         depart: depart,
                         destination: destinations[i],
                         typeVoyage: typeVoyage,
@@ -593,8 +689,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                           height: 1,
                           thickness: 1,
                           color: dividerColor,
-                          indent: 60,
-                          endIndent: 16,
+                          indent: w * 0.155,
+                          endIndent: w * 0.042,
                         ),
                     ],
                   );
@@ -610,6 +706,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   Widget _buildBottomNav(BuildContext context) {
     final c = Config.colors;
     final double fontSize = MediaQuery.of(context).size.width * 0.027;
+    final Color vertVIP = const Color.fromARGB(255, 2, 136, 80);
+
     return BottomAppBar(
       color: c.homeCardBackground,
       elevation: 0,
@@ -641,7 +739,12 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             indicatorSize: TabBarIndicatorSize.tab,
             indicator: BoxDecoration(
               border: Border(
-                top: BorderSide(color: c.homeButtonPrimary, width: 2.5),
+                top: BorderSide(
+                  color: _tabController.index == 2
+                      ? vertVIP
+                      : c.homeButtonPrimary,
+                  width: 2.5,
+                ),
               ),
             ),
             dividerColor: Colors.transparent,
@@ -680,11 +783,21 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                       : Icons.star_outline_rounded,
                   size: 22,
                   color: _tabController.index == 2
-                      //? _kVipGold
-                      ? Color.fromARGB(255, 2, 136, 80)
+                      ? vertVIP
                       : c.homeTabUnselected,
                 ),
-                text: 'VIP',
+                child: Text(
+                  'VIP',
+                  style: TextStyle(
+                    color: _tabController.index == 2
+                        ? vertVIP
+                        : c.homeTabUnselected,
+                    fontSize: fontSize,
+                    fontWeight: _tabController.index == 2
+                        ? FontWeight.w700
+                        : FontWeight.w400,
+                  ),
+                ),
               ),
               // Historique
               Tab(
@@ -976,450 +1089,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         style: TextStyle(color: color, fontFamily: 'Lobster', fontSize: 15),
       ),
       onTap: onTap,
-    );
-  }
-}
-
-// ── Ligne de route  ───────────────────────────────────
-class _RouteRow extends StatefulWidget {
-  const _RouteRow({
-    required this.depart,
-    required this.destination,
-    required this.typeVoyage,
-  });
-  final String depart;
-  final String destination;
-  final String typeVoyage;
-
-  @override
-  State<_RouteRow> createState() => _RouteRowState();
-}
-
-class _RouteRowState extends State<_RouteRow> {
-  bool _loading = false;
-
-  Future<Map<String, dynamic>?> _verifierUtilisateur() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
-    try {
-      final res = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/verifierUtilisateur.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'idUtilisateur': user.uid}),
-      );
-      if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        if (data['success'] == false) return null;
-        final int points = data['points'] ?? 0;
-        if (points == 0) {
-          if (mounted) _showRestrictedDialog();
-          return null;
-        }
-        return {
-          'nom': data['nom'] ?? '',
-          'prenoms': data['prenoms'] ?? '',
-          'telephone': data['telephone'] ?? '',
-        };
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  void _showRestrictedDialog() {
-    final c = Config.colors;
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: c.homeCardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            const SizedBox(width: 8),
-            Text(
-              'Accès restreint',
-              style: TextStyle(
-                color: c.homeTextPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Votre profil est soumis à une restriction.\nVeuillez contacter l\'administrateur MVST Mobile.',
-          style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.8)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'OK',
-              style: TextStyle(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<int?> _getPrix() async {
-    try {
-      final res = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/getPrixDesTickets.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'type': widget.typeVoyage}),
-      );
-      if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        if (data['success'] == true) {
-          prixDesBillets.clear();
-          for (final item in List<Map<String, dynamic>>.from(data['heures'])) {
-            prixDesBillets[item['axe']] = item['prix'];
-          }
-          return prixDesBillets['${widget.depart} ${widget.destination}'];
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  Future<void> _onTap() async {
-    if (FirebaseAuth.instance.currentUser == null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const Login()),
-      );
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      final userData = await _verifierUtilisateur();
-      if (userData == null) return;
-      final prix = await _getPrix();
-      if (prix == null) throw Exception('Prix non trouvé');
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => Commande(
-            idUtilisateur: FirebaseAuth.instance.currentUser!.uid,
-            nom: userData['nom'],
-            prenoms: userData['prenoms'] ?? '',
-            telephone: userData['telephone'],
-            prixDuBillet: prix,
-            depart: widget.depart,
-            destination: widget.destination,
-            typeVoyage: widget.typeVoyage,
-            ongletOrigine: widget.typeVoyage == 'vip' ? 2 : 0,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (mounted) afficherErreur(context, e);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = Config.colors;
-    final bool isVip = widget.typeVoyage == 'vip';
-
-    final Color accent = isVip ? _kVipGold : c.homeButtonPrimary;
-    final Color textColor = isVip ? Colors.white : c.homeTextPrimary;
-    final Color subColor = isVip
-        ? Colors.white38
-        : c.homeTextPrimary.withValues(alpha: 0.4);
-    final Color iconBg = accent.withValues(alpha: 0.10);
-    final Color btnColor = isVip ? _kVipGold : c.homeButtonPrimary;
-
-    return InkWell(
-      onTap: _loading ? null : _onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        child: Row(
-          children: [
-            // Icône
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(
-                isVip
-                    ? Icons.airline_seat_recline_extra
-                    : Icons.directions_bus_rounded,
-                color: accent,
-                size: 19,
-              ),
-            ),
-            const SizedBox(width: 14),
-
-            // Texte trajet
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${widget.depart} → ${widget.destination}',
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Ligne ${widget.depart} ${widget.destination}',
-                    style: TextStyle(
-                      color: subColor,
-                      fontStyle: FontStyle.italic,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Bouton / loader
-            if (_loading)
-              SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: c.homeAccent,
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: btnColor,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Text(
-                  'Réserver',
-                  style: TextStyle(
-                    color: c.homeAccent,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// _PromoStrip — Carousel compact publicités & offres
-//
-// • Se cache totalement (SizedBox.shrink) si aucune image active.
-// • Se connecte au socket pour mises à jour temps réel.
-// • isVip: true → teinte dorée pour l'onglet VIP.
-// ════════════════════════════════════════════════════════════════════════════
-class _PromoStrip extends StatefulWidget {
-  const _PromoStrip();
-
-  @override
-  State<_PromoStrip> createState() => _PromoStripState();
-}
-
-class _PromoStripState extends State<_PromoStrip> {
-  List<ImageModel> _images = [];
-  bool _loading = true;
-  int _current = 0;
-  io.Socket? _socket;
-  static const String _base = 'https://mvst.tenelo.cloud/';
-
-  @override
-  void initState() {
-    super.initState();
-    _charger();
-    _connectSocket();
-  }
-
-  @override
-  void dispose() {
-    _socket?.disconnect();
-    _socket?.dispose();
-    super.dispose();
-  }
-
-  void _connectSocket() {
-    try {
-      _socket = io.io(
-        'https://mvst.tenelo.cloud',
-        io.OptionBuilder()
-            .setTransports(['websocket'])
-            .disableAutoConnect()
-            .build(),
-      );
-      _socket!.connect();
-      _socket!.on('connect', (_) => _charger());
-      _socket!.on('images_modifiees', (_) => _charger());
-      _socket!.on('disconnect', (_) {
-        Future.delayed(const Duration(seconds: 3), _connectSocket);
-      });
-    } catch (_) {}
-  }
-
-  Future<void> _charger() async {
-    try {
-      final res = await http.get(
-        Uri.parse('https://mvst.tenelo.cloud/getImages.php'),
-      );
-      if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        if (data['success'] == true && mounted) {
-          setState(() {
-            _images = List<ImageModel>.from(
-              data['images'].map((i) => ImageModel.fromJson(i)),
-            ).where((i) => i.statut.toLowerCase() == 'actif').toList();
-          });
-        }
-      }
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Invisible si chargement ou aucune image → zéro espace occupé
-    if (_loading || _images.isEmpty) return const SizedBox.shrink();
-
-    final c = Config.colors;
-    final Color accent = c.homeButtonPrimary;
-    final Color dotInactive = c.homeButtonPrimary.withValues(alpha: 0.20);
-
-    return Padding(
-      // Espace uniquement si des images sont présentes
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Étiquette discrète ────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: accent,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  'ACTUALITÉS & OFFRES',
-                  style: TextStyle(
-                    color: accent.withValues(alpha: 0.65),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Carousel compact ──────────────────────────────────────────
-          CarouselSlider.builder(
-            itemCount: _images.length,
-            itemBuilder: (ctx, i, _) {
-              final url = _base + _images[i].lien_image;
-              return TweenAnimationBuilder(
-                tween: Tween<double>(begin: 0.8, end: 1.0),
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOutCubic,
-                builder: (context, double scale, child) {
-                  return Transform.scale(scale: scale, child: child);
-                },
-                child: GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DetailsImages(
-                        imageUrl: url,
-                        titre: _images[i].titre,
-                        description: _images[i].description,
-                      ),
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.network(
-                      url,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (context, error, stack) => Container(
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.image_outlined,
-                          color: accent.withValues(alpha: 0.3),
-                          size: 28,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-            options: CarouselOptions(
-              height: 136,
-              viewportFraction: 0.80,
-              autoPlay: _images.isNotEmpty,
-              autoPlayInterval: const Duration(seconds: 4),
-              autoPlayAnimationDuration: const Duration(milliseconds: 700),
-              autoPlayCurve: Curves.easeInOutCubic,
-              enlargeCenterPage: true,
-              enlargeFactor: 0.20,
-              padEnds: true,
-              onPageChanged: (i, _) => setState(() => _current = i),
-            ),
-          ),
-          // ── Indicateurs dots ──────────────────────────────────────────
-          if (_images.length > 1) ...[
-            const SizedBox(height: 9),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_images.length, (i) {
-                final bool active = i == _current;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeInOut,
-                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                  width: active ? 16 : 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: active ? accent : dotInactive,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                );
-              }),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

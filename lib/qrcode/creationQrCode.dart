@@ -42,7 +42,7 @@ class CreationQrCode {
     return FutureBuilder<ui.Image>(
       future: _loadOverlayImage(),
       builder: (BuildContext ctx, AsyncSnapshot<ui.Image> snapshot) {
-        const double size = 250.0;
+        const double size = 400.0;
         return CustomPaint(
           size: const Size.square(size),
           painter: QrPainter(
@@ -58,7 +58,7 @@ class CreationQrCode {
             ),
             embeddedImage: snapshot.data,
             embeddedImageStyle: const QrEmbeddedImageStyle(
-              size: Size.square(52),
+              size: Size.square(70),
             ),
           ),
         );

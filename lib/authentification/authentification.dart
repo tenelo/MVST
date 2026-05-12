@@ -6,9 +6,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:mvst/authentification/pin_creation.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/screens/home.dart';
 
 class PageDAuthentification extends StatefulWidget {
   const PageDAuthentification({super.key});
@@ -27,66 +28,142 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
 
   Future<bool> verificationListeNoire(String numero) async {
     try {
-      final response = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/verifierTelephone.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'telephone': numero}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/verifierTelephone.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'telephone': numero}),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['existe'] == true) {
-          if (mounted) {
-            final c = Config.colors;
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: c.authDialogBackground,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                title: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.warning, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text("Accès Refusé",
+
+        if (data['success'] == true) {
+          // ═══════════════════════════════════════════
+          // CAS 1 : Compte bloqué (points = 0)
+          // ═══════════════════════════════════════════
+          if (data['bloque'] == true) {
+            if (mounted) {
+              final c = Config.colors;
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: c.authDialogBackground,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.gpp_bad, color: Colors.red, size: 28),
+                      SizedBox(width: 8),
+                      Text(
+                        "Accès Bloqué",
                         style: TextStyle(
-                            color: Colors.red, fontWeight: FontWeight.bold)),
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: const Text(
+                    "\nVotre compte a été bloqué pour des raisons de sécurité."
+                    "\nTrop de tentatives de connexion incorrectes."
+                    "\n\nVeuillez contacter les administrateurs MVST pour assistance.",
+                    style: TextStyle(color: Colors.white70),
+                    textAlign: TextAlign.center,
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          SystemNavigator.pop();
+                        });
+                      },
+                      child: const Text(
+                        "OK",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                content: const Text(
-                  "\nLe numéro utilisé est déjà associé à un utilisateur existant"
-                  "\nou est inscrit sur la liste noire."
-                  "\nVeuillez contacter les administrateurs MVST pour assistance.",
-                  style: TextStyle(color: Colors.white70),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Future.delayed(const Duration(milliseconds: 500), () {
-                        SystemNavigator.pop();
-                      });
-                    },
-                    child: const Text("OK",
-                        style: TextStyle(
-                            color: Colors.red, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            );
+              );
+            }
+            return true;
           }
-          return true;
+
+          // ═══════════════════════════════════════════
+          // CAS 2 : Numéro déjà utilisé
+          // ═══════════════════════════════════════════
+          if (data['existe'] == true) {
+            if (mounted) {
+              final c = Config.colors;
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: c.authDialogBackground,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.warning, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text(
+                        "Accès Refusé",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: const Text(
+                    "\nLe numéro utilisé est déjà associé à un utilisateur existant."
+                    "\nVeuillez contacter les administrateurs MVST pour assistance.",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          SystemNavigator.pop();
+                        });
+                      },
+                      child: const Text(
+                        "OK",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return true;
+          }
         }
         return false;
       }
       return false;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('Erreur lors de la vérification, reprenez le processus'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur lors de la vérification, reprenez le processus',
+            ),
+          ),
+        );
       }
       return false;
     }
@@ -97,20 +174,23 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
         _prenomController.text.isEmpty ||
         _telephoneController.text.isEmpty ||
         _residenceController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        backgroundColor: Color.fromARGB(255, 241, 94, 94),
-        content: Text(
-          'Veuillez remplir tous les champs.',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color.fromARGB(255, 241, 94, 94),
+          content: Text(
+            'Veuillez remplir tous les champs.',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
         ),
-      ));
+      );
       return;
     }
 
     setState(() => _isLoading = true);
 
-    bool surListeNoire =
-        await verificationListeNoire(_telephoneController.text);
+    bool surListeNoire = await verificationListeNoire(
+      _telephoneController.text,
+    );
 
     if (surListeNoire) {
       setState(() => _isLoading = false);
@@ -122,16 +202,50 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: numeroTelephone,
-        verificationCompleted: (PhoneAuthCredential credential) async {},
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          try {
+            final userCredential = await FirebaseAuth.instance
+                .signInWithCredential(credential);
+            final user = userCredential.user;
+            if (user == null || !mounted) return;
+            await user.updateDisplayName(
+              '${_nomController.text} ${_prenomController.text}',
+            );
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PageDeVerification(
+                    verificationId: '',
+                    nom: _nomController.text,
+                    prenoms: _prenomController.text,
+                    telephone: _telephoneController.text,
+                    ville: _residenceController.text,
+                  ),
+                ),
+              );
+            }
+          } catch (_) {}
+        },
         verificationFailed: (FirebaseAuthException e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Erreur de vérification.'),
-            ));
+            setState(() => _isLoading = false);
+            String message = 'Erreur de vérification. Réessayez.';
+            if (e.code == 'too-many-requests') {
+              message = 'Trop de tentatives. Réessayez plus tard.';
+            } else if (e.code == 'network-request-failed') {
+              message = 'Erreur réseau. Vérifiez votre connexion.';
+            } else if (e.code == 'invalid-phone-number') {
+              message = 'Numéro de téléphone invalide.';
+            }
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(message)));
           }
         },
         codeSent: (String verificationId, int? resendToken) async {
           if (mounted) {
+            setState(() => _isLoading = false);
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -147,17 +261,16 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
           }
         },
         codeAutoRetrievalTimeout: (String verificationId) {},
-        timeout: const Duration(seconds: 60),
+        timeout: const Duration(seconds: 120),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Erreur lors de l\'envoi du code'),
-        ));
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erreur lors de l\'envoi du code.')),
+        );
       }
     }
-
-    setState(() => _isLoading = false);
   }
 
   Widget _buildChamp({
@@ -191,8 +304,10 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
             fontSize: screenWidth * 0.034,
           ),
           prefixIcon: Icon(icone, color: c.authAccent, size: 20),
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 12,
+          ),
         ),
       ),
     );
@@ -316,8 +431,9 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
                               Text(
                                 'Envoi en cours...',
                                 style: TextStyle(
-                                    color: c.authTextPrimary,
-                                    fontWeight: FontWeight.bold),
+                                  color: c.authTextPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           )
@@ -475,8 +591,9 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                         fontSize: screenWidth * 0.05,
                         letterSpacing: 8,
                       ),
-                      contentPadding:
-                          EdgeInsets.symmetric(vertical: screenHeight * 0.022),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: screenHeight * 0.022,
+                      ),
                     ),
                     onChanged: (value) => setState(() {}),
                   ),
@@ -492,7 +609,9 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                     onPressed: _isLoading || _codeController.text.isEmpty
                         ? null
                         : () => _seConnecterParNumTelephone(
-                            widget.verificationId, _codeController.text),
+                            widget.verificationId,
+                            _codeController.text,
+                          ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: c.authButton,
                       foregroundColor: c.authTextPrimary,
@@ -532,7 +651,9 @@ class _PageDeVerificationState extends State<PageDeVerification> {
   }
 
   Future<void> _seConnecterParNumTelephone(
-      String verificationId, String smsCode) async {
+    String verificationId,
+    String smsCode,
+  ) async {
     if (_isDisposed) return;
     setState(() => _isLoading = true);
 
@@ -542,8 +663,8 @@ class _PageDeVerificationState extends State<PageDeVerification> {
         smsCode: smsCode,
       );
 
-      final UserCredential authResult =
-          await FirebaseAuth.instance.signInWithCredential(credential);
+      final UserCredential authResult = await FirebaseAuth.instance
+          .signInWithCredential(credential);
 
       final User? user = authResult.user;
       if (user == null) return;
@@ -552,22 +673,55 @@ class _PageDeVerificationState extends State<PageDeVerification> {
 
       final PhoneAuthCredential phoneAuthCredential =
           PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode,
-      );
+            verificationId: verificationId,
+            smsCode: smsCode,
+          );
       await user.updatePhoneNumber(phoneAuthCredential);
 
       setState(() => idAuth = user.uid);
 
+      // Aller vers la création du PIN avant de créer le compte
       if (mounted) {
-        await creerUtilisateurEtAuthentifierParMail(
-            idAuth, widget.nom, widget.prenoms, widget.telephone, context);
+        FocusScope.of(context).unfocus();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PinCreation(
+              onPinConfirmed: (pin) => creerUtilisateurEtAuthentifierParMail(
+                idAuth,
+                widget.nom,
+                widget.prenoms,
+                widget.telephone,
+                pin,
+                context,
+              ),
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur lors de la connexion : $e'),
-        ));
+        String message = 'Une erreur est survenue. Réessayez.';
+        if (e is FirebaseAuthException) {
+          switch (e.code) {
+            case 'session-expired':
+              message =
+                  'Le code a expiré. Veuillez redemander un nouveau code.';
+              break;
+            case 'invalid-verification-code':
+              message = 'Code incorrect. Vérifiez le SMS et réessayez.';
+              break;
+            case 'too-many-requests':
+              message = 'Trop de tentatives. Réessayez dans quelques minutes.';
+              break;
+            case 'network-request-failed':
+              message = 'Erreur réseau. Vérifiez votre connexion.';
+              break;
+          }
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     }
 
@@ -579,14 +733,15 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     String nom,
     String prenoms,
     String telephone,
+    String pin,
     BuildContext context,
   ) async {
     try {
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: "$telephone@gmail.com",
-        password: telephone,
-      );
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: "$telephone@gmail.com",
+            password: '${pin}mv',
+          );
 
       User? user = userCredential.user;
       if (user != null) {
@@ -596,33 +751,33 @@ class _PageDeVerificationState extends State<PageDeVerification> {
             .collection('utilisateurs')
             .doc(user.uid)
             .set({
-          'id': user.uid,
-          'idAuth': authUid,
-          'nom': widget.nom,
-          'prenoms': widget.prenoms,
-          'residence': widget.ville,
-          'telephone': widget.telephone,
-          'points': 3,
-          'mail': "${widget.telephone}@gmail.com",
-          'dateDeCreation': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+              'id': user.uid,
+              'idAuth': authUid,
+              'nom': widget.nom,
+              'prenoms': widget.prenoms,
+              'residence': widget.ville,
+              'telephone': widget.telephone,
+              'points': 3,
+              'mail': "${widget.telephone}@gmail.com",
+              'dateDeCreation': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
 
         await ajouterUtilisateurALaBaseDeDonnees(
-            idUtilisateur: user.uid,
-            idAuth: '',
-            nom: "${widget.nom} ${widget.prenoms}",
-            residence: widget.ville,
-            telephone: widget.telephone,
-            points: 3,
-            mail: "${widget.telephone}@gmail.com");
+          idUtilisateur: user.uid,
+          idAuth: '',
+          nom: "$nom $prenoms",
+          residence: widget.ville,
+          telephone: telephone,
+          points: 3,
+          mail: "$telephone@gmail.com",
+        );
 
-        if (context.mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const Home()),
-            (route) => false,
-          );
-        }
+        // Sauvegarde de la session locale sécurisée
+        const storage = FlutterSecureStorage();
+        await storage.write(key: 'user_phone', value: telephone);
+        await storage.write(key: 'user_pin', value: pin);
+        await storage.write(key: 'user_id', value: user.uid);
+        await storage.write(key: 'user_name', value: '$nom $prenoms');
       }
     } catch (e) {
       debugPrint('❌ Erreur création compte: $e');
@@ -638,7 +793,7 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     required int points,
     required String mail,
   }) async {
-    const String apiUrl = 'https://mvst.tenelo.cloud/insert_utilisateur.php';
+    const String apiUrl = '$kBaseUrl/insert_utilisateur.php';
 
     try {
       final Map<String, dynamic> requestBody = {
@@ -651,11 +806,13 @@ class _PageDeVerificationState extends State<PageDeVerification> {
         'mail': mail,
       };
 
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(requestBody),
-      );
+      final response = await http
+          .post(
+            Uri.parse(apiUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(requestBody),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

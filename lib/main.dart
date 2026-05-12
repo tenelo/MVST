@@ -1,17 +1,22 @@
 import 'dart:isolate';
 import 'dart:math';
+import 'dart:ui';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:mvst/authentification/connection.dart';
+import 'package:mvst/screens/home.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/config/config.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:mvst/firebase_options.dart';
 import 'package:mvst/models/mesFonctions.dart';
-import 'package:mvst/screens/home.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,6 +30,12 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Config.chargerTheme();
+
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
 
   runApp(const MyApp());
 }
@@ -86,7 +97,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: const [Locale('fr', '')],
-        navigatorObservers: [CustomNavigatorObserver(onPageChange: () {})],
+        navigatorObservers: [
+          routeObserver,
+          CustomNavigatorObserver(onPageChange: () {}),
+        ],
         // ── Calcul taille écran au démarrage ────────────────────────────
         builder: (context, child) {
           final size = MediaQuery.of(context).size;
@@ -104,6 +118,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 }
+
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 class CustomNavigatorObserver extends NavigatorObserver {
   final VoidCallback onPageChange;
@@ -173,18 +189,47 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
 
 // ── Navigation après splash ────────────────────────────────────────────────────
 Future<void> _checkTermsAcceptance(BuildContext ctx) async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool termsAccepted = prefs.getBool('termesAccepté') ?? false;
+  final prefs = await SharedPreferences.getInstance();
+  final termsAccepted = prefs.getBool('termesAccepté') ?? false;
 
-  if (termsAccepted) {
-    Navigator.of(
-      ctx,
-    ).pushReplacement(MaterialPageRoute(builder: (context) => const Home()));
-  } else {
+  if (!termsAccepted) {
+    if (ctx.mounted) {
+      Navigator.of(ctx).pushReplacement(
+        MaterialPageRoute(builder: (_) => const AccepterTermesDutilisations()),
+      );
+    }
+    return;
+  }
+
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    if (ctx.mounted) {
+      Navigator.of(ctx).pushReplacement(
+        MaterialPageRoute(builder: (_) => const Login()),
+      );
+    }
+    return;
+  }
+
+  // Session Firebase active — vérifier que le PIN local est présent
+  const storage = FlutterSecureStorage();
+  final pin = await storage.read(key: 'user_pin');
+
+  if (pin == null) {
+    // Ancien utilisateur sans PIN (avant mise à jour) → déconnexion propre
+    await FirebaseAuth.instance.signOut();
+    if (ctx.mounted) {
+      Navigator.of(ctx).pushReplacement(
+        MaterialPageRoute(builder: (_) => const Login()),
+      );
+    }
+    return;
+  }
+
+  // Session Firebase active + PIN présent → Home directement, sans code secret
+  if (ctx.mounted) {
     Navigator.of(ctx).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const AccepterTermesDutilisations(),
-      ),
+      MaterialPageRoute(builder: (_) => const Home()),
     );
   }
 }

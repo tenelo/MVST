@@ -41,6 +41,7 @@ class _AccepterTermesDutilisationsPageState
 
   @override
   Widget build(BuildContext context) {
+    final c = Config.colors;
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -49,7 +50,7 @@ class _AccepterTermesDutilisationsPageState
         ),
         iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
-        backgroundColor: const Color.fromARGB(132, 5, 82, 121),
+        backgroundColor: c.homeButtonPrimary,
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -232,10 +233,13 @@ Sur demande du Client, le Prestataire transmet les informations relatives à la 
                   backgroundColor: Config.colors.bleuFonce2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
-                    side: const BorderSide(color: Colors.blue),
+                    side: BorderSide(color: c.homeButtonPrimary),
                   ),
                 ),
-                child: const Text('Continuer'),
+                child: const Text(
+                  'Continuer',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
             SizedBox(
@@ -255,7 +259,10 @@ Sur demande du Client, le Prestataire transmet les informations relatives à la 
                     ),
                   ),
                 ),
-                child: const Text('Annuler'),
+                child: const Text(
+                  'Annuler',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
           ],

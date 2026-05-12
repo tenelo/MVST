@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:mvst/config/app_colors.dart';
 import 'package:mvst/config/config.dart';
 
-const String _apiBase = 'https://mvst.tenelo.cloud';
 
 class Profil extends StatefulWidget {
   const Profil({
@@ -29,7 +28,7 @@ class _ProfilState extends State<Profil> {
   Future<Map<String, dynamic>?> getUserData(String userId) async {
     try {
       final resp = await http.get(
-        Uri.parse('$_apiBase/get_utilisateur.php?id=$userId'),
+        Uri.parse('$kBaseUrl/get_utilisateur.php?id=$userId'),
       ).timeout(const Duration(seconds: 8));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -257,8 +256,8 @@ class _ProfilState extends State<Profil> {
                         const SizedBox(height: 40),
                         // Avatar initiales
                         Container(
-                          width: 90,
-                          height: 90,
+                          width: screenW * 0.23,
+                          height: screenW * 0.23,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white.withValues(alpha: 0.18),
@@ -269,7 +268,7 @@ class _ProfilState extends State<Profil> {
                               initiales,
                               style: TextStyle(
                                 color: c.homeAccent,
-                                fontSize: 32,
+                                fontSize: screenW * 0.082,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'Lobster',
                               ),
@@ -281,7 +280,7 @@ class _ProfilState extends State<Profil> {
                           '$nom $prenoms',
                           style: TextStyle(
                             color: c.homeAccent,
-                            fontSize: 18,
+                            fontSize: screenW * 0.046,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -290,7 +289,7 @@ class _ProfilState extends State<Profil> {
                           "Merci pour votre confiance !",
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.75),
-                            fontSize: 12,
+                            fontSize: screenW * 0.031,
                             fontFamily: 'Lobster',
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -316,7 +315,7 @@ class _ProfilState extends State<Profil> {
                         'Informations personnelles',
                         style: TextStyle(
                           color: c.homeTextPrimary.withValues(alpha: 0.5),
-                          fontSize: 11,
+                          fontSize: screenW * 0.028,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 1.1,
                         ),
@@ -479,7 +478,7 @@ Future<void> editerDocument(
 ) async {
   try {
     final resp = await http.post(
-      Uri.parse('$_apiBase/update_utilisateur.php'),
+      Uri.parse('$kBaseUrl/update_utilisateur.php'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'idUtilisateur': idUtilisateur,

@@ -1,6 +1,8 @@
 import 'package:mvst/config/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const String kBaseUrl = 'https://mvst.tenelo.cloud';
+
 enum AppThemeMode { blue, green }
 
 class Config {

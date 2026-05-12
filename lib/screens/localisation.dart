@@ -17,10 +17,10 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
     try {
       final response = await http.get(
         Uri.parse(
-          'https://mvst.tenelo.cloud/tarifsAxes_et_infos_gare.php?type=gares',
+          '$kBaseUrl/tarifsAxes_et_infos_gare.php?type=gares',
         ),
         headers: {'Content-Type': 'application/json'},
-      );
+      ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {

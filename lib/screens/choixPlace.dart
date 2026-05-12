@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mvst/models/mesFonctions.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,10 +14,6 @@ import 'package:mvst/bloc/state.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
-
-List<int> listeDesPlacesChoisies = [];
-String? _depart, _destination, _date, _mois, _moisAnnee, _annee, _heure;
-IO.Socket? _socket;
 
 class ChoixPlaces extends StatefulWidget {
   const ChoixPlaces({
@@ -34,6 +30,7 @@ class ChoixPlaces extends StatefulWidget {
     required this.annee,
     required this.heure,
     required this.prixDuBillet,
+    required this.typeVoyage,
   });
   final String idDate;
   final String id;
@@ -47,63 +44,57 @@ class ChoixPlaces extends StatefulWidget {
   final String depart;
   final String destination;
   final int prixDuBillet;
-
+  final String typeVoyage;
   @override
   State<ChoixPlaces> createState() => _ChoixPlacesState();
 }
 
 class _ChoixPlacesState extends State<ChoixPlaces> {
-  int _seconds = 50;
+  int _seconds = 60;
   late Timer _timer;
   bool _isLoading = true;
-  late IO.Socket socket;
+  late io.Socket socket;
+
+  // ── État centralisé (remplace les globaux listeDesPlacesOccupees / listeDeVerification) ──
+  final Set<int> _selectedSeats =
+      {}; // confirmées par le serveur (= mes places)
+  final Set<int> _loadingSeats = {}; // en attente de réponse serveur
+  Set<int> _occupiedSeats = {}; // occupées par d'autres voyageurs
 
   @override
   void initState() {
     super.initState();
-    _socket = null;
-    _date = widget.idDate;
-    _mois = widget.mois;
-    _moisAnnee = widget.moisAnnee;
-    _annee = widget.annee;
-    _heure = widget.heure;
-    _depart = widget.depart;
-    _destination = widget.destination;
-    listeDesPlacesChoisies.clear();
-    listeDeVerification.clear();
-    listeDesPlacesOccupees.clear();
     _chargerPlacesEtConnecterSocket();
     startCountdown();
   }
 
   @override
   void dispose() {
-listeDesPlacesOccupees.clear();
-    if (listeDeVerification.isNotEmpty) {
+    if (_selectedSeats.isNotEmpty) {
       if (socket.connected) {
         socket.emit('liberer_places', {
           'depart': widget.depart,
           'destination': widget.destination,
           'date': widget.idDate,
           'heure': widget.heure,
-          'numerosDePlace': listeDeVerification,
+          'numerosDePlace': _selectedSeats.toList(),
         });
       } else {
         http.post(
-          Uri.parse('https://mvst.tenelo.cloud/process_places_temporaires.php'),
+          Uri.parse('$kBaseUrl/process_places_temporaires.php'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'documentId':
                 '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h',
-            'places': listeDeVerification,
+            'places': _selectedSeats.toList(),
           }),
         );
       }
     }
-    listeDesPlacesChoisies.clear();
-    listeDeVerification.clear();
     socket.off('place_prise');
     socket.off('place_liberee');
+    socket.off('place_confirmee');
+    socket.off('place_echec');
     socket.off('connect');
     socket.offAny();
     socket.disconnect();
@@ -112,11 +103,22 @@ listeDesPlacesOccupees.clear();
     super.dispose();
   }
 
+  // Appelé uniquement quand le timer atteint zéro (expiration de session)
   void stopCountdown() {
     _timer.cancel();
-    listeDesPlacesOccupees.clear();
+    if (_selectedSeats.isNotEmpty && socket.connected) {
+      socket.emit('liberer_places', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'numerosDePlace': _selectedSeats.toList(),
+      });
+    }
     socket.off('place_prise');
     socket.off('place_liberee');
+    socket.off('place_confirmee');
+    socket.off('place_echec');
     socket.offAny();
     socket.disconnect();
   }
@@ -131,21 +133,7 @@ listeDesPlacesOccupees.clear();
         if (_seconds > 0) {
           _seconds--;
         } else {
-          _timer.cancel();
-          if (listeDeVerification.isNotEmpty && socket.connected) {
-            socket.emit('liberer_places', {
-              'depart': widget.depart,
-              'destination': widget.destination,
-              'date': widget.idDate,
-              'heure': widget.heure,
-              'numerosDePlace': listeDeVerification,
-            });
-            listeDeVerification.clear();
-          }
-          socket.off('place_prise');
-          socket.off('place_liberee');
-          socket.offAny();
-          socket.disconnect();
+          stopCountdown();
           Navigator.pop(context);
         }
       });
@@ -161,17 +149,19 @@ listeDesPlacesOccupees.clear();
     try {
       final documentId =
           '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
-      final response = await http.post(
-        Uri.parse('https://mvst.tenelo.cloud/placesAssises.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'documentId': documentId}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/placesAssises.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'documentId': documentId}),
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (mounted) {
           setState(() {
-            listeDesPlacesOccupees = List<int>.from(
-              (data['places'] ?? []).map((p) => p['place']),
+            _occupiedSeats = Set<int>.from(
+              (data['places'] ?? []).map((p) => p['place'] as int),
             );
             _isLoading = false;
           });
@@ -184,84 +174,17 @@ listeDesPlacesOccupees.clear();
     }
   }
 
-  // void _connecterSocket() {
-  //   socket = IO.io(
-  //     'https://mvst.tenelo.cloud',
-  //     IO.OptionBuilder()
-  //         .setTransports(['websocket', 'polling'])
-  //         .disableAutoConnect()
-  //         .build(),
-  //   );
-  //   _socket = socket;
-  //   socket.connect();
-
-  //   socket.onConnect((_) {
-  //     if (!mounted) return;
-  //     _socket = socket;
-  //     socket.emit('rejoindre_room', {
-  //       'depart': widget.depart,
-  //       'destination': widget.destination,
-  //       'date': widget.idDate,
-  //       'heure': widget.heure,
-  //       'mois': widget.mois,
-  //       'moisAnnee': widget.moisAnnee,
-  //       'annee': widget.annee,
-  //     });
-  //   });
-
-  //   socket.onConnectError((err) {});
-  //   socket.onError((err) {});
-
-  //   socket.onReconnect((_) {
-  //     if (!mounted) return;
-  //     socket.emit('rejoindre_room', {
-  //       'depart': widget.depart,
-  //       'destination': widget.destination,
-  //       'date': widget.idDate,
-  //       'heure': widget.heure,
-  //       'mois': widget.mois,
-  //       'moisAnnee': widget.moisAnnee,
-  //       'annee': widget.annee,
-  //     });
-  //   });
-
-  //   socket.on('place_prise', (data) {
-  //     if (!mounted) return;
-  //     final int numeroDePlace = data['numeroDePlace'];
-  //     setState(() {
-  //       if (!listeDesPlacesOccupees.contains(numeroDePlace)) {
-  //         listeDesPlacesOccupees.add(numeroDePlace);
-  //       }
-  //     });
-  //   });
-
-  //   socket.on('place_liberee', (data) {
-  //     if (!mounted) return;
-  //     final List<dynamic> numerosDePlace = data['numerosDePlace'];
-  //     setState(() {
-  //       for (var place in numerosDePlace) {
-  //         listeDesPlacesOccupees.remove(place);
-  //       }
-  //     });
-  //   });
-
-  //   socket.onDisconnect((_) {});
-  // }
-
   void _connecterSocket() {
-    socket = IO.io(
-      'https://mvst.tenelo.cloud',
-      IO.OptionBuilder()
+    socket = io.io(
+      kBaseUrl,
+      io.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
           .build(),
     );
-    _socket = socket;
 
-    // ── Enregistrer TOUS les listeners AVANT connect() ────────────────────
     socket.onConnect((_) {
       if (!mounted) return;
-      _socket = socket;
       socket.emit('rejoindre_room', {
         'depart': widget.depart,
         'destination': widget.destination,
@@ -289,32 +212,52 @@ listeDesPlacesOccupees.clear();
       });
     });
 
+    // ── Mises à jour temps réel des autres voyageurs ──────────────────────────
     socket.on('place_prise', (data) {
       if (!mounted) return;
-      final int numeroDePlace = data['numeroDePlace'];
-      setState(() {
-        if (!listeDesPlacesOccupees.contains(numeroDePlace)) {
-          listeDesPlacesOccupees.add(numeroDePlace);
-        }
-      });
+      final int place = data['numeroDePlace'];
+      // Ne pas marquer ses propres places comme occupées par un autre
+      if (_selectedSeats.contains(place) || _loadingSeats.contains(place))
+        return;
+      setState(() => _occupiedSeats.add(place));
     });
 
     socket.on('place_liberee', (data) {
       if (!mounted) return;
-      final List<dynamic> numerosDePlace = data['numerosDePlace'];
+      final List<dynamic> places = data['numerosDePlace'];
       setState(() {
-        for (var place in numerosDePlace) {
-          listeDesPlacesOccupees.remove(place);
+        for (final p in places) {
+          _occupiedSeats.remove(p as int);
         }
       });
     });
 
+    // ── Réponses aux demandes de sélection de CE voyageur ────────────────────
+    socket.on('place_confirmee', (data) {
+      if (!mounted) return;
+      final int place = data['numeroDePlace'];
+      if (!_loadingSeats.contains(place)) return;
+      setState(() {
+        _loadingSeats.remove(place);
+        _selectedSeats.add(place);
+      });
+      BlocProvider.of<BlocCompteur>(context).add(EventIcrement());
+    });
+
+    socket.on('place_echec', (data) {
+      if (!mounted) return;
+      final int place = data['numeroDePlace'];
+      setState(() {
+        _loadingSeats.remove(place);
+        _occupiedSeats.add(place);
+      });
+      showAlertDialog(context);
+    });
+
     socket.onDisconnect((_) {});
 
-    // ── connect() APRÈS tous les listeners ────────────────────────────────
     socket.connect();
 
-    // ── Forcer rejoindre_room après connexion ─────────────────────────────
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       socket.emit('rejoindre_room', {
@@ -329,29 +272,107 @@ listeDesPlacesOccupees.clear();
     });
   }
 
-  // ── Helper pour construire un widget Places avec la liste à jour ──────────
+  // ── Logique de sélection centralisée ─────────────────────────────────────────
+  void _onSeatTap(int numero) {
+    // Ignorer si occupée ou en cours de traitement
+    if (_occupiedSeats.contains(numero) || _loadingSeats.contains(numero)) {
+      return;
+    }
+
+    if (_selectedSeats.contains(numero)) {
+      // Désélectionner : immédiat, aucune attente serveur
+      setState(() => _selectedSeats.remove(numero));
+      socket.emit('liberer_places', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'numerosDePlace': [numero],
+      });
+      BlocProvider.of<BlocCompteur>(context).add(EventDecrement());
+    } else {
+      // Sélectionner : attendre confirmation serveur avant d'incrémenter
+      setState(() => _loadingSeats.add(numero));
+      socket.emit('choisir_place', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'mois': widget.mois,
+        'moisAnnee': widget.moisAnnee,
+        'annee': widget.annee,
+        'numeroDePlace': numero,
+        'typeVoyage': widget.typeVoyage,
+      });
+    }
+  }
+
+  void _naviguerVersTickets(BuildContext context, int ticketCount) {
+    if (_selectedSeats.isNotEmpty) {
+      // Le socket reste connecté pendant la navigation
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Tickets(
+            idDate: widget.idDate,
+            nombreDeTicket: ticketCount,
+            place: _selectedSeats.toList(),
+            id: widget.id,
+            nom: widget.nom,
+            contact: widget.contact,
+            date: widget.date,
+            mois: widget.mois,
+            moisAnnee: widget.moisAnnee,
+            annee: widget.annee,
+            heure: widget.heure,
+            depart: widget.depart,
+            destination: widget.destination,
+            prixDuTicket: widget.prixDuBillet,
+            typeVoyage: widget.typeVoyage,
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text(''),
+            content: const Text('Vous n\'avez choisi aucune place.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   Widget _place(int numero) {
     return Places(
-      key: ValueKey(
-        'place_${numero}_${listeDesPlacesOccupees.contains(numero)}',
-      ),
+      key: ValueKey(numero),
       numero: numero,
-      clicable: "true",
-      placesOccupees: List<int>.from(listeDesPlacesOccupees),
+      isSelected: _selectedSeats.contains(numero),
+      isLoading: _loadingSeats.contains(numero),
+      isOccupied: _occupiedSeats.contains(numero),
+      onTap: () => _onSeatTap(numero),
     );
   }
 
-  Widget _placeReservee(int numero) {
-    return PlacesReservees(numero: numero);
-  }
+  Widget _placeReservee(int numero) => PlacesReservees(numero: numero);
 
   @override
   Widget build(BuildContext context) {
     final c = Config.colors;
+    final largeurEcran = MediaQuery.of(context).size.width;
+    final hauteurEcran = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: c.homeBackground,
       appBar: AppBar(
-        toolbarHeight: MediaQuery.of(context).size.height * 0.06,
+        toolbarHeight: hauteurEcran * 0.06,
         iconTheme: IconThemeData(color: c.homeAccent),
         title: Center(
           child: Text(
@@ -359,60 +380,30 @@ listeDesPlacesOccupees.clear();
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w500,
-              fontSize: MediaQuery.of(context).size.width * 0.045,
+              fontSize: largeurEcran * 0.040,
             ),
           ),
         ),
         centerTitle: true,
         backgroundColor: c.authButtonDisabled,
         actions: [
+          Padding(
+            padding: EdgeInsets.only(right: largeurEcran * 0.02),
+            child: Center(
+              child: Text(
+                '$_seconds s',
+                style: TextStyle(
+                  color: _seconds <= 10 ? Colors.red : c.homeAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: largeurEcran * 0.040,
+                ),
+              ),
+            ),
+          ),
           BlocBuilder<BlocCompteur, CompteurState>(
             builder: (context, state) {
               return GestureDetector(
-                onTap: () {
-                  if (listeDesPlacesChoisies.isNotEmpty) {
-                    stopCountdown();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => Tickets(
-                          idDate: widget.idDate,
-                          nombreDeTicket: state.tickets,
-                          place: listeDesPlacesChoisies.toList(),
-                          id: widget.id,
-                          nom: widget.nom,
-                          contact: widget.contact,
-                          date: widget.date,
-                          mois: widget.mois,
-                          moisAnnee: widget.moisAnnee,
-                          annee: widget.annee,
-                          heure: widget.heure,
-                          depart: widget.depart,
-                          destination: widget.destination,
-                          prixDuTicket: widget.prixDuBillet,
-                        ),
-                      ),
-                    );
-                  } else {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: const Text(''),
-                          content: const Text(
-                            'Vous n\'avez choisi aucune place.',
-                          ),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('OK'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  }
-                },
+                onTap: () => _naviguerVersTickets(context, state.tickets),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: badges.Badge(
@@ -449,11 +440,11 @@ listeDesPlacesOccupees.clear();
                 child: SingleChildScrollView(
                   child: SizedBox(
                     height: petitEcran
-                        ? MediaQuery.of(context).size.height * 0.90
-                        : MediaQuery.of(context).size.height * 0.85,
+                        ? hauteurEcran * 0.90
+                        : hauteurEcran * 0.85,
                     width: petitEcran
-                        ? MediaQuery.of(context).size.width * 0.82
-                        : MediaQuery.of(context).size.width * 0.76,
+                        ? largeurEcran * 0.82
+                        : largeurEcran * 0.76,
                     child: Padding(
                       padding: const EdgeInsets.all(4.0),
                       child: Container(
@@ -468,7 +459,6 @@ listeDesPlacesOccupees.clear();
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Column(
                             children: [
-                              // DERNIERE RANGEE
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -510,7 +500,7 @@ listeDesPlacesOccupees.clear();
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(width: 35),
+                                  SizedBox(width: largeurEcran * 0.09),
                                   Column(
                                     children: [
                                       Row(
@@ -592,7 +582,7 @@ listeDesPlacesOccupees.clear();
                                       ),
                                       Row(
                                         children: [
-                                          SizedBox(width: 60),
+                                          SizedBox(width: largeurEcran * 0.155),
                                           PlacesChauffeur(),
                                         ],
                                       ),
@@ -608,12 +598,12 @@ listeDesPlacesOccupees.clear();
                                         CrossAxisAlignment.start,
                                     children: [porte()],
                                   ),
-                                  const SizedBox(width: 150),
+                                  SizedBox(width: largeurEcran * 0.385),
                                   Column(
                                     children: [
                                       Container(
-                                        height: 40,
-                                        width: 50,
+                                        height: largeurEcran * 0.10,
+                                        width: largeurEcran * 0.13,
                                         decoration: const BoxDecoration(
                                           image: DecorationImage(
                                             image: AssetImage(
@@ -651,51 +641,7 @@ listeDesPlacesOccupees.clear();
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
             child: FloatingActionButton(
-              onPressed: () {
-                if (listeDesPlacesChoisies.isNotEmpty) {
-                  final state = BlocProvider.of<BlocCompteur>(context).state;
-                  stopCountdown();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => Tickets(
-                        idDate: widget.idDate,
-                        nombreDeTicket: state.tickets,
-                        place: listeDesPlacesChoisies.toList(),
-                        id: widget.id,
-                        nom: widget.nom,
-                        contact: widget.contact,
-                        date: widget.date,
-                        mois: widget.mois,
-                        moisAnnee: widget.moisAnnee,
-                        annee: widget.annee,
-                        heure: widget.heure,
-                        depart: widget.depart,
-                        destination: widget.destination,
-                        prixDuTicket: widget.prixDuBillet,
-                      ),
-                    ),
-                  );
-                } else {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text(''),
-                        content: const Text(
-                          'Vous n\'avez choisi aucune place.',
-                        ),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                }
-              },
+              onPressed: () => _naviguerVersTickets(context, ticketCount),
               tooltip: 'Voir les tickets',
               child: const Icon(Icons.receipt_outlined),
             ),
@@ -706,127 +652,41 @@ listeDesPlacesOccupees.clear();
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-class Places extends StatefulWidget {
+// ── Place cliquable (stateless : tout l'état vient du parent) ─────────────────
+class Places extends StatelessWidget {
   const Places({
     super.key,
     required this.numero,
-    required this.clicable,
-    required this.placesOccupees, // ← AJOUT
+    required this.isSelected,
+    required this.isLoading,
+    required this.isOccupied,
+    required this.onTap,
   });
   final int numero;
-  final String clicable;
-  final List<int> placesOccupees; // ← AJOUT
-
-  @override
-  State<Places> createState() => _PlacesState();
-}
-
-class _PlacesState extends State<Places> {
-  bool _selectionne = false;
-  bool _isLoading = false;
-  bool _occupe = false;
+  final bool isSelected;
+  final bool isLoading;
+  final bool isOccupied;
+  final VoidCallback onTap;
 
   static const Color _couleurDispo = Color.fromARGB(226, 10, 41, 66);
   static const Color _couleurPrise = Color.fromARGB(255, 182, 214, 251);
 
   @override
-  void initState() {
-    super.initState();
-    _occupe = widget.placesOccupees.contains(widget.numero);
-  }
-
-  @override
-  void dispose() {
-    if (listeDeVerification.contains(widget.numero) && _socket != null) {
-      _socket!.emit('liberer_places', {
-        'depart': _depart,
-        'destination': _destination,
-        'date': _date,
-        'heure': _heure,
-        'numerosDePlace': [widget.numero],
-      });
-      listeDeVerification.remove(widget.numero);
-    }
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final BlocCompteur counterBloc = BlocProvider.of<BlocCompteur>(context);
-
-    // Mise à jour temps réel depuis listeDesPlacesOccupees
-    if (listeDesPlacesOccupees.contains(widget.numero) && !_occupe) {
-      _occupe = true;
-      _selectionne = false;
-    }
-
-    final Color couleurSiege =
-        (_selectionne || _occupe) ? _couleurPrise : _couleurDispo;
+    final w = MediaQuery.of(context).size.width;
+    final Color couleurSiege = (isSelected || isOccupied)
+        ? _couleurPrise
+        : _couleurDispo;
 
     return GestureDetector(
-      onTap: () async {
-        if (_occupe) return;
-        setState(() {
-          _isLoading = true;
-          _selectionne = !_selectionne;
-        });
-        try {
-          if (_selectionne) {
-            _socket?.emit('choisir_place', {
-              'depart': _depart,
-              'destination': _destination,
-              'date': _date,
-              'heure': _heure,
-              'mois': _mois,
-              'moisAnnee': _moisAnnee,
-              'annee': _annee,
-              'numeroDePlace': widget.numero,
-            });
-            _socket?.once('place_confirmee', (data) {
-              if (data['numeroDePlace'] == widget.numero) {
-                if (mounted) setState(() => _isLoading = false);
-                counterBloc.add(EventIcrement());
-                listeDesPlacesChoisies.add(widget.numero);
-                listeDeVerification.add(widget.numero);
-              }
-            });
-            _socket?.once('place_echec', (data) {
-              if (data['numeroDePlace'] == widget.numero) {
-                if (mounted) {
-                  setState(() {
-                    _selectionne = false;
-                    _isLoading = false;
-                    _occupe = true;
-                  });
-                }
-                showAlertDialog(context);
-              }
-            });
-          } else {
-            _socket?.emit('liberer_places', {
-              'depart': _depart,
-              'destination': _destination,
-              'date': _date,
-              'heure': _heure,
-              'numerosDePlace': [widget.numero],
-            });
-            counterBloc.add(EventDecrement());
-            listeDesPlacesChoisies.remove(widget.numero);
-            listeDeVerification.remove(widget.numero);
-            setState(() => _isLoading = false);
-          }
-        } catch (e) {
-          setState(() => _isLoading = false);
-        }
-      },
+      onTap: onTap,
       child: Container(
         margin: EdgeInsets.all(petitEcran ? 0.5 : 1.0),
         padding: EdgeInsets.all(petitEcran ? 0.5 : 0.8),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (_isLoading)
+            if (isLoading)
               CircularProgressIndicator(color: Config.colors.couleurDfond)
             else
               Card(
@@ -835,11 +695,11 @@ class _PlacesState extends State<Places> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: SizedBox(
-                  height: petitEcran ? 33 : 38,
-                  width: petitEcran ? 33 : 38,
+                  height: w * 0.092,
+                  width: w * 0.092,
                   child: Center(
                     child: Text(
-                      widget.numero.toString(),
+                      numero.toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -855,10 +715,7 @@ class _PlacesState extends State<Places> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: SizedBox(
-                  height: petitEcran ? 19 : 21,
-                  width: petitEcran ? 5 : 6,
-                ),
+                child: SizedBox(height: w * 0.053, width: w * 0.014),
               ),
             ),
             Positioned(
@@ -868,10 +725,7 @@ class _PlacesState extends State<Places> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: SizedBox(
-                  height: petitEcran ? 19 : 21,
-                  width: petitEcran ? 5 : 6,
-                ),
+                child: SizedBox(height: w * 0.053, width: w * 0.014),
               ),
             ),
             Positioned(
@@ -881,7 +735,7 @@ class _PlacesState extends State<Places> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const SizedBox(height: 6, width: 26),
+                child: SizedBox(height: w * 0.016, width: w * 0.067),
               ),
             ),
           ],
@@ -896,11 +750,13 @@ void showAlertDialog(BuildContext context) {
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        title: Text('Place occupée à l\'instant'),
-        content: Text('La place vient d\'être prise par quelqu\'un d\'autre'),
+        title: const Text('Place occupée à l\'instant'),
+        content: const Text(
+          'La place vient d\'être prise par quelqu\'un d\'autre',
+        ),
         actions: [
           TextButton(
-            child: Text('OK'),
+            child: const Text('OK'),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -913,10 +769,11 @@ void showAlertDialog(BuildContext context) {
 class PlacesReservees extends StatelessWidget {
   PlacesReservees({super.key, required this.numero});
   final int numero;
-  Color couleurSelection = Color.fromARGB(166, 249, 195, 115);
+  Color couleurSelection = const Color.fromARGB(166, 249, 195, 115);
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
     return Container(
       margin: EdgeInsets.all(petitEcran ? 0.5 : 1.0),
       padding: EdgeInsets.all(petitEcran ? 0.5 : 0.8),
@@ -929,12 +786,12 @@ class PlacesReservees extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: SizedBox(
-              height: petitEcran ? 33 : 38,
-              width: petitEcran ? 33 : 38,
+              height: w * 0.092,
+              width: w * 0.092,
               child: Center(
                 child: Text(
                   numero.toString(),
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -949,10 +806,7 @@ class PlacesReservees extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: SizedBox(
-                height: petitEcran ? 19 : 21,
-                width: petitEcran ? 5 : 6,
-              ),
+              child: SizedBox(height: w * 0.053, width: w * 0.014),
             ),
           ),
           Positioned(
@@ -962,10 +816,7 @@ class PlacesReservees extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: SizedBox(
-                height: petitEcran ? 19 : 21,
-                width: petitEcran ? 5 : 6,
-              ),
+              child: SizedBox(height: w * 0.053, width: w * 0.014),
             ),
           ),
           Positioned(
@@ -975,7 +826,7 @@ class PlacesReservees extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const SizedBox(height: 6, width: 26),
+              child: SizedBox(height: w * 0.016, width: w * 0.067),
             ),
           ),
         ],
@@ -987,10 +838,10 @@ class PlacesReservees extends StatelessWidget {
 // ignore: must_be_immutable
 class PlacesChauffeur extends StatelessWidget {
   PlacesChauffeur({super.key});
-  Color couleurInitiale = const Color.fromARGB(226, 10, 41, 66);
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
     return Container(
       margin: const EdgeInsets.all(0.5),
       padding: const EdgeInsets.all(0.8),
@@ -1003,9 +854,9 @@ class PlacesChauffeur extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: SizedBox(
-              height: petitEcran ? 33 : 38,
-              width: petitEcran ? 33 : 38,
-              child: Center(
+              height: w * 0.092,
+              width: w * 0.092,
+              child: const Center(
                 child: Text(
                   "",
                   style: TextStyle(
@@ -1023,10 +874,7 @@ class PlacesChauffeur extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: SizedBox(
-                height: petitEcran ? 19 : 21,
-                width: petitEcran ? 5 : 6,
-              ),
+              child: SizedBox(height: w * 0.053, width: w * 0.014),
             ),
           ),
           Positioned(
@@ -1036,10 +884,7 @@ class PlacesChauffeur extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: SizedBox(
-                height: petitEcran ? 19 : 21,
-                width: petitEcran ? 5 : 6,
-              ),
+              child: SizedBox(height: w * 0.053, width: w * 0.014),
             ),
           ),
           Positioned(
@@ -1049,7 +894,7 @@ class PlacesChauffeur extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const SizedBox(height: 6, width: 26),
+              child: SizedBox(height: w * 0.016, width: w * 0.067),
             ),
           ),
         ],
