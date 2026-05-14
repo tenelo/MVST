@@ -7,6 +7,21 @@ import 'package:mvst/authentification/authentification.dart';
 import 'package:mvst/authentification/pin_forgot.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/screens/home.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+// Résultat de la vérification du numéro
+class VerificationResult {
+  final bool bloque;
+  final bool existe;
+  final int points;
+
+  VerificationResult({
+    required this.bloque,
+    required this.existe,
+    required this.points,
+  });
+}
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -34,15 +49,74 @@ class _LoginState extends State<Login> {
     super.dispose();
   }
 
-  void _passerAuPin() {
+  Future<void> _continuer() async {
     if (!_formKey.currentState!.validate()) return;
-    FocusScope.of(context).unfocus();
+
     setState(() {
-      _telephone = _telephoneController.text.trim();
+      _isLoading = true;
+      _erreur = null;
+    });
+
+    FocusScope.of(context).unfocus();
+    final numero = _telephoneController.text.trim();
+    final resultat = await _verifierNumero(numero);
+    setState(() => _isLoading = false);
+    if (resultat == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erreur de vérification. Veuillez réessayer.'),
+        ),
+      );
+      return;
+    }
+    // Cas 1 : Compte bloqué
+    if (resultat.bloque) {
+      return; // Le dialogue est déjà affiché dans _verifierNumero
+    }
+    // Cas 2 : Le numéro n'existe pas → rediriger vers l'inscription
+    if (!resultat.existe) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const PageDAuthentification()),
+        );
+      }
+      return;
+    }
+    // Cas 3 : Le numéro existe et n'est pas bloqué → passer au code secret
+    setState(() {
+      _telephone = numero;
       _etape = 1;
       _pin = '';
       _erreur = null;
     });
+  }
+
+  Future<VerificationResult?> _verifierNumero(String numero) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/verifierTelephone.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'telephone': numero}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          return VerificationResult(
+            bloque: data['bloque'] == true,
+            existe: data['existe'] == true,
+            points: data['points'] ?? 0,
+          );
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   void _onChiffre(String chiffre) {
@@ -202,15 +276,37 @@ class _LoginState extends State<Login> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: _passerAuPin,
-                child: Text(
-                  'Continuer',
-                  style: TextStyle(
-                    fontSize: sw * 0.038,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                onPressed: _isLoading ? null : _continuer,
+                child: _isLoading
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: c.authTextPrimary,
+                              strokeWidth: 2.5,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Vérification...',
+                            style: TextStyle(
+                              color: c.authTextPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        'Continuer',
+                        style: TextStyle(
+                          fontSize: sw * 0.038,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
               ),
             ),
             SizedBox(height: sh * 0.04),

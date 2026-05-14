@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:mvst/config/app_colors.dart';
 import 'package:mvst/config/config.dart';
 
-
 class Profil extends StatefulWidget {
   const Profil({
     super.key,
@@ -27,9 +26,9 @@ class _ProfilState extends State<Profil> {
 
   Future<Map<String, dynamic>?> getUserData(String userId) async {
     try {
-      final resp = await http.get(
-        Uri.parse('$kBaseUrl/get_utilisateur.php?id=$userId'),
-      ).timeout(const Duration(seconds: 8));
+      final resp = await http
+          .get(Uri.parse('$kBaseUrl/get_utilisateur.php?id=$userId'))
+          .timeout(const Duration(seconds: 8));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         if (data['success'] == true && data['utilisateur'] != null) {
@@ -112,6 +111,11 @@ class _ProfilState extends State<Profil> {
                   Icons.phone_outlined,
                   c,
                   inputType: TextInputType.phone,
+                  enabled: false,
+                  style: TextStyle(
+                    color: c.homeTextPrimary.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 _champEdition(
@@ -161,11 +165,21 @@ class _ProfilState extends State<Profil> {
     IconData icon,
     AppColors c, {
     TextInputType inputType = TextInputType.text,
+    bool enabled = true,
+    TextStyle? style,
   }) {
     return TextField(
       controller: controller,
+      enabled: enabled,
       keyboardType: inputType,
-      style: TextStyle(color: c.homeTextPrimary, fontSize: 14),
+      style:
+          style ??
+          TextStyle(
+            color: enabled
+                ? c.homeTextPrimary
+                : c.homeTextPrimary.withValues(alpha: 0.5),
+            fontSize: 14,
+          ),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
@@ -174,7 +188,11 @@ class _ProfilState extends State<Profil> {
         ),
         prefixIcon: Icon(icon, color: c.homeButtonPrimary, size: 20),
         filled: true,
-        fillColor: c.homeButtonPrimary.withValues(alpha: 0.06),
+        fillColor: enabled
+            ? c.homeButtonPrimary.withValues(alpha: 0.06) // Couleur normale
+            : c.homeButtonPrimary.withValues(
+                alpha: 0.03,
+              ), // Plus clair si désactivé
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -183,10 +201,12 @@ class _ProfilState extends State<Profil> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: c.homeButtonPrimary, width: 1.5),
-        ),
+        focusedBorder: enabled
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: c.homeButtonPrimary, width: 1.5),
+              )
+            : null,
       ),
     );
   }
@@ -305,7 +325,7 @@ class _ProfilState extends State<Profil> {
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: screenW * 0.05,
-                    vertical: 24,
+                    vertical: 18,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,7 +340,7 @@ class _ProfilState extends State<Profil> {
                           letterSpacing: 1.1,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
 
                       // ── Carte infos ──────────────────────────────────────
                       Container(
@@ -372,7 +392,7 @@ class _ProfilState extends State<Profil> {
                         ),
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 18),
 
                       // ── Bouton modifier ──────────────────────────────────
                       SizedBox(
@@ -477,17 +497,18 @@ Future<void> editerDocument(
   String residence,
 ) async {
   try {
-    final resp = await http.post(
-      Uri.parse('$kBaseUrl/update_utilisateur.php'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'idUtilisateur': idUtilisateur,
-        'nom': nom,
-        'prenoms': prenoms,
-        'telephone': telephone,
-        'residence': residence,
-      }),
-    ).timeout(const Duration(seconds: 8));
+    final resp = await http
+        .post(
+          Uri.parse('$kBaseUrl/update_utilisateur.php'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'idUtilisateur': idUtilisateur,
+            'nom': nom,
+            'prenoms': prenoms,
+            'residence': residence,
+          }),
+        )
+        .timeout(const Duration(seconds: 8));
     if (resp.statusCode != 200) return;
     final data = jsonDecode(resp.body);
     if (data['success'] == true && ctx.mounted) {

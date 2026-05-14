@@ -6,10 +6,7 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 
 // ── VIP constants ─────────────────────────────────────────────────────────────
-const Color _vipGold = Color(0xFFFFD700);
-const Color _vipDarkGold = Color(0xFFB8860B);
 final Color vertVIP = const Color.fromARGB(255, 2, 136, 80);
-const Color _vipCardBg = Color(0xFF11111F);
 
 // ── Helper: parse "Ferké Abidjan" → (depart, destination) ────────────────────
 (String, String) _parseAxe(String axe) {

@@ -147,7 +147,8 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
   }
 
   Future<void> _navigateBasedOnTermsAcceptance() async {
-    await Future.delayed(const Duration(seconds: 2));    _checkTermsAcceptance(context);
+    await Future.delayed(const Duration(seconds: 2));
+    _checkTermsAcceptance(context);
   }
 
   @override
@@ -204,9 +205,9 @@ Future<void> _checkTermsAcceptance(BuildContext ctx) async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) {
     if (ctx.mounted) {
-      Navigator.of(ctx).pushReplacement(
-        MaterialPageRoute(builder: (_) => const Login()),
-      );
+      Navigator.of(
+        ctx,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const Home()));
     }
     return;
   }
@@ -219,18 +220,18 @@ Future<void> _checkTermsAcceptance(BuildContext ctx) async {
     // Ancien utilisateur sans PIN (avant mise à jour) → déconnexion propre
     await FirebaseAuth.instance.signOut();
     if (ctx.mounted) {
-      Navigator.of(ctx).pushReplacement(
-        MaterialPageRoute(builder: (_) => const Login()),
-      );
+      Navigator.of(
+        ctx,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const Login()));
     }
     return;
   }
 
   // Session Firebase active + PIN présent → Home directement, sans code secret
   if (ctx.mounted) {
-    Navigator.of(ctx).pushReplacement(
-      MaterialPageRoute(builder: (_) => const Home()),
-    );
+    Navigator.of(
+      ctx,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const Home()));
   }
 }
 

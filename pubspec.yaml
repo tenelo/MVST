@@ -65,7 +65,7 @@ dev_dependencies:
 # theme vert :  "#004D40"
 # theme bleu : "#1288E9" 
 flutter_native_splash:
-  image: "assets/splashC.png"
+  image: "assets/splashA.png"
   color: "#FFFFFF" 
 
 #flutter pub run flutter_launcher_icons:main

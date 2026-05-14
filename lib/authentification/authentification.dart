@@ -764,14 +764,14 @@ class _PageDeVerificationState extends State<PageDeVerification> {
 
         await ajouterUtilisateurALaBaseDeDonnees(
           idUtilisateur: user.uid,
-          idAuth: '',
-          nom: "$nom $prenoms",
+          idAuth: authUid,
+          nom: widget.nom,
+          prenoms: widget.prenoms,
           residence: widget.ville,
           telephone: telephone,
           points: 3,
           mail: "$telephone@gmail.com",
         );
-
         // Sauvegarde de la session locale sécurisée
         const storage = FlutterSecureStorage();
         await storage.write(key: 'user_phone', value: telephone);
@@ -788,6 +788,7 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     required String idUtilisateur,
     required String idAuth,
     required String nom,
+    required String prenoms, // ← AJOUTER ce paramètre
     required String residence,
     required String telephone,
     required int points,
@@ -799,7 +800,8 @@ class _PageDeVerificationState extends State<PageDeVerification> {
       final Map<String, dynamic> requestBody = {
         'idUtilisateur': idUtilisateur,
         'idAuth': idAuth,
-        'nom': nom,
+        'nom': nom, // ← nom seul
+        'prenoms': prenoms, // ← prénoms séparés
         'residence': residence,
         'telephone': telephone,
         'points': points,
