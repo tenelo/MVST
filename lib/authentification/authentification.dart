@@ -11,6 +11,118 @@ import 'package:http/http.dart' as http;
 import 'package:mvst/authentification/pin_creation.dart';
 import 'package:mvst/config/config.dart';
 
+// ════════════════════════════════════════════════════════════════
+// FONCTIONS GLOBALES (accessibles par les deux classes)
+// ════════════════════════════════════════════════════════════════
+
+Future<void> creerUtilisateurEtAuthentifierParMail(
+  String authUid,
+  String nom,
+  String prenoms,
+  String telephone,
+  String ville,
+  String pin,
+  BuildContext context,
+) async {
+  try {
+    final UserCredential userCredential = await FirebaseAuth.instance
+        .createUserWithEmailAndPassword(
+          email: "$telephone@gmail.com",
+          password: '${pin}mv',
+        );
+
+    User? user = userCredential.user;
+    if (user != null) {
+      await user.updateDisplayName('$nom $prenoms');
+
+      await FirebaseFirestore.instance
+          .collection('utilisateurs')
+          .doc(user.uid)
+          .set({
+            'id': user.uid,
+            'idAuth': authUid,
+            'nom': nom,
+            'prenoms': prenoms,
+            'residence': ville,
+            'telephone': telephone,
+            'points': 3,
+            'mail': "$telephone@gmail.com",
+            'dateDeCreation': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      await ajouterUtilisateurALaBaseDeDonnees(
+        idUtilisateur: user.uid,
+        idAuth: authUid,
+        nom: nom,
+        prenoms: prenoms,
+        residence: ville,
+        telephone: telephone,
+        points: 3,
+        mail: "$telephone@gmail.com",
+      );
+
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'user_phone', value: telephone);
+      await storage.write(key: 'user_pin', value: pin);
+      await storage.write(key: 'user_id', value: user.uid);
+      await storage.write(key: 'user_name', value: '$nom $prenoms');
+    }
+  } catch (e) {
+    debugPrint('❌ Erreur création compte: $e');
+  }
+}
+
+Future<void> ajouterUtilisateurALaBaseDeDonnees({
+  required String idUtilisateur,
+  required String idAuth,
+  required String nom,
+  required String prenoms,
+  required String residence,
+  required String telephone,
+  required int points,
+  required String mail,
+}) async {
+  const String apiUrl = '$kBaseUrl/insert_utilisateur.php';
+
+  try {
+    final Map<String, dynamic> requestBody = {
+      'idUtilisateur': idUtilisateur,
+      'idAuth': idAuth,
+      'nom': nom,
+      'prenoms': prenoms,
+      'residence': residence,
+      'telephone': telephone,
+      'points': points,
+      'mail': mail,
+    };
+
+    final response = await http
+        .post(
+          Uri.parse(apiUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(requestBody),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['success']) {
+        debugPrint('Utilisateur ajouté avec succès');
+      } else {
+        debugPrint('Erreur: ${data['message']}');
+      }
+    } else {
+      debugPrint('Erreur serveur: ${response.statusCode}');
+    }
+  } catch (e) {
+    debugPrint('Erreur envoi données: $e');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// PAGE D'AUTHENTIFICATION (inscription)
+// ════════════════════════════════════════════════════════════════
+
 class PageDAuthentification extends StatefulWidget {
   const PageDAuthentification({super.key});
 
@@ -40,9 +152,6 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
         final data = json.decode(response.body);
 
         if (data['success'] == true) {
-          // ═══════════════════════════════════════════
-          // CAS 1 : Compte bloqué (points = 0)
-          // ═══════════════════════════════════════════
           if (data['bloque'] == true) {
             if (mounted) {
               final c = Config.colors;
@@ -97,9 +206,6 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
             return true;
           }
 
-          // ═══════════════════════════════════════════
-          // CAS 2 : Numéro déjà utilisé
-          // ═══════════════════════════════════════════
           if (data['existe'] == true) {
             if (mounted) {
               final c = Config.colors;
@@ -158,7 +264,7 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text(
               'Erreur lors de la vérification, reprenez le processus',
             ),
@@ -202,31 +308,42 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: numeroTelephone,
+        timeout: const Duration(seconds: 120),
+
         verificationCompleted: (PhoneAuthCredential credential) async {
           try {
             final userCredential = await FirebaseAuth.instance
                 .signInWithCredential(credential);
             final user = userCredential.user;
             if (user == null || !mounted) return;
+
             await user.updateDisplayName(
               '${_nomController.text} ${_prenomController.text}',
             );
+
             if (mounted) {
+              setState(() => _isLoading = false);
+              //  On navigue vers PageDeVerification avec l'uid déjà connu
+              // L'utilisateur doit quand même appuyer sur "Valider" consciemment
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => PageDeVerification(
+                  builder: (_) => PageDeVerification(
                     verificationId: '',
                     nom: _nomController.text,
                     prenoms: _prenomController.text,
                     telephone: _telephoneController.text,
                     ville: _residenceController.text,
+                    uidDejaAuthentifie: user.uid,
                   ),
                 ),
               );
             }
-          } catch (_) {}
+          } catch (_) {
+            if (mounted) setState(() => _isLoading = false);
+          }
         },
+
         verificationFailed: (FirebaseAuthException e) {
           if (mounted) {
             setState(() => _isLoading = false);
@@ -243,6 +360,7 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
             ).showSnackBar(SnackBar(content: Text(message)));
           }
         },
+
         codeSent: (String verificationId, int? resendToken) async {
           if (mounted) {
             setState(() => _isLoading = false);
@@ -260,8 +378,8 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
             );
           }
         },
+
         codeAutoRetrievalTimeout: (String verificationId) {},
-        timeout: const Duration(seconds: 120),
       );
     } catch (e) {
       if (mounted) {
@@ -330,8 +448,6 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(height: screenHeight * 0.04),
-
-                // ── Logo ────────────────────────────────────────────────────
                 Container(
                   width: screenWidth * 0.20,
                   height: screenWidth * 0.20,
@@ -352,9 +468,7 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
                     ),
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.03),
-
                 Text(
                   'Créer un compte',
                   style: TextStyle(
@@ -364,9 +478,7 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
                     letterSpacing: 1,
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.006),
-
                 Text(
                   'Remplissez les informations ci-dessous',
                   style: TextStyle(
@@ -374,9 +486,7 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
                     fontSize: screenWidth * 0.032,
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.035),
-
                 _buildChamp(
                   controller: _nomController,
                   label: 'Nom',
@@ -399,9 +509,7 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
                   label: 'Lieu de résidence',
                   icone: Icons.location_on_outlined,
                 ),
-
                 SizedBox(height: screenHeight * 0.01),
-
                 SizedBox(
                   width: double.infinity,
                   height: screenHeight * 0.058,
@@ -447,7 +555,6 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
                           ),
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.03),
               ],
             ),
@@ -458,7 +565,9 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
   }
 }
 
-//::::::::::::::::::::::::::::::::::::::::
+// ════════════════════════════════════════════════════════════════
+// PAGE DE VERIFICATION (saisie du code SMS)
+// ════════════════════════════════════════════════════════════════
 
 class PageDeVerification extends StatefulWidget {
   final String verificationId;
@@ -466,6 +575,7 @@ class PageDeVerification extends StatefulWidget {
   final String prenoms;
   final String telephone;
   final String ville;
+  final String? uidDejaAuthentifie;
 
   const PageDeVerification({
     super.key,
@@ -474,6 +584,7 @@ class PageDeVerification extends StatefulWidget {
     required this.prenoms,
     required this.telephone,
     required this.ville,
+    this.uidDejaAuthentifie,
   });
 
   @override
@@ -485,11 +596,6 @@ class _PageDeVerificationState extends State<PageDeVerification> {
   String idAuth = '';
   bool _isDisposed = false;
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   void dispose() {
@@ -514,8 +620,6 @@ class _PageDeVerificationState extends State<PageDeVerification> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: screenHeight * 0.06),
-
-                // ── Icône SMS ────────────────────────────────────────────────
                 Container(
                   width: screenWidth * 0.20,
                   height: screenWidth * 0.20,
@@ -530,9 +634,7 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                     size: screenWidth * 0.09,
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.035),
-
                 Text(
                   'Code de vérification',
                   style: TextStyle(
@@ -541,9 +643,7 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.008),
-
                 Text(
                   'Entrez le code reçu par SMS au',
                   style: TextStyle(
@@ -551,7 +651,6 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                     fontSize: screenWidth * 0.032,
                   ),
                 ),
-
                 Text(
                   '+225 ${widget.telephone}',
                   style: TextStyle(
@@ -560,10 +659,7 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.045),
-
-                // ── Champ code ───────────────────────────────────────────────
                 Container(
                   decoration: BoxDecoration(
                     color: c.authCardBackground,
@@ -573,6 +669,8 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                   child: TextFormField(
                     maxLength: 6,
                     cursorColor: c.authAccent,
+                    // Auto-remplissage du code à 6 chiffres reçu par SMS
+                    autofillHints: const [AutofillHints.oneTimeCode],
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: c.authTextPrimary,
@@ -595,13 +693,19 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                         vertical: screenHeight * 0.022,
                       ),
                     ),
-                    onChanged: (value) => setState(() {}),
+                    onChanged: (value) {
+                      setState(() {});
+                      // Dès 6 chiffres saisis → vérification automatique
+                      if (value.length == 6) {
+                        _seConnecterParNumTelephone(
+                          widget.verificationId,
+                          value,
+                        );
+                      }
+                    },
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.035),
-
-                // ── Bouton valider ───────────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   height: screenHeight * 0.058,
@@ -640,7 +744,6 @@ class _PageDeVerificationState extends State<PageDeVerification> {
                           ),
                   ),
                 ),
-
                 SizedBox(height: screenHeight * 0.02),
               ],
             ),
@@ -658,29 +761,31 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     setState(() => _isLoading = true);
 
     try {
-      final AuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode,
-      );
+      String uid;
 
-      final UserCredential authResult = await FirebaseAuth.instance
-          .signInWithCredential(credential);
+      if (widget.uidDejaAuthentifie != null &&
+          widget.uidDejaAuthentifie!.isNotEmpty) {
+        // CAS AUTO-DÉTECTION : sign-in déjà fait, on utilise l'uid existant
+        uid = widget.uidDejaAuthentifie!;
+      } else {
+        // CAS NORMAL : l'utilisateur saisit le code manuellement
+        final AuthCredential credential = PhoneAuthProvider.credential(
+          verificationId: verificationId,
+          smsCode: smsCode,
+        );
 
-      final User? user = authResult.user;
-      if (user == null) return;
+        final UserCredential authResult = await FirebaseAuth.instance
+            .signInWithCredential(credential);
 
-      await user.updateDisplayName('${widget.nom} ${widget.prenoms}');
+        final User? user = authResult.user;
+        if (user == null) return;
 
-      final PhoneAuthCredential phoneAuthCredential =
-          PhoneAuthProvider.credential(
-            verificationId: verificationId,
-            smsCode: smsCode,
-          );
-      await user.updatePhoneNumber(phoneAuthCredential);
+        await user.updateDisplayName('${widget.nom} ${widget.prenoms}');
+        uid = user.uid;
+      }
 
-      setState(() => idAuth = user.uid);
+      setState(() => idAuth = uid);
 
-      // Aller vers la création du PIN avant de créer le compte
       if (mounted) {
         FocusScope.of(context).unfocus();
         Navigator.push(
@@ -688,10 +793,11 @@ class _PageDeVerificationState extends State<PageDeVerification> {
           MaterialPageRoute(
             builder: (_) => PinCreation(
               onPinConfirmed: (pin) => creerUtilisateurEtAuthentifierParMail(
-                idAuth,
+                uid,
                 widget.nom,
                 widget.prenoms,
                 widget.telephone,
+                widget.ville,
                 pin,
                 context,
               ),
@@ -726,108 +832,5 @@ class _PageDeVerificationState extends State<PageDeVerification> {
     }
 
     if (mounted) setState(() => _isLoading = false);
-  }
-
-  Future<void> creerUtilisateurEtAuthentifierParMail(
-    String authUid,
-    String nom,
-    String prenoms,
-    String telephone,
-    String pin,
-    BuildContext context,
-  ) async {
-    try {
-      final UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: "$telephone@gmail.com",
-            password: '${pin}mv',
-          );
-
-      User? user = userCredential.user;
-      if (user != null) {
-        await user.updateDisplayName('$nom $prenoms');
-
-        await FirebaseFirestore.instance
-            .collection('utilisateurs')
-            .doc(user.uid)
-            .set({
-              'id': user.uid,
-              'idAuth': authUid,
-              'nom': widget.nom,
-              'prenoms': widget.prenoms,
-              'residence': widget.ville,
-              'telephone': widget.telephone,
-              'points': 3,
-              'mail': "${widget.telephone}@gmail.com",
-              'dateDeCreation': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
-
-        await ajouterUtilisateurALaBaseDeDonnees(
-          idUtilisateur: user.uid,
-          idAuth: authUid,
-          nom: widget.nom,
-          prenoms: widget.prenoms,
-          residence: widget.ville,
-          telephone: telephone,
-          points: 3,
-          mail: "$telephone@gmail.com",
-        );
-        // Sauvegarde de la session locale sécurisée
-        const storage = FlutterSecureStorage();
-        await storage.write(key: 'user_phone', value: telephone);
-        await storage.write(key: 'user_pin', value: pin);
-        await storage.write(key: 'user_id', value: user.uid);
-        await storage.write(key: 'user_name', value: '$nom $prenoms');
-      }
-    } catch (e) {
-      debugPrint('❌ Erreur création compte: $e');
-    }
-  }
-
-  Future<void> ajouterUtilisateurALaBaseDeDonnees({
-    required String idUtilisateur,
-    required String idAuth,
-    required String nom,
-    required String prenoms, // ← AJOUTER ce paramètre
-    required String residence,
-    required String telephone,
-    required int points,
-    required String mail,
-  }) async {
-    const String apiUrl = '$kBaseUrl/insert_utilisateur.php';
-
-    try {
-      final Map<String, dynamic> requestBody = {
-        'idUtilisateur': idUtilisateur,
-        'idAuth': idAuth,
-        'nom': nom, // ← nom seul
-        'prenoms': prenoms, // ← prénoms séparés
-        'residence': residence,
-        'telephone': telephone,
-        'points': points,
-        'mail': mail,
-      };
-
-      final response = await http
-          .post(
-            Uri.parse(apiUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode(requestBody),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success']) {
-          debugPrint('Utilisateur ajouté avec succès');
-        } else {
-          debugPrint('Erreur: ${data['message']}');
-        }
-      } else {
-        debugPrint('Erreur serveur: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Erreur envoi données: $e');
-    }
   }
 }

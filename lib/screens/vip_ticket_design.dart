@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/qrcode/creationQrCode.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:ticket_widget/ticket_widget.dart';

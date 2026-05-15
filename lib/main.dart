@@ -16,7 +16,7 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/config/config.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:mvst/firebase_options.dart';
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

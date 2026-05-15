@@ -4,12 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
-import 'package:mvst/authentification/authentification.dart';
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:mvst/mes_services/auth_service.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/profil/profil.dart';
 import 'package:mvst/screens/commande.dart';
@@ -237,7 +237,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
 
   Future<void> _recharger() async {
     await _chargerLignes();
-    // Si tu veux aussi recharger d'autres données, ajoute-les ici
   }
 
   @override
@@ -256,7 +255,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         : '';
     if (n.isNotEmpty && p.isNotEmpty) return '$n$p';
     if (n.isNotEmpty) return n;
-    // fallback Firebase displayName
     final dn = _currentUser?.displayName?.trim();
     if (dn != null && dn.isNotEmpty) {
       final parts = dn.split(RegExp(r'\s+'));
@@ -268,7 +266,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     return 'U';
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final c = Config.colors;
@@ -312,7 +309,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         style: TextStyle(
           color: c.homeBandeauBorder,
           fontFamily: 'Lobster',
-          //fontSize: 24,
           letterSpacing: 0.5,
         ),
       ),
@@ -322,16 +318,19 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           padding: const EdgeInsets.only(right: 14),
           child: GestureDetector(
             onTap: () {
-              if (_currentUser != null) {
+              if (AuthService.estConnecte()) {
+                final u = AuthService.getUtilisateur()!;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => Profil(
-                      idUtilisateur: _currentUser!.uid,
-                      userProfil: _currentUser!.displayName ?? '',
+                      idUtilisateur: u.uid,
+                      userProfil: u.displayName ?? '',
                     ),
                   ),
                 );
+              } else {
+                AuthService.afficherSnackNonConnecte(context);
               }
             },
             child: Container(
@@ -339,7 +338,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: c.homeAccent.withValues(alpha: 0.70),
-                  width: 1.0, // Ajuste l'épaisseur
+                  width: 1.0,
                 ),
               ),
               child: CircleAvatar(
@@ -352,7 +351,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                           fontFamily: 'Lobster',
                           color: c.couleurInitiales,
                           fontWeight: FontWeight.bold,
-                          //sfontSize: 11,
                           letterSpacing: 1.0,
                         ),
                       )
@@ -510,7 +508,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Label badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -548,7 +545,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           ),
           SizedBox(height: w * 0.02),
 
-          // Titre principal
           Text(
             isVip
                 ? 'Voyagez\nen première classe'
@@ -563,7 +559,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           ),
           SizedBox(height: w * 0.04),
 
-          // Pills caractéristiques
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -627,7 +622,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // En-tête ville de départ
           Padding(
             padding: EdgeInsets.only(left: w * 0.005, bottom: w * 0.020),
             child: Row(
@@ -656,7 +650,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             ),
           ),
 
-          // Carte contenant les lignes
           Container(
             decoration: BoxDecoration(
               color: cardBg,
@@ -749,7 +742,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             ),
             dividerColor: Colors.transparent,
             tabs: [
-              // Accueil
               Tab(
                 icon: Icon(
                   _tabController.index == 0
@@ -762,7 +754,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 ),
                 text: 'Accueil',
               ),
-              // Tickets
               Tab(
                 icon: Icon(
                   _tabController.index == 1
@@ -775,7 +766,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 ),
                 text: 'Tickets',
               ),
-              // VIP
               Tab(
                 icon: Icon(
                   _tabController.index == 2
@@ -799,7 +789,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   ),
                 ),
               ),
-              // Historique
               Tab(
                 icon: Icon(
                   _tabController.index == 3
@@ -812,7 +801,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 ),
                 text: 'Historique',
               ),
-              // Infos
               Tab(
                 icon: Icon(
                   _tabController.index == 4
@@ -887,24 +875,20 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   icon: Icons.perm_identity_outlined,
                   label: 'Profil',
                   onTap: () {
-                    if (FirebaseAuth.instance.currentUser != null) {
-                      final u = FirebaseAuth.instance.currentUser!;
+                    if (AuthService.estConnecte()) {
+                      final u = AuthService.getUtilisateur()!;
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => Profil(
                             idUtilisateur: u.uid,
-                            userProfil: u.displayName!,
+                            userProfil: u.displayName ?? '',
                           ),
                         ),
                       );
                     } else {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PageDAuthentification(),
-                        ),
-                      );
+                      Navigator.pop(context);
+                      AuthService.afficherSnackNonConnecte(context);
                     }
                   },
                 ),
@@ -912,10 +896,11 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   icon: Icons.notification_add_outlined,
                   label: 'Notification',
                   onTap: () {
-                    if (FirebaseAuth.instance.currentUser == null) {
+                    if (!AuthService.estConnecte()) {
                       Navigator.pop(context);
-                      _showNonAuthSnack(context);
+                      AuthService.afficherSnackNonConnecte(context);
                     }
+                    // TODO: Ouvrir page Notification quand elle sera créée
                   },
                 ),
                 _buildDrawerItem(
@@ -934,8 +919,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   icon: Icons.lightbulb_outlined,
                   label: 'Suggestions',
                   onTap: () async {
-                    if (FirebaseAuth.instance.currentUser != null) {
-                      final uid = FirebaseAuth.instance.currentUser!.uid;
+                    if (AuthService.estConnecte()) {
+                      final uid = AuthService.getUid()!;
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -944,7 +929,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                       );
                     } else {
                       Navigator.pop(context);
-                      _showNonAuthSnack(context);
+                      AuthService.afficherSnackNonConnecte(context);
                     }
                   },
                 ),
@@ -1093,15 +1078,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   }
 }
 
-// ── Helpers internes ──────────────────────────────────────────────────────
-// ignore: unused_element
-class _NavItem {
-  const _NavItem(this.activeIcon, this.inactiveIcon, this.label);
-  final IconData activeIcon;
-  final IconData inactiveIcon;
-  final String label;
-}
-
+// ── Helpers ──────────────────────────────────────────────────────────────
 class _Pill {
   const _Pill(this.label, this.sub);
   final String label;
@@ -1114,20 +1091,5 @@ void _deconnexion(BuildContext context) async {
     context,
     MaterialPageRoute(builder: (_) => const Login()),
     (route) => false,
-  );
-}
-
-void _showNonAuthSnack(BuildContext context) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      duration: const Duration(seconds: 8),
-      backgroundColor: Colors.redAccent,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      content: const Text(
-        'Vous n\'êtes pas authentifié. Allez dans Paramètres › Profil pour créer votre compte.',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      ),
-    ),
   );
 }

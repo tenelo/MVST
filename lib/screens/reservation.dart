@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class Reservation extends StatefulWidget {
@@ -83,10 +83,10 @@ class _ReservationState extends State<Reservation> {
     );
     _socket.connect();
   }
-// dans le payload, on envoie un documentId unique pour chaque réservation, basé sur le trajet, la date, l'heure et l'idDate. Cela permettra aux admins de suivre les réservations en temps réel et d'identifier facilement chaque ticket acheté.
-// typeVoyage est envoyé pour différencier les réservations VIP des standard, ce qui peut être utile pour les statistiques et la gestion des places.
-// par defaut, le statut est 'valide' et l'etatScanne est 'nonScanné', ce qui correspond à une réservation fraîchement confirmée. Ces champs pourront être mis à jour plus tard par les admins lors du processus de validation et de scan des tickets.
-// le typeVoyage par défaut est 'standard',
+  // dans le payload, on envoie un documentId unique pour chaque réservation, basé sur le trajet, la date, l'heure et l'idDate. Cela permettra aux admins de suivre les réservations en temps réel et d'identifier facilement chaque ticket acheté.
+  // typeVoyage est envoyé pour différencier les réservations VIP des standard, ce qui peut être utile pour les statistiques et la gestion des places.
+  // par defaut, le statut est 'valide' et l'etatScanne est 'nonScanné', ce qui correspond à une réservation fraîchement confirmée. Ces champs pourront être mis à jour plus tard par les admins lors du processus de validation et de scan des tickets.
+  // le typeVoyage par défaut est 'standard',
 
   Future<void> _confirmerReservation() async {
     if (_isLoading) return;
@@ -113,11 +113,13 @@ class _ReservationState extends State<Reservation> {
         'typeVoyage': widget.typeVoyage,
       };
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(payload),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(payload),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -165,10 +167,11 @@ class _ReservationState extends State<Reservation> {
   }
 
   void _afficherSucces() {
+    final c = Config.colors;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        duration: const Duration(seconds: 5),
-        backgroundColor: Config.colors.homeButtonPrimary,
+        duration: const Duration(seconds: 4),
+        backgroundColor: const Color.fromARGB(255, 1, 79, 4),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: const Row(
@@ -211,13 +214,15 @@ class _ReservationState extends State<Reservation> {
     final c = Config.colors;
     final double screenW = MediaQuery.of(context).size.width;
 
-    final Color headerTop = _isVip ? const Color(0xFF1A0A2E) : c.homeHeaderTop;
+    final Color headerTop = _isVip
+        ? c.authButtonDisabled
+        : c.authButtonDisabled;
     final Color headerBot = _isVip
         ? const Color(0xFF12122A)
-        : c.homeButtonPrimary;
+        : c.authButtonDisabled;
     final Color accentColor = _isVip
         ? const Color(0xFFFFD700)
-        : c.homeButtonPrimary;
+        : c.authButtonDisabled;
     final int total = widget.prixUnitaire * widget.nombreDeTicket;
 
     return PopScope(
@@ -236,13 +241,7 @@ class _ReservationState extends State<Reservation> {
               iconTheme: IconThemeData(color: c.homeAccent),
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [headerTop, headerBot],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
+                  decoration: BoxDecoration(color: headerTop),
                   child: SafeArea(
                     bottom: false,
                     child: Padding(

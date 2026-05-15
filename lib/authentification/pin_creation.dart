@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/models/clavier_numerique.dart';
 import 'package:mvst/screens/home.dart';
 
 class PinCreation extends StatefulWidget {
@@ -152,7 +153,7 @@ class _PinCreationState extends State<PinCreation> {
                 child: CircularProgressIndicator(color: c.authAccent),
               )
             else
-              _Clavier(
+              ClavierNumerique(
                 onChiffre: _onChiffre,
                 onSupprimer: _onSupprimer,
                 colors: c,
@@ -285,162 +286,6 @@ class _PinDots extends StatelessWidget {
           ),
         );
       }),
-    );
-  }
-}
-
-class _Clavier extends StatelessWidget {
-  final void Function(String) onChiffre;
-  final VoidCallback onSupprimer;
-  final dynamic colors;
-  final double sw;
-
-  const _Clavier({
-    required this.onChiffre,
-    required this.onSupprimer,
-    required this.colors,
-    required this.sw,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = colors;
-    final touches = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['', '0', '⌫'],
-    ];
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: sw * 0.08),
-      child: Column(
-        children: touches.map((ligne) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: ligne.map((touche) {
-              if (touche.isEmpty) return SizedBox(width: sw * 0.22, height: 60);
-              return _AnimatedTouche(
-                touche: touche,
-                onChiffre: onChiffre,
-                onSupprimer: onSupprimer,
-                colors: c,
-                sw: sw,
-              );
-            }).toList(),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _AnimatedTouche extends StatefulWidget {
-  const _AnimatedTouche({
-    required this.touche,
-    required this.onChiffre,
-    required this.onSupprimer,
-    required this.colors,
-    required this.sw,
-  });
-  final String touche;
-  final void Function(String) onChiffre;
-  final VoidCallback onSupprimer;
-  final dynamic colors;
-  final double sw;
-
-  @override
-  State<_AnimatedTouche> createState() => _AnimatedToucheState();
-}
-
-class _AnimatedToucheState extends State<_AnimatedTouche>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-  bool _highlighted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 90),
-      reverseDuration: const Duration(milliseconds: 220),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.86).animate(
-      CurvedAnimation(
-        parent: _ctrl,
-        curve: Curves.easeIn,
-        reverseCurve: Curves.elasticOut,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _handleTap() {
-    setState(() => _highlighted = true);
-    _ctrl.forward().then((_) {
-      _ctrl.reverse();
-      Future.delayed(const Duration(milliseconds: 130), () {
-        if (mounted) setState(() => _highlighted = false);
-      });
-    });
-    if (widget.touche == '⌫') {
-      widget.onSupprimer();
-    } else {
-      widget.onChiffre(widget.touche);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = widget.colors;
-    return GestureDetector(
-      onTap: _handleTap,
-      child: ScaleTransition(
-        scale: _scale,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 80),
-          width: widget.sw * 0.22,
-          height: 60,
-          margin: const EdgeInsets.symmetric(vertical: 5),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: _highlighted
-                ? c.authAccent.withValues(alpha: 0.20)
-                : c.authCardBackground,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: _highlighted
-                ? [
-                    BoxShadow(
-                      color: c.authAccent.withValues(alpha: 0.22),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                    ),
-                  ]
-                : null,
-          ),
-          child: widget.touche == '⌫'
-              ? Icon(
-                  Icons.backspace_outlined,
-                  color: _highlighted ? c.authAccent : c.authTextPrimary,
-                  size: 22,
-                )
-              : Text(
-                  widget.touche,
-                  style: TextStyle(
-                    color: _highlighted ? c.authAccent : c.authTextPrimary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
-      ),
     );
   }
 }

@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/main.dart';
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/detailsTickets.dart';
 import 'package:ticket_material/ticket_material.dart';
 

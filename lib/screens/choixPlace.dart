@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';

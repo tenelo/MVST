@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/commande.dart';
 import 'package:mvst/screens/detailsImages.dart';
 

@@ -10,7 +10,7 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/authentification/pin_unlock.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/models/mesFonctions.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
 import 'package:mvst/screens/home.dart';
 import 'package:mvst/screens/choixPlaceVip.dart';
@@ -777,7 +777,7 @@ class _CommandeState extends State<Commande> {
         return DropdownMenuItem<String>(
           value: h,
           child: Text(
-            h,
+            h.length > 5 ? h.substring(0, 5) : h, 
             style: TextStyle(
               color: c.homeTextPrimary,
               fontWeight: FontWeight.w600,
@@ -797,17 +797,38 @@ class _CommandeState extends State<Commande> {
             body: json.encode({'type': widget.typeVoyage}),
           )
           .timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
-          final List<String> heures = List<String>.from(
+        if (data['success'] == true && data['heures'] != null) {
+          // Récupérer les heures
+          List<String> heures = List<String>.from(
             data['heures'].map((heure) => heure['heure']),
           );
-          setState(() => listeHeures = heures);
+
+          // TRI CHRONOLOGIQUE DES HEURES
+          heures.sort((a, b) {
+            // Convertir "08:00" ou "8:00" en minutes pour comparer
+            int minutesA = _heureEnMinutes(a);
+            int minutesB = _heureEnMinutes(b);
+            return minutesA.compareTo(minutesB);
+          });
+
+          if (mounted) {
+            setState(() => listeHeures = heures);
+          }
         }
       }
     } catch (e) {
       afficherErreur(context, e);
     }
+  }
+
+  // Fonction helper pour convertir une heure en minutes
+  int _heureEnMinutes(String heure) {
+    final parts = heure.split(':');
+    int h = int.tryParse(parts[0]) ?? 0;
+    int m = int.tryParse(parts[1]) ?? 0;
+    return h * 60 + m;
   }
 }

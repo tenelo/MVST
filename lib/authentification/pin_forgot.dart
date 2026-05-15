@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
+import 'package:mvst/models/clavier_numerique.dart';
 import 'package:mvst/screens/home.dart';
 
 // Étapes du flux "PIN oublié"
@@ -38,7 +39,7 @@ class _PinForgotState extends State<PinForgot> {
 
   // ── Étape 1 : envoi SMS ───────────────────────────────────────────────────
 
-  Future<void> _envoyerSms() async {
+Future<void> _envoyerSms() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
     setState(() {
@@ -48,15 +49,61 @@ class _PinForgotState extends State<PinForgot> {
 
     _telephone = _telephoneController.text.trim();
 
+    //  Vérifier que le numéro existe avant d'envoyer le SMS
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/verifierTelephone.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'telephone': _telephone}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['success'] == true && data['existe'] == false) {
+          setState(() {
+            _isLoading = false;
+            _erreur = 'Aucun compte trouvé avec ce numéro.';
+          });
+          return;
+        }
+
+        if (data['success'] == true && data['bloque'] == true) {
+          setState(() {
+            _isLoading = false;
+            _erreur =
+                'Ce compte est bloqué. Contactez les administrateurs MVST.';
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _erreur = 'Erreur de vérification. Réessayez.';
+      });
+      return;
+    }
+
+    //  Numéro valide → envoyer le SMS
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: '+225$_telephone',
-        timeout: const Duration(seconds: 180),
+        timeout: const Duration(seconds: 120),
         verificationCompleted: (PhoneAuthCredential credential) async {
           try {
             await FirebaseAuth.instance.signInWithCredential(credential);
-            if (mounted) setState(() => _etape = _EtapePinForgot.nouveauPin);
-          } catch (_) {}
+            if (mounted) {
+              setState(() {
+                _isLoading = false; 
+                _etape = _EtapePinForgot.nouveauPin;
+              });
+            }
+          } catch (_) {
+            if (mounted) setState(() => _isLoading = false); 
+          }
         },
         verificationFailed: (e) {
           if (mounted) {
@@ -496,7 +543,7 @@ class _PinForgotState extends State<PinForgot> {
             child: CircularProgressIndicator(color: c.authAccent),
           )
         else
-          _Clavier(
+          ClavierNumerique(
             onChiffre: _onChiffre,
             onSupprimer: _onSupprimer,
             colors: c,
@@ -564,7 +611,7 @@ class _ClavierOtp extends StatelessWidget {
           }),
         ),
         const SizedBox(height: 24),
-        _Clavier(
+        ClavierNumerique(
           onChiffre: onChiffre,
           onSupprimer: onSupprimer,
           colors: c,
@@ -608,70 +655,6 @@ class _PinDots extends StatelessWidget {
           ),
         );
       }),
-    );
-  }
-}
-
-class _Clavier extends StatelessWidget {
-  final void Function(String) onChiffre;
-  final VoidCallback onSupprimer;
-  final dynamic colors;
-  final double sw;
-  const _Clavier({
-    required this.onChiffre,
-    required this.onSupprimer,
-    required this.colors,
-    required this.sw,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = colors;
-    final touches = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['', '0', '⌫'],
-    ];
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: sw * 0.08),
-      child: Column(
-        children: touches.map((ligne) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: ligne.map((touche) {
-              if (touche.isEmpty) return SizedBox(width: sw * 0.22, height: 60);
-              return GestureDetector(
-                onTap: () => touche == '⌫' ? onSupprimer() : onChiffre(touche),
-                child: Container(
-                  width: sw * 0.22,
-                  height: 60,
-                  margin: const EdgeInsets.symmetric(vertical: 5),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: c.authCardBackground,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: touche == '⌫'
-                      ? Icon(
-                          Icons.backspace_outlined,
-                          color: c.authTextPrimary,
-                          size: 22,
-                        )
-                      : Text(
-                          touche,
-                          style: TextStyle(
-                            color: c.authTextPrimary,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              );
-            }).toList(),
-          );
-        }).toList(),
-      ),
     );
   }
 }

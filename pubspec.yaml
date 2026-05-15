@@ -49,8 +49,8 @@ dependencies:
 
 #--------------------
 
-  flutter_secure_storage: ^9.2.2
-  local_auth: ^2.3.0
+  flutter_secure_storage: ^10.2.0
+  local_auth: ^3.0.1
 
   intl: any
   google_fonts: ^8.1.0

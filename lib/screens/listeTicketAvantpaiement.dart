@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
-import 'package:mvst/models/mesfonctions.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/reservation.dart';
 import 'package:ticket_material/ticket_material.dart';
 

@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mvst/authentification/authentification.dart';
 import 'package:mvst/authentification/pin_forgot.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/models/clavier_numerique.dart';
 import 'package:mvst/screens/home.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -425,7 +426,7 @@ class _LoginState extends State<Login> {
             child: CircularProgressIndicator(color: c.authAccent),
           )
         else
-          _Clavier(
+          ClavierNumerique(
             onChiffre: _onChiffre,
             onSupprimer: _onSupprimer,
             colors: c,
@@ -518,72 +519,6 @@ class _PinDots extends StatelessWidget {
           ),
         );
       }),
-    );
-  }
-}
-
-class _Clavier extends StatelessWidget {
-  final void Function(String) onChiffre;
-  final VoidCallback onSupprimer;
-  final dynamic colors;
-  final double sw;
-  const _Clavier({
-    required this.onChiffre,
-    required this.onSupprimer,
-    required this.colors,
-    required this.sw,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = colors;
-    final touches = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['', '0', '⌫'],
-    ];
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: sw * 0.08),
-      child: Column(
-        children: touches
-            .map(
-              (ligne) => Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: ligne.map((t) {
-                  if (t.isEmpty) return SizedBox(width: sw * 0.22, height: 60);
-                  return GestureDetector(
-                    onTap: () => t == '⌫' ? onSupprimer() : onChiffre(t),
-                    child: Container(
-                      width: sw * 0.22,
-                      height: 60,
-                      margin: const EdgeInsets.symmetric(vertical: 5),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: c.authCardBackground,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: t == '⌫'
-                          ? Icon(
-                              Icons.backspace_outlined,
-                              color: c.authTextPrimary,
-                              size: 22,
-                            )
-                          : Text(
-                              t,
-                              style: TextStyle(
-                                color: c.authTextPrimary,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            )
-            .toList(),
-      ),
     );
   }
 }
