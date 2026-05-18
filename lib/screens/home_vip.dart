@@ -16,7 +16,7 @@ Map<String, List<String>> _group(List<Map<String, String>> routes) {
 // ── Widget principal ──────────────────────────────────────────────────────────
 class HomeVip extends StatelessWidget {
   const HomeVip({super.key, this.onReserver, required this.routes});
-  final void Function(String depart, String destination)? onReserver;
+  final Future<void> Function(String depart, String destination)? onReserver;
   final List<Map<String, String>> routes;
 
   @override
@@ -264,7 +264,7 @@ class _OriginGroup extends StatelessWidget {
   final String depart;
   final List<String> destinations;
   final double w;
-  final void Function(String, String)? onReserver;
+  final Future<void> Function(String, String)? onReserver;
 
   const _OriginGroup({
     required this.depart,
@@ -323,7 +323,9 @@ class _OriginGroup extends StatelessWidget {
                         depart: depart,
                         destination: destinations[i],
                         w: w,
-                        onTap: () => onReserver?.call(depart, destinations[i]),
+                        onTap: onReserver == null
+                            ? null
+                            : () => onReserver!.call(depart, destinations[i]),
                       ),
                       if (!isLast)
                         Divider(
@@ -346,11 +348,11 @@ class _OriginGroup extends StatelessWidget {
 }
 
 // ── Ligne de route ────────────────────────────────────────────────────────────
-class _RouteRow extends StatelessWidget {
+class _RouteRow extends StatefulWidget {
   final String depart;
   final String destination;
   final double w;
-  final VoidCallback? onTap;
+  final Future<void> Function()? onTap;
 
   const _RouteRow({
     required this.depart,
@@ -360,9 +362,27 @@ class _RouteRow extends StatelessWidget {
   });
 
   @override
+  State<_RouteRow> createState() => _RouteRowState();
+}
+
+class _RouteRowState extends State<_RouteRow> {
+  bool _loading = false;
+
+  Future<void> _handleTap() async {
+    if (_loading || widget.onTap == null) return;
+    setState(() => _loading = true);
+    try {
+      await widget.onTap!();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final w = widget.w;
     return InkWell(
-      onTap: onTap,
+      onTap: _loading ? null : _handleTap,
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: w * 0.04,
@@ -389,7 +409,7 @@ class _RouteRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '$depart → $destination',
+                    '${widget.depart} → ${widget.destination}',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: w * 0.037,
@@ -398,7 +418,7 @@ class _RouteRow extends StatelessWidget {
                   ),
                   SizedBox(height: w * 0.005),
                   Text(
-                    'Ligne $depart $destination',
+                    'Ligne ${widget.depart} ${widget.destination}',
                     style: TextStyle(
                       color: _white.withValues(alpha: 0.30),
                       fontStyle: FontStyle.italic,
@@ -408,28 +428,38 @@ class _RouteRow extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: w * 0.030,
-                vertical: w * 0.018,
-              ),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF00D87E), Color(0xFF00A85F)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            if (_loading)
+              SizedBox(
+                width: w * 0.055,
+                height: w * 0.055,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: _em,
                 ),
-                borderRadius: BorderRadius.circular(w * 0.055),
-              ),
-              child: Text(
-                'Réserver',
-                style: TextStyle(
-                  color: _white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: w * 0.027,
+              )
+            else
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: w * 0.030,
+                  vertical: w * 0.018,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF00D87E), Color(0xFF00A85F)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(w * 0.055),
+                ),
+                child: Text(
+                  'Réserver',
+                  style: TextStyle(
+                    color: _white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: w * 0.027,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

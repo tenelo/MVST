@@ -125,7 +125,9 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
               CarouselSlider.builder(
                 itemCount: _images.length,
                 itemBuilder: (ctx, i, _) {
-                  final url = _base + _images[i].lien_image;
+                  final item = _images[i];
+                  final url =
+                      item.hasImage ? (_base + item.lien_image) : null;
                   return TweenAnimationBuilder(
                     tween: Tween<double>(begin: 0.8, end: 1.0),
                     duration: const Duration(milliseconds: 400),
@@ -139,30 +141,34 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                         MaterialPageRoute(
                           builder: (_) => DetailsImages(
                             imageUrl: url,
-                            titre: _images[i].titre,
-                            description: _images[i].description,
+                            titre: item.titre,
+                            description: item.description,
                           ),
                         ),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: Image.network(
-                          url,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stack) => Container(
-                            decoration: BoxDecoration(
-                              color: accent.withValues(alpha: 0.07),
+                      child: item.hasImage
+                          ? ClipRRect(
                               borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(
-                              Icons.image_outlined,
-                              color: accent.withValues(alpha: 0.3),
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                      ),
+                              child: Image.network(
+                                url!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (context, error, stack) =>
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: accent.withValues(alpha: 0.07),
+                                        borderRadius:
+                                            BorderRadius.circular(14),
+                                      ),
+                                      child: Icon(
+                                        Icons.image_outlined,
+                                        color: accent.withValues(alpha: 0.3),
+                                        size: 28,
+                                      ),
+                                    ),
+                              ),
+                            )
+                          : _buildInfoCard(item.titre, item.description, accent, c),
                     ),
                   );
                 },
@@ -201,6 +207,74 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                   ),
                 ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(String titre, String description, Color accent, dynamic c) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            accent.withValues(alpha: 0.18),
+            accent.withValues(alpha: 0.06),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.30), width: 1),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.campaign_rounded, color: accent, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  titre,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: c.homeTextPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: c.homeTextPrimary.withValues(alpha: 0.55),
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            color: accent.withValues(alpha: 0.45),
+            size: 13,
           ),
         ],
       ),

@@ -608,6 +608,8 @@ class ImageModel {
   final String statut;
   final String lien_image;
 
+  bool get hasImage => lien_image.isNotEmpty;
+
   ImageModel({
     required this.id,
     required this.titre,
@@ -622,7 +624,7 @@ class ImageModel {
       titre: json['titre'],
       description: json['description'],
       statut: json['statut'],
-      lien_image: json['lien_image'],
+      lien_image: json['lien_image'] ?? '',
     );
   }
 }

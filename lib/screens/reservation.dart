@@ -167,7 +167,6 @@ class _ReservationState extends State<Reservation> {
   }
 
   void _afficherSucces() {
-    final c = Config.colors;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 4),

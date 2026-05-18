@@ -74,6 +74,7 @@ class _AccepterTermesDutilisationsPageState
                         text: "Article 1 : Objet",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nLa prestation fournie dans le cadre de l’application « Tickets MVST» s’adresse aux personnes souhaitant effectuer un déplacement urbain en véhicule motorisé ; elle consiste précisément à mettre à leur disposition une application de réservation et paiement de titre de transport valides pour les compagnies ivoirienne MVST et AHT.
@@ -83,6 +84,7 @@ class _AccepterTermesDutilisationsPageState
                         text: "\n\nArticle 2 : Définitions",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\n« Application » désigne l’application mobile «Tickets MVST», éditée par la société ivoirienne NEKS-TECHNOLOGY pour le compte des compagnies de transport MVST et AHT et installée sur le téléphone mobile du client, à l’initiative de ce dernier.
@@ -110,6 +112,7 @@ class _AccepterTermesDutilisationsPageState
                         text: "\n\nArticle 3 : Création du compte client",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nLa Commande de la Prestation requiert la création préalable d’un compte client, consécutive à l’installation gratuite de l’Application sur le téléphone mobile du Client, ou sur le Site. Lors de son inscription, le Client choisit un identifiant de connexion et un mot de passe, lesquels sont personnels, confidentiels et non cessibles à des tiers. Après en avoir préalablement averti l'abonné, le Prestataire pourra, pour les besoins de l'exploitation du service, modifier, changer, radier un identifiant ou un mot de passe et ce, à tout moment.
@@ -122,6 +125,7 @@ class _AccepterTermesDutilisationsPageState
                         text: "\n\nArticle 4 : Utilisation de l’Application",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nPour utiliser l’Application, le Client doit être capable juridiquement de contracter et utiliser l’Application conformément aux présentes Conditions Générales.
@@ -133,6 +137,7 @@ class _AccepterTermesDutilisationsPageState
                         text: "\n\nArticle 5 : Résiliation de l’inscription",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nLe Client peut résilier à tout moment son compte client et supprimer l’Application de son téléphone mobile, sur simple demande à l’adresse électronique suivante : serviceclient@MVSTci.net).
@@ -143,6 +148,7 @@ class _AccepterTermesDutilisationsPageState
                             "\n\nArticle 6 : Confidentialité – Protection des données à caractère personnel",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nLes présentes Conditions Générales sont soumises aux dispositions de la loi relative à l’informatique, aux fichiers et aux libertés.
@@ -155,10 +161,12 @@ class _AccepterTermesDutilisationsPageState
                         text: "\n\nArticle 7 : La Commande",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       TextSpan(
                         text: "\n\n7.1 Condition préalable",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nLa Commande de prestations via l’application mobile est soumise à l’acceptation préalable par le client des présentes conditions générales.""",
@@ -167,6 +175,7 @@ class _AccepterTermesDutilisationsPageState
                         text: "\n\n7.2 Descriptif des étapes de la commande",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nPour commander, le Client se connecte à l’Application en saisissant son identifiant et son mot de passe.
@@ -183,6 +192,7 @@ class _AccepterTermesDutilisationsPageState
                         text: "\n\n7.3 Obligations du Client",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nAprès validation de la Commande, le Client doit se présenter au lieu convenu au moins 30 minutes avant l'heure effective de départ.
@@ -193,7 +203,7 @@ class _AccepterTermesDutilisationsPageState
                         text: "\n\n7.4 Obligations du Prestataire",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-
+                      TextSpan(text: "\n\n...."),
                       //                       TextSpan(
                       //                         text: """
                       // \n\nA la réception de la demande du Client, en cas de disponibilité d'un départ correspondant au critère de la demande, le Prestataire s’engage à proposer une offre indiquant le prix du trajet.

@@ -145,7 +145,7 @@ class ClavierAnime extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = colors;
-    final fontSize = (size * 0.34).clamp(20.0, 28.0);
+    (size * 0.34).clamp(20.0, 28.0);
 
     return _AnimatedTouche(
       touche: touche,

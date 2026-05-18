@@ -5,12 +5,12 @@ import 'package:mvst/config/config.dart';
 class DetailsImages extends StatefulWidget {
   const DetailsImages({
     super.key,
-    required this.imageUrl,
+    this.imageUrl,
     required this.titre,
     required this.description,
   });
 
-  final String imageUrl;
+  final String? imageUrl;
   final String titre;
   final String description;
 
@@ -33,6 +33,14 @@ class _DetailsImagesState extends State<DetailsImages> {
     final c = Config.colors;
     final double sw = MediaQuery.of(context).size.width;
     final double bottomPad = MediaQuery.of(context).padding.bottom;
+    final double topPad = MediaQuery.of(context).padding.top;
+
+    final bool hasImage =
+        widget.imageUrl != null && widget.imageUrl!.isNotEmpty;
+
+    if (!hasImage) {
+      return _buildInfoPage(c, sw, bottomPad, topPad);
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -49,7 +57,7 @@ class _DetailsImagesState extends State<DetailsImages> {
                 minScale: 1.0,
                 maxScale: 5.0,
                 child: Image.network(
-                  widget.imageUrl,
+                  widget.imageUrl!,
                   fit: BoxFit.contain,
                   alignment: const Alignment(0, -0.4),
                   width: double.infinity,
@@ -139,7 +147,6 @@ class _DetailsImagesState extends State<DetailsImages> {
                     controller: scrollController,
                     padding: EdgeInsets.zero,
                     children: [
-                      // Handle
                       Center(
                         child: Container(
                           margin: const EdgeInsets.only(top: 12, bottom: 16),
@@ -151,8 +158,6 @@ class _DetailsImagesState extends State<DetailsImages> {
                           ),
                         ),
                       ),
-
-                      // Titre
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: sw * 0.06),
                         child: Text(
@@ -165,9 +170,7 @@ class _DetailsImagesState extends State<DetailsImages> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 16),
-
                       Divider(
                         height: 1,
                         thickness: 0.8,
@@ -175,10 +178,7 @@ class _DetailsImagesState extends State<DetailsImages> {
                         endIndent: sw * 0.06,
                         color: c.homeTextPrimary.withValues(alpha: 0.10),
                       ),
-
                       const SizedBox(height: 16),
-
-                      // Description
                       Padding(
                         padding: EdgeInsets.fromLTRB(
                           sw * 0.06,
@@ -218,6 +218,120 @@ class _DetailsImagesState extends State<DetailsImages> {
                     child: Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: c.homeAccent,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Page information texte seule ────────────────────────────────────────────
+  Widget _buildInfoPage(dynamic c, double sw, double bottomPad, double topPad) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: c.homeBackground,
+        body: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── En-tête coloré ────────────────────────────────────────
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.fromLTRB(
+                    sw * 0.06,
+                    topPad + 64,
+                    sw * 0.06,
+                    sw * 0.08,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        c.homeButtonPrimary,
+                        c.homeButtonPrimary.withValues(alpha: 0.75),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.20),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.campaign_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      SizedBox(height: sw * 0.045),
+                      Text(
+                        widget.titre,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'Lobster',
+                          fontSize: sw * 0.058,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Corps scrollable ──────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      sw * 0.06,
+                      sw * 0.06,
+                      sw * 0.06,
+                      bottomPad + 32,
+                    ),
+                    child: Text(
+                      widget.description,
+                      textAlign: TextAlign.justify,
+                      style: TextStyle(
+                        fontFamily: 'PlayfairDisplay',
+                        fontSize: sw * 0.040,
+                        height: 1.65,
+                        color: c.homeTextPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Bouton retour ─────────────────────────────────────────────
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
                       size: 18,
                     ),
                   ),

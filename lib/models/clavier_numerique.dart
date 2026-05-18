@@ -28,8 +28,11 @@ class ClavierNumerique extends StatelessWidget {
       ['7', '8', '9'],
       ['', '0', '⌫'],
     ];
-    final btnSize = (sw * 0.20).clamp(65.0, 90.0);
-    final spacing = (sw * 0.06).clamp(8.0, 20.0);
+    // Calcul de la taille des boutons 18% de la largeur, avec des limites min/max pour éviter les tailles extrêmes
+    // la taille max est de 80 pour les très grands écrans, et min de 55 pour les petits écrans
+    final btnSize = (sw * 0.18).clamp(55.0, 80.0);
+    // Espacement entre les lignes, calculé à partir de la largeur de l'écran, avec des limites pour éviter les espacements trop petits ou trop grands
+    final spacing = (sw * 0.05).clamp(7.0, 18.0);
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: sw * 0.06),

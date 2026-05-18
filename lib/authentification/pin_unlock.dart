@@ -458,12 +458,17 @@ class _PinUnlockState extends State<PinUnlock> {
       backgroundColor: c.authBackground,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
             padding: EdgeInsets.symmetric(vertical: 12 * scale),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 24 * scale,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 // ── Logo ──────────────────────────────────────────────
                 _Logo(colors: c, sw: sw, scale: scale),
                 SizedBox(height: 16 * scale),
@@ -604,7 +609,8 @@ class _PinUnlockState extends State<PinUnlock> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
