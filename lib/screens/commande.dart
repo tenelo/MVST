@@ -12,7 +12,6 @@ import 'package:mvst/authentification/pin_unlock.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
-import 'package:mvst/screens/home.dart';
 import 'package:mvst/screens/choixPlaceVip.dart';
 
 String? dateFormatee, idMois, idMoisAnnee, idAnnee;
@@ -148,16 +147,9 @@ class _CommandeState extends State<Commande> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
-                          FocusScope.of(context).unfocus();
-                          Future.delayed(const Duration(milliseconds: 200), () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    Home(ongletInitial: widget.ongletOrigine),
-                              ),
-                            );
-                          });
+                          Navigator.of(context).popUntil(
+                            (route) => route.isFirst,
+                          );
                         },
                         style: OutlinedButton.styleFrom(
                           backgroundColor: c.homeBackground,
@@ -323,8 +315,13 @@ class _CommandeState extends State<Commande> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: PopScope(
-        onPopInvokedWithResult: (didPop, result) =>
-            FocusScope.of(context).unfocus(),
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            FocusScope.of(context).unfocus();
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+        },
         child: Scaffold(
           resizeToAvoidBottomInset: false,
           backgroundColor: c.homeBackground,

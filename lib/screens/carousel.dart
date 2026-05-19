@@ -83,7 +83,7 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
 
     final c = Config.colors;
     final Color accent = c.homeButtonPrimary;
-    final Color dotInactive = c.homeButtonPrimary.withValues(alpha: 0.20);
+    final Color dotInactive = Colors.white.withValues(alpha: 0.50);
     final double screenHeight = MediaQuery.of(context).size.height;
     final double carouselHeight =
         screenHeight *
@@ -126,8 +126,7 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                 itemCount: _images.length,
                 itemBuilder: (ctx, i, _) {
                   final item = _images[i];
-                  final url =
-                      item.hasImage ? (_base + item.lien_image) : null;
+                  final url = item.hasImage ? (_base + item.lien_image) : null;
                   return TweenAnimationBuilder(
                     tween: Tween<double>(begin: 0.8, end: 1.0),
                     duration: const Duration(milliseconds: 400),
@@ -157,8 +156,7 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                                     Container(
                                       decoration: BoxDecoration(
                                         color: accent.withValues(alpha: 0.07),
-                                        borderRadius:
-                                            BorderRadius.circular(14),
+                                        borderRadius: BorderRadius.circular(14),
                                       ),
                                       child: Icon(
                                         Icons.image_outlined,
@@ -168,7 +166,12 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                                     ),
                               ),
                             )
-                          : _buildInfoCard(item.titre, item.description, accent, c),
+                          : _buildInfoCard(
+                              item.titre,
+                              item.description,
+                              accent,
+                              c,
+                            ),
                     ),
                   );
                 },
@@ -188,22 +191,34 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
               if (_images.length > 1)
                 Positioned(
                   bottom: 8,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_images.length, (i) {
-                      final bool active = i == _current;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeInOut,
-                        margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                        width: active ? 10 : 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: active ? accent : dotInactive,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      );
-                    }),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(
+                        0.35,
+                      ), // fond sombre semi-transparent
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_images.length, (i) {
+                        final bool active = i == _current;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeInOut,
+                          margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                          width: active ? 10 : 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: active ? accent : dotInactive,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
                 ),
             ],
@@ -213,17 +228,15 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
     );
   }
 
-  Widget _buildInfoCard(String titre, String description, Color accent, dynamic c) {
+  Widget _buildInfoCard(
+    String titre,
+    String description,
+    Color accent,
+    dynamic c,
+  ) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            accent.withValues(alpha: 0.18),
-            accent.withValues(alpha: 0.06),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: c.authButtonDisabled,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: accent.withValues(alpha: 0.30), width: 1),
       ),
@@ -237,7 +250,7 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
               color: accent.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.campaign_rounded, color: accent, size: 24),
+            child: Icon(Icons.campaign_rounded, color: c.homeAccent, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -250,9 +263,9 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: c.homeTextPrimary,
+                    color: c.homeAccent,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    //fontSize: 13,
                     height: 1.3,
                   ),
                 ),
@@ -262,8 +275,8 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: c.homeTextPrimary.withValues(alpha: 0.55),
-                    fontSize: 11,
+                    color: Colors.white,
+                    //fontSize: 11,
                     height: 1.4,
                   ),
                 ),
@@ -271,10 +284,18 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
             ),
           ),
           const SizedBox(width: 8),
-          Icon(
-            Icons.arrow_forward_ios_rounded,
-            color: accent.withValues(alpha: 0.45),
-            size: 13,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: c.homeAccent,
+              size: 13,
+            ),
           ),
         ],
       ),

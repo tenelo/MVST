@@ -253,39 +253,32 @@ class _DetailsImagesState extends State<DetailsImages> {
                     sw * 0.06,
                     sw * 0.08,
                   ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        c.homeButtonPrimary,
-                        c.homeButtonPrimary.withValues(alpha: 0.75),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
+                  decoration: BoxDecoration(color: c.authButtonDisabled),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.20),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.campaign_rounded,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ),
+                      // Container(
+                      //   padding: const EdgeInsets.all(14),
+                      //   decoration: BoxDecoration(
+                      //     color: Colors.white.withValues(alpha: 0.20),
+                      //     shape: BoxShape.circle,
+                      //   ),
+                      //   child: Icon(
+                      //     Icons.campaign_rounded,
+                      //     color: c.homeAccent,
+                      //     size: 32,
+                      //   ),
+                      // ),
                       SizedBox(height: sw * 0.045),
-                      Text(
-                        widget.titre,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'Lobster',
-                          fontSize: sw * 0.058,
-                          height: 1.2,
+                      Center(
+                        child: Text(
+                          widget.titre,
+                          style: TextStyle(
+                            color: c.homeAccent,
+                            fontFamily: 'Lobster',
+                            fontSize: sw * 0.058,
+                            height: 1.2,
+                          ),
                         ),
                       ),
                     ],
@@ -329,9 +322,9 @@ class _DetailsImagesState extends State<DetailsImages> {
                       color: Colors.white.withValues(alpha: 0.25),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
+                      color: c.homeAccent,
                       size: 18,
                     ),
                   ),
