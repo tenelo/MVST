@@ -147,7 +147,7 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
   }
 
   Future<void> _navigateBasedOnTermsAcceptance() async {
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(milliseconds: 1800));
     _checkTermsAcceptance(context);
   }
 

@@ -199,258 +199,269 @@ class _LoginState extends State<Login> {
   // ── Étape 1 : numéro de téléphone ─────────────────────────────────────────
 
   Widget _buildEtapeTelephone(dynamic c, double sw, double sh) {
-    final keyboardH = MediaQuery.of(context).viewInsets.bottom;
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(sw * 0.08, 0, sw * 0.08, keyboardH + 20),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(height: sh * 0.10),
-            _Logo(colors: c, sw: sw),
-            SizedBox(height: sh * 0.04),
-            Text(
-              'Connexion',
-              style: TextStyle(
-                color: c.authTextPrimary,
-                fontSize: sw * 0.06,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
-              ),
-            ),
-            SizedBox(height: sh * 0.008),
-            Text(
-              'Entrez votre numéro pour continuer',
-              style: TextStyle(
-                color: c.authTextSecondary,
-                fontSize: sw * 0.033,
-              ),
-            ),
-            SizedBox(height: sh * 0.045),
-            Container(
-              decoration: BoxDecoration(
-                color: c.authCardBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: c.authBorder, width: 1.5),
-              ),
-              child: TextFormField(
-                maxLength: 10,
-                cursorColor: c.authAccent,
-                style: TextStyle(
-                  color: c.authTextPrimary,
-                  fontWeight: FontWeight.w500,
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final h = constraints.maxHeight;
+        final keyboardH = MediaQuery.of(context).viewInsets.bottom;
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(sw * 0.08, 0, sw * 0.08, keyboardH + 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(height: h * 0.10),
+                _Logo(colors: c, sw: sw),
+                SizedBox(height: h * 0.04),
+                Text(
+                  'Connexion',
+                  style: TextStyle(
+                    color: c.authTextPrimary,
+                    fontSize: sw * 0.06,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
                 ),
-                controller: _telephoneController,
-                keyboardType: TextInputType.phone,
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  counterText: '',
-                  border: InputBorder.none,
-                  hintText: 'Ex: 0505050505',
-                  hintStyle: TextStyle(
+                SizedBox(height: h * 0.008),
+                Text(
+                  'Entrez votre numéro pour continuer',
+                  style: TextStyle(
                     color: c.authTextSecondary,
-                    fontSize: sw * 0.035,
+                    fontSize: sw * 0.033,
                   ),
-                  prefixIcon: Icon(Icons.phone_outlined, color: c.authAccent),
-                  contentPadding: EdgeInsets.symmetric(vertical: sh * 0.018),
                 ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) {
-                    return 'Veuillez entrer votre numéro';
-                  }
-                  if (v.length < 10) return 'Numéro invalide';
-                  return null;
-                },
-              ),
-            ),
-            SizedBox(height: sh * 0.03),
-            SizedBox(
-              width: double.infinity,
-              height: sh * 0.058,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: c.authButton,
-                  foregroundColor: c.authTextPrimary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
+                SizedBox(height: h * 0.045),
+                Container(
+                  decoration: BoxDecoration(
+                    color: c.authCardBackground,
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: c.authBorder, width: 1.5),
+                  ),
+                  child: TextFormField(
+                    maxLength: 10,
+                    cursorColor: c.authAccent,
+                    style: TextStyle(
+                      color: c.authTextPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    controller: _telephoneController,
+                    keyboardType: TextInputType.phone,
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      counterText: '',
+                      border: InputBorder.none,
+                      hintText: 'Ex: 0505050505',
+                      hintStyle: TextStyle(
+                        color: c.authTextSecondary,
+                        fontSize: sw * 0.035,
+                      ),
+                      prefixIcon: Icon(Icons.phone_outlined, color: c.authAccent),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) {
+                        return 'Veuillez entrer votre numéro';
+                      }
+                      if (v.length < 10) return 'Numéro invalide';
+                      return null;
+                    },
                   ),
                 ),
-                onPressed: _isLoading ? null : _continuer,
-                child: _isLoading
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              color: c.authTextPrimary,
-                              strokeWidth: 2.5,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Vérification...',
+                SizedBox(height: h * 0.03),
+                SizedBox(
+                  width: double.infinity,
+                  height: sw * 0.13,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: c.authButton,
+                      foregroundColor: c.authTextPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: _isLoading ? null : _continuer,
+                    child: _isLoading
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: c.authTextPrimary,
+                                  strokeWidth: 2.5,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Vérification...',
+                                style: TextStyle(
+                                  color: c.authTextPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            'Continuer',
                             style: TextStyle(
-                              color: c.authTextPrimary,
+                              fontSize: sw * 0.038,
                               fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                        ],
-                      )
-                    : Text(
-                        'Continuer',
+                  ),
+                ),
+                SizedBox(height: h * 0.04),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Divider(color: Colors.white12, thickness: 1),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: sw * 0.03),
+                      child: Text(
+                        'ou',
                         style: TextStyle(
-                          fontSize: sw * 0.038,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
+                          color: c.authTextSecondary,
+                          fontSize: sw * 0.032,
                         ),
                       ),
-              ),
-            ),
-            SizedBox(height: sh * 0.04),
-            Row(
-              children: [
-                const Expanded(
-                  child: Divider(color: Colors.white12, thickness: 1),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: sw * 0.03),
-                  child: Text(
-                    'ou',
-                    style: TextStyle(
-                      color: c.authTextSecondary,
-                      fontSize: sw * 0.032,
                     ),
-                  ),
-                ),
-                const Expanded(
-                  child: Divider(color: Colors.white12, thickness: 1),
-                ),
-              ],
-            ),
-            SizedBox(height: sh * 0.03),
-            GestureDetector(
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PageDAuthentification(),
-                ),
-              ),
-              child: RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'Pas de compte ? ',
-                      style: TextStyle(
-                        color: c.authTextSecondary,
-                        fontSize: sw * 0.034,
-                      ),
-                    ),
-                    TextSpan(
-                      text: 'Créer un compte',
-                      style: TextStyle(
-                        color: c.authAccent,
-                        fontSize: sw * 0.034,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                        decorationColor: c.authAccent,
-                      ),
+                    const Expanded(
+                      child: Divider(color: Colors.white12, thickness: 1),
                     ),
                   ],
                 ),
-              ),
+                SizedBox(height: h * 0.03),
+                GestureDetector(
+                  onTap: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PageDAuthentification(),
+                    ),
+                  ),
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Pas de compte ? ',
+                          style: TextStyle(
+                            color: c.authTextSecondary,
+                            fontSize: sw * 0.034,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'Créer un compte',
+                          style: TextStyle(
+                            color: c.authAccent,
+                            fontSize: sw * 0.034,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                            decorationColor: c.authAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   // ── Étape 2 : saisie PIN ──────────────────────────────────────────────────
 
   Widget _buildEtapePin(dynamic c, double sw, double sh) {
-    return Column(
-      children: [
-        // Retour à l'étape numéro
-        Align(
-          alignment: Alignment.centerLeft,
-          child: IconButton(
-            icon: Icon(
-              Icons.arrow_back_ios_new,
-              color: c.authTextPrimary,
-              size: 20,
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        // h = hauteur réelle disponible (tient compte AppBar, BottomNav, SafeArea)
+        // sh = hauteur totale écran → ne pas l'utiliser ici pour éviter les overflows
+        final h = constraints.maxHeight;
+        return Column(
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new,
+                  color: c.authTextPrimary,
+                  size: 20,
+                ),
+                onPressed: () => setState(() {
+                  _etape = 0;
+                  _pin = '';
+                  _erreur = null;
+                }),
+              ),
             ),
-            onPressed: () => setState(() {
-              _etape = 0;
-              _pin = '';
-              _erreur = null;
-            }),
-          ),
-        ),
-        SizedBox(height: sh * 0.03),
-        _Logo(colors: c, sw: sw),
-        SizedBox(height: sh * 0.03),
-        Text(
-          'Entrez votre Code Secret',
-          style: TextStyle(
-            color: c.authTextPrimary,
-            fontSize: sw * 0.052,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: sh * 0.01),
-        Text(
-          '+225 $_telephone',
-          style: TextStyle(
-            color: c.authAccent,
-            fontSize: sw * 0.032,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: sh * 0.05),
-        _PinDots(longueur: _pin.length, erreur: _erreur != null, colors: c),
-        if (_erreur != null) ...[
-          const SizedBox(height: 14),
-          Text(
-            _erreur!,
-            style: const TextStyle(color: Colors.red, fontSize: 13),
-          ),
-        ],
-        const Spacer(),
-        if (_isLoading)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 40),
-            child: CircularProgressIndicator(color: c.authAccent),
-          )
-        else
-          ClavierNumerique(
-            onChiffre: _onChiffre,
-            onSupprimer: _onSupprimer,
-            colors: c,
-            sw: sw,
-          ),
-        SizedBox(height: sh * 0.025),
-        GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PinForgot()),
-          ),
-          child: Text(
-            'Code Secret oublié ?',
-            style: TextStyle(
-              color: c.authAccent,
-              fontSize: sw * 0.032,
-              fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
-              decorationColor: c.authAccent,
+            SizedBox(height: h * 0.025),
+            _Logo(colors: c, sw: sw),
+            SizedBox(height: h * 0.025),
+            Text(
+              'Entrez votre Code Secret',
+              style: TextStyle(
+                color: c.authTextPrimary,
+                fontSize: sw * 0.052,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ),
-        SizedBox(height: sh * 0.04),
-      ],
+            SizedBox(height: h * 0.01),
+            Text(
+              '+225 $_telephone',
+              style: TextStyle(
+                color: c.authAccent,
+                fontSize: sw * 0.032,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: h * 0.04),
+            _PinDots(longueur: _pin.length, erreur: _erreur != null, colors: c),
+            if (_erreur != null) ...[
+              const SizedBox(height: 14),
+              Text(
+                _erreur!,
+                style: const TextStyle(color: Colors.red, fontSize: 13),
+              ),
+            ],
+            const Spacer(),
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 40),
+                child: CircularProgressIndicator(color: c.authAccent),
+              )
+            else
+              ClavierNumerique(
+                onChiffre: _onChiffre,
+                onSupprimer: _onSupprimer,
+                colors: c,
+                sw: sw,
+              ),
+            SizedBox(height: h * 0.02),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PinForgot()),
+              ),
+              child: Text(
+                'Code Secret oublié ?',
+                style: TextStyle(
+                  color: c.authAccent,
+                  fontSize: sw * 0.032,
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                  decorationColor: c.authAccent,
+                ),
+              ),
+            ),
+            SizedBox(height: h * 0.03),
+          ],
+        );
+      },
     );
   }
 }

@@ -295,7 +295,6 @@ Future<void> _envoyerSms() async {
   Widget build(BuildContext context) {
     final c = Config.colors;
     final sw = MediaQuery.of(context).size.width;
-    final sh = MediaQuery.of(context).size.height;
 
     return Scaffold(
       backgroundColor: c.authBackground,
@@ -314,10 +313,10 @@ Future<void> _envoyerSms() async {
       ),
       body: SafeArea(
         child: switch (_etape) {
-          _EtapePinForgot.telephone => _buildTelephone(c, sw, sh),
-          _EtapePinForgot.otp => _buildOtp(c, sw, sh),
+          _EtapePinForgot.telephone => _buildTelephone(c, sw),
+          _EtapePinForgot.otp => _buildOtp(c, sw),
           _EtapePinForgot.nouveauPin ||
-          _EtapePinForgot.confirmerPin => _buildNouveauPin(c, sw, sh),
+          _EtapePinForgot.confirmerPin => _buildNouveauPin(c, sw),
         },
       ),
     );
@@ -325,232 +324,247 @@ Future<void> _envoyerSms() async {
 
   // ── Écran téléphone ───────────────────────────────────────────────────────
 
-  Widget _buildTelephone(dynamic c, double sw, double sh) {
-    final keyboardH = MediaQuery.of(context).viewInsets.bottom;
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(sw * 0.08, 0, sw * 0.08, keyboardH + 20),
-      child: Form(
-        key: _formKey,
-        child: Column(
+  Widget _buildTelephone(dynamic c, double sw) {
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final h = constraints.maxHeight;
+        final keyboardH = MediaQuery.of(context).viewInsets.bottom;
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(sw * 0.08, 0, sw * 0.08, keyboardH + 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                SizedBox(height: h * 0.04),
+                Icon(Icons.lock_reset_outlined, color: c.authAccent, size: 56),
+                SizedBox(height: h * 0.03),
+                Text(
+                  'Code Secret oublié ?',
+                  style: TextStyle(
+                    color: c.authTextPrimary,
+                    fontSize: sw * 0.055,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: h * 0.01),
+                Text(
+                  'Entrez votre numéro pour recevoir un code SMS',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: c.authTextSecondary,
+                    fontSize: sw * 0.032,
+                  ),
+                ),
+                SizedBox(height: h * 0.05),
+                Container(
+                  decoration: BoxDecoration(
+                    color: c.authCardBackground,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: c.authBorder, width: 1.5),
+                  ),
+                  child: TextFormField(
+                    controller: _telephoneController,
+                    maxLength: 10,
+                    keyboardType: TextInputType.phone,
+                    cursorColor: c.authAccent,
+                    style: TextStyle(
+                      color: c.authTextPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      border: InputBorder.none,
+                      hintText: 'Ex: 0505050505',
+                      hintStyle: TextStyle(color: c.authTextSecondary),
+                      prefixIcon: Icon(Icons.phone_outlined, color: c.authAccent),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.length < 10) ? 'Numéro invalide' : null,
+                  ),
+                ),
+                if (_erreur != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _erreur!,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  ),
+                ],
+                SizedBox(height: h * 0.04),
+                SizedBox(
+                  width: double.infinity,
+                  height: sw * 0.13,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _envoyerSms,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: c.authButton,
+                      foregroundColor: c.authTextPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: c.authTextPrimary,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Text(
+                            'Recevoir le code SMS',
+                            style: TextStyle(
+                              fontSize: sw * 0.038,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Écran OTP ─────────────────────────────────────────────────────────────
+
+  Widget _buildOtp(dynamic c, double sw) {
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final h = constraints.maxHeight;
+        return Column(
           children: [
-            SizedBox(height: sh * 0.04),
-            Icon(Icons.lock_reset_outlined, color: c.authAccent, size: 56),
-            SizedBox(height: sh * 0.03),
+            SizedBox(height: h * 0.04),
+            Icon(Icons.sms_outlined, color: c.authAccent, size: 56),
+            SizedBox(height: h * 0.03),
             Text(
-              'Code Secret oublié ?',
+              'Code de vérification',
+              style: TextStyle(
+                color: c.authTextPrimary,
+                fontSize: sw * 0.052,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: h * 0.01),
+            Text(
+              'Code envoyé au +225 $_telephone',
+              style: TextStyle(
+                color: c.authAccent,
+                fontSize: sw * 0.032,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: h * 0.05),
+            _PinDots(longueur: _pin.length, erreur: _erreur != null, colors: c),
+            if (_erreur != null) ...[
+              const SizedBox(height: 14),
+              Text(
+                _erreur!,
+                style: const TextStyle(color: Colors.red, fontSize: 13),
+              ),
+            ],
+            const Spacer(),
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 40),
+                child: CircularProgressIndicator(color: c.authAccent),
+              )
+            else
+              _ClavierOtp(
+                pin: _pin,
+                onChiffre: (chiffre) {
+                  if (_pin.length < 6) {
+                    setState(() {
+                      _erreur = null;
+                      _pin += chiffre;
+                    });
+                    if (_pin.length == 6) _verifierOtp(_pin);
+                  }
+                },
+                onSupprimer: () {
+                  if (_pin.isNotEmpty) {
+                    setState(() => _pin = _pin.substring(0, _pin.length - 1));
+                  }
+                },
+                colors: c,
+                sw: sw,
+              ),
+            SizedBox(height: h * 0.04),
+          ],
+        );
+      },
+    );
+  }
+
+  // ── Écran nouveau PIN ─────────────────────────────────────────────────────
+
+  Widget _buildNouveauPin(dynamic c, double sw) {
+    final enConfirmation = _etape == _EtapePinForgot.confirmerPin;
+    final pinCourant = enConfirmation ? _pin : _nouveauPin;
+
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final h = constraints.maxHeight;
+        return Column(
+          children: [
+            SizedBox(height: h * 0.07),
+            Icon(Icons.lock_outline, color: c.authAccent, size: 48),
+            SizedBox(height: h * 0.03),
+            Text(
+              enConfirmation
+                  ? 'Confirmez votre Code Secret'
+                  : 'Nouveau Code Secret',
               style: TextStyle(
                 color: c.authTextPrimary,
                 fontSize: sw * 0.055,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: sh * 0.01),
+            SizedBox(height: h * 0.01),
             Text(
-              'Entrez votre numéro pour recevoir un code SMS',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: c.authTextSecondary,
-                fontSize: sw * 0.032,
-              ),
+              enConfirmation
+                  ? 'Saisissez à nouveau votre Code Secret'
+                  : 'Choisissez un nouveau code à 4 chiffres',
+              style: TextStyle(color: c.authTextSecondary, fontSize: sw * 0.032),
             ),
-            SizedBox(height: sh * 0.05),
-            Container(
-              decoration: BoxDecoration(
-                color: c.authCardBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: c.authBorder, width: 1.5),
-              ),
-              child: TextFormField(
-                controller: _telephoneController,
-                maxLength: 10,
-                keyboardType: TextInputType.phone,
-                cursorColor: c.authAccent,
-                style: TextStyle(
-                  color: c.authTextPrimary,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  counterText: '',
-                  border: InputBorder.none,
-                  hintText: 'Ex: 0505050505',
-                  hintStyle: TextStyle(color: c.authTextSecondary),
-                  prefixIcon: Icon(Icons.phone_outlined, color: c.authAccent),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                validator: (v) =>
-                    (v == null || v.length < 10) ? 'Numéro invalide' : null,
-              ),
+            SizedBox(height: h * 0.05),
+            _PinDots(
+              longueur: pinCourant.length,
+              erreur: _erreur != null,
+              colors: c,
             ),
             if (_erreur != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                _erreur!,
-                style: const TextStyle(color: Colors.red, fontSize: 13),
+              const SizedBox(height: 14),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: sw * 0.1),
+                child: Text(
+                  _erreur!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red, fontSize: 13),
+                ),
               ),
             ],
-            SizedBox(height: sh * 0.04),
-            SizedBox(
-              width: double.infinity,
-              height: sh * 0.058,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _envoyerSms,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: c.authButton,
-                  foregroundColor: c.authTextPrimary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          color: c.authTextPrimary,
-                          strokeWidth: 2.5,
-                        ),
-                      )
-                    : Text(
-                        'Recevoir le code SMS',
-                        style: TextStyle(
-                          fontSize: sw * 0.038,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+            const Spacer(),
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 40),
+                child: CircularProgressIndicator(color: c.authAccent),
+              )
+            else
+              ClavierNumerique(
+                onChiffre: _onChiffre,
+                onSupprimer: _onSupprimer,
+                colors: c,
+                sw: sw,
               ),
-            ),
+            SizedBox(height: h * 0.04),
           ],
-        ),
-      ),
-    );
-  }
-
-  // ── Écran OTP ─────────────────────────────────────────────────────────────
-
-  Widget _buildOtp(dynamic c, double sw, double sh) {
-    return Column(
-      children: [
-        SizedBox(height: sh * 0.04),
-        Icon(Icons.sms_outlined, color: c.authAccent, size: 56),
-        SizedBox(height: sh * 0.03),
-        Text(
-          'Code de vérification',
-          style: TextStyle(
-            color: c.authTextPrimary,
-            fontSize: sw * 0.052,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: sh * 0.01),
-        Text(
-          'Code envoyé au +225 $_telephone',
-          style: TextStyle(
-            color: c.authAccent,
-            fontSize: sw * 0.032,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: sh * 0.05),
-        _PinDots(longueur: _pin.length, erreur: _erreur != null, colors: c),
-        if (_erreur != null) ...[
-          const SizedBox(height: 14),
-          Text(
-            _erreur!,
-            style: const TextStyle(color: Colors.red, fontSize: 13),
-          ),
-        ],
-        const Spacer(),
-        if (_isLoading)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 40),
-            child: CircularProgressIndicator(color: c.authAccent),
-          )
-        else
-          _ClavierOtp(
-            pin: _pin,
-            onChiffre: (chiffre) {
-              if (_pin.length < 6) {
-                setState(() {
-                  _erreur = null;
-                  _pin += chiffre;
-                });
-                if (_pin.length == 6) _verifierOtp(_pin);
-              }
-            },
-            onSupprimer: () {
-              if (_pin.isNotEmpty) {
-                setState(() => _pin = _pin.substring(0, _pin.length - 1));
-              }
-            },
-            colors: c,
-            sw: sw,
-          ),
-        SizedBox(height: sh * 0.04),
-      ],
-    );
-  }
-
-  // ── Écran nouveau PIN ─────────────────────────────────────────────────────
-
-  Widget _buildNouveauPin(dynamic c, double sw, double sh) {
-    final enConfirmation = _etape == _EtapePinForgot.confirmerPin;
-    final pinCourant = enConfirmation ? _pin : _nouveauPin;
-
-    return Column(
-      children: [
-        SizedBox(height: sh * 0.07),
-        Icon(Icons.lock_outline, color: c.authAccent, size: 48),
-        SizedBox(height: sh * 0.03),
-        Text(
-          enConfirmation
-              ? 'Confirmez votre Code Secret'
-              : 'Nouveau Code Secret',
-          style: TextStyle(
-            color: c.authTextPrimary,
-            fontSize: sw * 0.055,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: sh * 0.01),
-        Text(
-          enConfirmation
-              ? 'Saisissez à nouveau votre Code Secret'
-              : 'Choisissez un nouveau code à 4 chiffres',
-          style: TextStyle(color: c.authTextSecondary, fontSize: sw * 0.032),
-        ),
-        SizedBox(height: sh * 0.05),
-        _PinDots(
-          longueur: pinCourant.length,
-          erreur: _erreur != null,
-          colors: c,
-        ),
-        if (_erreur != null) ...[
-          const SizedBox(height: 14),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: sw * 0.1),
-            child: Text(
-              _erreur!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red, fontSize: 13),
-            ),
-          ),
-        ],
-        const Spacer(),
-        if (_isLoading)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 40),
-            child: CircularProgressIndicator(color: c.authAccent),
-          )
-        else
-          ClavierNumerique(
-            onChiffre: _onChiffre,
-            onSupprimer: _onSupprimer,
-            colors: c,
-            sw: sw,
-          ),
-        SizedBox(height: sh * 0.04),
-      ],
+        );
+      },
     );
   }
 }
