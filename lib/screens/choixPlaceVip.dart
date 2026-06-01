@@ -415,7 +415,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.star, color: _vipOr, size: 16),
+            const Icon(Icons.star, color: _vipOr, size: 14),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -605,44 +605,32 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
             ),
       floatingActionButton: BlocBuilder<BlocCompteur, CompteurState>(
         builder: (context, state) {
-          return GestureDetector(
-            onTap: () => _naviguerVersTickets(context, state),
-            child: Stack(
-              alignment: Alignment.topRight,
-              children: [
-                SizedBox(
-                  height: 55,
-                  width: 50,
-                  child: FloatingActionButton(
-                    backgroundColor: _vipOr,
-                    onPressed: () => _naviguerVersTickets(context, state),
-                    child: const Icon(Icons.receipt_outlined, color: _vipFond),
-                  ),
+          return badges.Badge(
+            badgeStyle: const badges.BadgeStyle(
+              badgeColor: _vipFond,
+              padding: EdgeInsets.all(6),
+            ),
+            badgeAnimation: const badges.BadgeAnimation.fade(),
+            position: badges.BadgePosition.topEnd(top: -10, end: -6),
+            badgeContent: Text(
+              '${state.tickets}',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: _vipOr,
+              ),
+            ),
+            child: FloatingActionButton(
+              backgroundColor: _vipOr,
+              onPressed: () => _naviguerVersTickets(context, state),
+              child: Text(
+                'Valider',
+                style: TextStyle(
+                  color: _vipFond,
+                  fontSize: screenWidth * 0.035,
+                  fontWeight: FontWeight.bold,
                 ),
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: _vipFond,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 17,
-                      minHeight: 17,
-                    ),
-                    child: Text(
-                      "${state.tickets}",
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: _vipOr,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           );
         },

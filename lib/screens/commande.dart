@@ -13,9 +13,10 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
 import 'package:mvst/screens/choixPlaceVip.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 String? dateFormatee, idMois, idMoisAnnee, idAnnee;
-final Color vertVip = Color(0xFF00D87E);
+final Color vertVip = Color.fromARGB(255, 2, 215, 27);
 
 class Commande extends StatefulWidget {
   const Commande({
@@ -51,12 +52,14 @@ class _CommandeState extends State<Commande> {
   final TextEditingController _dateController = TextEditingController();
 
   DateTime? dateChoisie;
-  late DateTime dateDemain;
-  late DateTime dateApresDemain;
+  late DateTime premiereDate;
+  late DateTime deuxiemeDate;
   String? heureDeDepart;
   List<String> listeHeures = [];
   bool _isLoading = false;
   final formKey = GlobalKey<FormState>();
+
+  late IO.Socket _socket;
 
   bool get _isVip => widget.typeVoyage == 'vip';
 
@@ -68,16 +71,73 @@ class _CommandeState extends State<Commande> {
     });
     _initialiserForm();
     _recupHeuresDeDeparts();
+    _connecterSocket();
+  }
+
+  @override
+  void dispose() {
+    _socket.disconnect();
+    _socket.dispose();
+    nomController.dispose();
+    contactController.dispose();
+    _dateController.dispose();
+    super.dispose();
+  }
+
+  void _connecterSocket() {
+    _socket = IO.io(
+      kBaseUrl,
+      IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .disableAutoConnect()
+          .build(),
+    );
+    _socket.connect();
+    _socket.on('config_dates_maj', (data) {
+      final int nbJours = (data['nbJours'] as num?)?.toInt() ?? 6;
+      _appliquerNbJours(nbJours);
+    });
+  }
+
+  void _appliquerNbJours(int nbJours) {
+    final now = DateTime.now();
+    if (mounted) {
+      setState(() {
+        deuxiemeDate = DateTime.utc(now.year, now.month, now.day + nbJours);
+      });
+    }
+  }
+
+  Future<void> _chargerNbJours() async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$kBaseUrl/datesDisponibles.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'action': 'lire'}),
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          _appliquerNbJours((data['nbJours'] as num?)?.toInt() ?? 6);
+        }
+      }
+    } catch (_) {
+      // Fallback déjà initialisé à +6 dans _initialiserForm
+    }
   }
 
   void _initialiserForm() {
     final now = DateTime.now();
-    dateDemain = DateTime.utc(now.year, now.month, now.day + 1);
-    dateApresDemain = DateTime.utc(now.year, now.month, now.day + 2);
+    premiereDate = DateTime.utc(now.year, now.month, now.day + 1);
+    deuxiemeDate = DateTime.utc(now.year, now.month, now.day + 6); // fallback
     nomController.text = "${widget.nom!} ${widget.prenoms!}";
     contactController.text = widget.telephone!;
     listeDeVerification.clear();
     listeDesPlacesOccupees.clear();
+    _chargerNbJours(); // mise à jour asynchrone depuis le serveur
   }
 
   // ── Dialog de confirmation ─────────────────────────────────────────────────
@@ -147,9 +207,9 @@ class _CommandeState extends State<Commande> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
-                          Navigator.of(context).popUntil(
-                            (route) => route.isFirst,
-                          );
+                          Navigator.of(
+                            context,
+                          ).popUntil((route) => route.isFirst);
                         },
                         style: OutlinedButton.styleFrom(
                           backgroundColor: c.homeBackground,
@@ -229,8 +289,8 @@ class _CommandeState extends State<Commande> {
     try {
       DateTime? choixDeDate = await showDatePicker(
         context: context,
-        firstDate: dateDemain,
-        lastDate: dateApresDemain,
+        firstDate: premiereDate,
+        lastDate: deuxiemeDate,
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
@@ -245,16 +305,32 @@ class _CommandeState extends State<Commande> {
                     return Colors.white;
                   }
                   if (states.contains(WidgetState.disabled)) return null;
-                  // date active (les 2 seules disponibles) → couleur accent
+                  // Dates disponibles → et leurs couleurs → si VIP → vert, sinon → bleu foncé
                   return _isVip ? vertVip : c.bleuFonce2;
                 }),
-                dayStyle: const TextStyle(fontWeight: FontWeight.bold),
+                dayStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
                 // Couleur du cercle de sélection
                 dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return _isVip ? vertVip : c.homeButtonPrimary;
                   }
                   return null;
+                }),
+                // Cercle avec bordure colorée pour les dates actives
+                dayShape: WidgetStateProperty.resolveWith((states) {
+                  if (!states.contains(WidgetState.disabled) &&
+                      !states.contains(WidgetState.selected)) {
+                    return CircleBorder(
+                      side: BorderSide(
+                        color: _isVip ? vertVip : c.homeButtonPrimary,
+                        width: 1.8,
+                      ),
+                    );
+                  }
+                  return const CircleBorder();
                 }),
                 cancelButtonStyle: TextButton.styleFrom(
                   textStyle: TextStyle(
@@ -774,7 +850,7 @@ class _CommandeState extends State<Commande> {
         return DropdownMenuItem<String>(
           value: h,
           child: Text(
-            h.length > 5 ? h.substring(0, 5) : h, 
+            h,
             style: TextStyle(
               color: c.homeTextPrimary,
               fontWeight: FontWeight.w600,
@@ -800,7 +876,9 @@ class _CommandeState extends State<Commande> {
         if (data['success'] == true && data['heures'] != null) {
           // Récupérer les heures
           List<String> heures = List<String>.from(
-            data['heures'].map((heure) => heure['heure']),
+            data['heures'].map(
+              (heure) => formaterHeure(heure['heure'] as String),
+            ),
           );
 
           // TRI CHRONOLOGIQUE DES HEURES

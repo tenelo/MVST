@@ -29,10 +29,6 @@ class _MesTicketsState extends State<MesTickets> with RouteAware {
 
   final _scrollController = ScrollController();
 
-  late final String _dateAujourdhui;
-  late final String _dateDemain;
-  late final String _dateApresDemain;
-
   @override
   void initState() {
     super.initState();
@@ -58,13 +54,7 @@ class _MesTicketsState extends State<MesTickets> with RouteAware {
   @override
   void didPopNext() {}
 
-  void _initDates() {
-    final now = DateTime.now();
-    final fmt = DateFormat('EEEE d MMMM y', 'fr_FR');
-    _dateAujourdhui = fmt.format(DateTime(now.year, now.month, now.day));
-    _dateDemain = fmt.format(DateTime(now.year, now.month, now.day + 1));
-    _dateApresDemain = fmt.format(DateTime(now.year, now.month, now.day + 2));
-  }
+  void _initDates() {}
 
   Future<void> _chargerPremierePage() async {
     if (!mounted) return;
@@ -255,10 +245,7 @@ class _MesTicketsState extends State<MesTickets> with RouteAware {
               final ticket = _tickets[index];
               final typeVoyage = ticket['typeVoyage'] ?? 'standard';
               final isVip = typeVoyage == 'vip';
-              final isRecent =
-                  ticket['date'] == _dateAujourdhui ||
-                  ticket['date'] == _dateDemain ||
-                  ticket['date'] == _dateApresDemain;
+              final isActif = !_isTicketDatePassed(ticket['date']);
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -266,7 +253,7 @@ class _MesTicketsState extends State<MesTickets> with RouteAware {
                   context,
                   ticket: ticket,
                   isVip: isVip,
-                  isRecent: isRecent,
+                  isActif: isActif,
                   typeVoyage: typeVoyage,
                   screenWidth: sw,
                 ),
@@ -282,7 +269,7 @@ class _MesTicketsState extends State<MesTickets> with RouteAware {
     BuildContext context, {
     required Map<String, dynamic> ticket,
     required bool isVip,
-    required bool isRecent,
+    required bool isActif,
     required String typeVoyage,
     required double screenWidth,
   }) {
@@ -298,7 +285,7 @@ class _MesTicketsState extends State<MesTickets> with RouteAware {
         : c.homeBandeauBackground;
     final Color accentColor = isDatePassed
         ? Colors.grey[400]!
-        : (isRecent
+        : (isActif
               ? c.homeButtonPrimary
               : c.homeTextPrimary.withValues(alpha: 0.4));
     final Color textColor = isVip
@@ -432,7 +419,7 @@ class _MesTicketsState extends State<MesTickets> with RouteAware {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  '${ticket['heure']} h',
+                  '${formaterHeure(ticket['heure'])} h',
                   style: TextStyle(
                     color: textColor,
                     fontWeight: FontWeight.bold,

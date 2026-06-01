@@ -26,6 +26,14 @@ class ConvertirHeure {
   }
 }
 
+// ─── Formatage des heures ─────────────────────────────────────────────────────
+/// "08:00:00" → "08:00"  |  "08:00" → "08:00"
+String formaterHeure(String heure) {
+  final parts = heure.split(':');
+  if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+  return heure;
+}
+
 // ─── Nettoyage des places temporaires au lancement ───────────────────────────
 // Supprime les places choisies mais jamais finalisées
 // (utilisateur ayant abandonné le processus d'achat)

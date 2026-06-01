@@ -376,7 +376,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         iconTheme: IconThemeData(color: c.homeAccent),
         title: Center(
           child: Text(
-            "${widget.depart} -> ${widget.destination}  ${widget.heure} h",
+            "${widget.depart} -> ${widget.destination}  ${formaterHeure(widget.heure)} h",
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w500,
@@ -635,15 +635,23 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
               padding: EdgeInsets.all(6),
             ),
             badgeAnimation: const badges.BadgeAnimation.fade(),
-            position: badges.BadgePosition.topEnd(top: -6, end: -6),
+            position: badges.BadgePosition.topEnd(top: -10, end: -6),
             badgeContent: Text(
               '$ticketCount',
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
             child: FloatingActionButton(
+              backgroundColor: c.authAccent,
               onPressed: () => _naviguerVersTickets(context, ticketCount),
-              tooltip: 'Voir les tickets',
-              child: const Icon(Icons.receipt_outlined),
+              tooltip: 'Valider',
+              child: Text(
+                'Valider',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: largeurEcran * 0.035,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           );
         },

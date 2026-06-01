@@ -368,7 +368,7 @@ class TicketDataSource extends DataTableSource {
           onTap: () => _onTapRow(ticket, id, typeVoyage),
         ),
         DataCell(
-          Text('${ticket['heure']} h', style: style),
+          Text('${formaterHeure(ticket['heure'])} h', style: style),
           onTap: () => _onTapRow(ticket, id, typeVoyage),
         ),
         DataCell(

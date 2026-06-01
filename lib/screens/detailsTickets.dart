@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/qrcode/creationQrCode.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -333,7 +334,7 @@ class _DetailsTicketsState extends State<DetailsTickets> {
                         ),
                       ),
                       pw.Text(
-                        widget.heure,
+                        formaterHeure(widget.heure),
                         style: pw.TextStyle(
                           fontSize: 20,
                           fontWeight: pw.FontWeight.bold,
@@ -774,7 +775,7 @@ class TicketData extends StatelessWidget {
               ),
             ),
             Text(
-              heure,
+              formaterHeure(heure),
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black,

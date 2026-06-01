@@ -335,7 +335,7 @@ class _ReservationState extends State<Reservation> {
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                '${widget.heure} h',
+                                '${formaterHeure(widget.heure)} h',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 12,

@@ -468,7 +468,7 @@ class VipTicketCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _InfoCell(label: 'Départ', value: '$heure h'),
+                  child: _InfoCell(label: 'Départ', value: '${formaterHeure(heure)} h'),
                 ),
               ],
             ),

@@ -249,7 +249,7 @@ class _TicketsState extends State<Tickets> {
                       ),
                     ),
                     Text(
-                      heure,
+                      formaterHeure(heure),
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
