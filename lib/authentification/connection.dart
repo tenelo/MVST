@@ -399,66 +399,92 @@ class _LoginState extends State<Login> {
                 }),
               ),
             ),
-            SizedBox(height: h * 0.025),
-            _Logo(colors: c, sw: sw),
-            SizedBox(height: h * 0.025),
-            Text(
-              'Entrez votre Code Secret',
-              style: TextStyle(
-                color: c.authTextPrimary,
-                fontSize: sw * 0.052,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: h * 0.01),
-            Text(
-              '+225 $_telephone',
-              style: TextStyle(
-                color: c.authAccent,
-                fontSize: sw * 0.032,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: h * 0.04),
-            _PinDots(longueur: _pin.length, erreur: _erreur != null, colors: c),
-            if (_erreur != null) ...[
-              const SizedBox(height: 14),
-              Text(
-                _erreur!,
-                style: const TextStyle(color: Colors.red, fontSize: 13),
-              ),
-            ],
-            const Spacer(),
-            if (_isLoading)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 40),
-                child: CircularProgressIndicator(color: c.authAccent),
-              )
-            else
-              ClavierNumerique(
-                onChiffre: _onChiffre,
-                onSupprimer: _onSupprimer,
-                colors: c,
-                sw: sw,
-              ),
-            SizedBox(height: h * 0.02),
-            GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PinForgot()),
-              ),
-              child: Text(
-                'Code Secret oublié ?',
-                style: TextStyle(
-                  color: c.authAccent,
-                  fontSize: sw * 0.032,
-                  fontWeight: FontWeight.bold,
-                  decoration: TextDecoration.underline,
-                  decorationColor: c.authAccent,
+            // ── Contenu scrollable : ne déborde jamais, même sur petit écran ──
+            Expanded(
+              child: LayoutBuilder(
+                builder: (_, inner) => SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: inner.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _Logo(colors: c, sw: sw),
+                        SizedBox(height: h * 0.025),
+                        Text(
+                          'Entrez votre Code Secret',
+                          style: TextStyle(
+                            color: c.authTextPrimary,
+                            fontSize: sw * 0.052,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: h * 0.01),
+                        Text(
+                          '+225 $_telephone',
+                          style: TextStyle(
+                            color: c.authAccent,
+                            fontSize: sw * 0.032,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: h * 0.04),
+                        _PinDots(
+                          longueur: _pin.length,
+                          erreur: _erreur != null,
+                          colors: c,
+                        ),
+                        if (_erreur != null) ...[
+                          const SizedBox(height: 14),
+                          Text(
+                            _erreur!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                        SizedBox(height: h * 0.05),
+                        if (_isLoading)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 40),
+                            child: CircularProgressIndicator(
+                              color: c.authAccent,
+                            ),
+                          )
+                        else
+                          ClavierNumerique(
+                            onChiffre: _onChiffre,
+                            onSupprimer: _onSupprimer,
+                            colors: c,
+                            sw: sw,
+                          ),
+                        SizedBox(height: h * 0.02),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PinForgot(),
+                            ),
+                          ),
+                          child: Text(
+                            'Code Secret oublié ?',
+                            style: TextStyle(
+                              color: c.authAccent,
+                              fontSize: sw * 0.032,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                              decorationColor: c.authAccent,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: h * 0.03),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-            SizedBox(height: h * 0.03),
           ],
         );
       },

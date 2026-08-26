@@ -101,66 +101,76 @@ class _PinCreationState extends State<PinCreation> {
   Widget build(BuildContext context) {
     final c = Config.colors;
     final sw = MediaQuery.of(context).size.width;
-    final sh = MediaQuery.of(context).size.height;
     final pinCourant = _confirmStep ? _pinConfirmation : _pin;
 
     return Scaffold(
       backgroundColor: c.authBackground,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: Column(
-          children: [
-            SizedBox(height: sh * 0.07),
-            _Logo(colors: c, sw: sw),
-            SizedBox(height: sh * 0.04),
-            Text(
-              _confirmStep
-                  ? 'Confirmez votre Code Secret'
-                  : 'Créez votre Code Secret',
-              style: TextStyle(
-                color: c.authTextPrimary,
-                fontSize: sw * 0.055,
-                fontWeight: FontWeight.bold,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final h = constraints.maxHeight;
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: h),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _Logo(colors: c, sw: sw),
+                    SizedBox(height: h * 0.04),
+                    Text(
+                      _confirmStep
+                          ? 'Confirmez votre Code Secret'
+                          : 'Créez votre Code Secret',
+                      style: TextStyle(
+                        color: c.authTextPrimary,
+                        fontSize: sw * 0.055,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _confirmStep
+                          ? 'Saisissez à nouveau votre Code Secret'
+                          : 'Choisissez un code à 4 chiffres',
+                      style: TextStyle(
+                        color: c.authTextSecondary,
+                        fontSize: sw * 0.032,
+                      ),
+                    ),
+                    SizedBox(height: h * 0.05),
+                    _PinDots(
+                      longueur: pinCourant.length,
+                      erreur: _erreur != null,
+                      colors: c,
+                    ),
+                    if (_erreur != null) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        _erreur!,
+                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                      ),
+                    ],
+                    SizedBox(height: h * 0.05),
+                    if (_isLoading)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 40),
+                        child: CircularProgressIndicator(color: c.authAccent),
+                      )
+                    else
+                      ClavierNumerique(
+                        onChiffre: _onChiffre,
+                        onSupprimer: _onSupprimer,
+                        colors: c,
+                        sw: sw,
+                      ),
+                    SizedBox(height: h * 0.04),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _confirmStep
-                  ? 'Saisissez à nouveau votre Code Secret'
-                  : 'Choisissez un code à 4 chiffres',
-              style: TextStyle(
-                color: c.authTextSecondary,
-                fontSize: sw * 0.032,
-              ),
-            ),
-            SizedBox(height: sh * 0.05),
-            _PinDots(
-              longueur: pinCourant.length,
-              erreur: _erreur != null,
-              colors: c,
-            ),
-            if (_erreur != null) ...[
-              const SizedBox(height: 14),
-              Text(
-                _erreur!,
-                style: const TextStyle(color: Colors.red, fontSize: 13),
-              ),
-            ],
-            const Spacer(),
-            if (_isLoading)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 40),
-                child: CircularProgressIndicator(color: c.authAccent),
-              )
-            else
-              ClavierNumerique(
-                onChiffre: _onChiffre,
-                onSupprimer: _onSupprimer,
-                colors: c,
-                sw: sw,
-              ),
-            SizedBox(height: sh * 0.04),
-          ],
+            );
+          },
         ),
       ),
     );

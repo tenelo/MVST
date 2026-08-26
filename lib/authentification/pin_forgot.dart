@@ -436,65 +436,77 @@ Future<void> _envoyerSms() async {
     return LayoutBuilder(
       builder: (_, constraints) {
         final h = constraints.maxHeight;
-        return Column(
-          children: [
-            SizedBox(height: h * 0.04),
-            Icon(Icons.sms_outlined, color: c.authAccent, size: 56),
-            SizedBox(height: h * 0.03),
-            Text(
-              'Code de vérification',
-              style: TextStyle(
-                color: c.authTextPrimary,
-                fontSize: sw * 0.052,
-                fontWeight: FontWeight.bold,
-              ),
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: h),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.sms_outlined, color: c.authAccent, size: 56),
+                SizedBox(height: h * 0.03),
+                Text(
+                  'Code de vérification',
+                  style: TextStyle(
+                    color: c.authTextPrimary,
+                    fontSize: sw * 0.052,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: h * 0.01),
+                Text(
+                  'Code envoyé au +225 $_telephone',
+                  style: TextStyle(
+                    color: c.authAccent,
+                    fontSize: sw * 0.032,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: h * 0.05),
+                _PinDots(
+                  longueur: _pin.length,
+                  erreur: _erreur != null,
+                  colors: c,
+                ),
+                if (_erreur != null) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    _erreur!,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                  ),
+                ],
+                SizedBox(height: h * 0.05),
+                if (_isLoading)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 40),
+                    child: CircularProgressIndicator(color: c.authAccent),
+                  )
+                else
+                  _ClavierOtp(
+                    pin: _pin,
+                    onChiffre: (chiffre) {
+                      if (_pin.length < 6) {
+                        setState(() {
+                          _erreur = null;
+                          _pin += chiffre;
+                        });
+                        if (_pin.length == 6) _verifierOtp(_pin);
+                      }
+                    },
+                    onSupprimer: () {
+                      if (_pin.isNotEmpty) {
+                        setState(
+                          () => _pin = _pin.substring(0, _pin.length - 1),
+                        );
+                      }
+                    },
+                    colors: c,
+                    sw: sw,
+                  ),
+                SizedBox(height: h * 0.04),
+              ],
             ),
-            SizedBox(height: h * 0.01),
-            Text(
-              'Code envoyé au +225 $_telephone',
-              style: TextStyle(
-                color: c.authAccent,
-                fontSize: sw * 0.032,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: h * 0.05),
-            _PinDots(longueur: _pin.length, erreur: _erreur != null, colors: c),
-            if (_erreur != null) ...[
-              const SizedBox(height: 14),
-              Text(
-                _erreur!,
-                style: const TextStyle(color: Colors.red, fontSize: 13),
-              ),
-            ],
-            const Spacer(),
-            if (_isLoading)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 40),
-                child: CircularProgressIndicator(color: c.authAccent),
-              )
-            else
-              _ClavierOtp(
-                pin: _pin,
-                onChiffre: (chiffre) {
-                  if (_pin.length < 6) {
-                    setState(() {
-                      _erreur = null;
-                      _pin += chiffre;
-                    });
-                    if (_pin.length == 6) _verifierOtp(_pin);
-                  }
-                },
-                onSupprimer: () {
-                  if (_pin.isNotEmpty) {
-                    setState(() => _pin = _pin.substring(0, _pin.length - 1));
-                  }
-                },
-                colors: c,
-                sw: sw,
-              ),
-            SizedBox(height: h * 0.04),
-          ],
+          ),
         );
       },
     );
@@ -509,60 +521,69 @@ Future<void> _envoyerSms() async {
     return LayoutBuilder(
       builder: (_, constraints) {
         final h = constraints.maxHeight;
-        return Column(
-          children: [
-            SizedBox(height: h * 0.07),
-            Icon(Icons.lock_outline, color: c.authAccent, size: 48),
-            SizedBox(height: h * 0.03),
-            Text(
-              enConfirmation
-                  ? 'Confirmez votre Code Secret'
-                  : 'Nouveau Code Secret',
-              style: TextStyle(
-                color: c.authTextPrimary,
-                fontSize: sw * 0.055,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: h * 0.01),
-            Text(
-              enConfirmation
-                  ? 'Saisissez à nouveau votre Code Secret'
-                  : 'Choisissez un nouveau code à 4 chiffres',
-              style: TextStyle(color: c.authTextSecondary, fontSize: sw * 0.032),
-            ),
-            SizedBox(height: h * 0.05),
-            _PinDots(
-              longueur: pinCourant.length,
-              erreur: _erreur != null,
-              colors: c,
-            ),
-            if (_erreur != null) ...[
-              const SizedBox(height: 14),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: sw * 0.1),
-                child: Text(
-                  _erreur!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red, fontSize: 13),
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: h),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline, color: c.authAccent, size: 48),
+                SizedBox(height: h * 0.03),
+                Text(
+                  enConfirmation
+                      ? 'Confirmez votre Code Secret'
+                      : 'Nouveau Code Secret',
+                  style: TextStyle(
+                    color: c.authTextPrimary,
+                    fontSize: sw * 0.055,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
-            const Spacer(),
-            if (_isLoading)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 40),
-                child: CircularProgressIndicator(color: c.authAccent),
-              )
-            else
-              ClavierNumerique(
-                onChiffre: _onChiffre,
-                onSupprimer: _onSupprimer,
-                colors: c,
-                sw: sw,
-              ),
-            SizedBox(height: h * 0.04),
-          ],
+                SizedBox(height: h * 0.01),
+                Text(
+                  enConfirmation
+                      ? 'Saisissez à nouveau votre Code Secret'
+                      : 'Choisissez un nouveau code à 4 chiffres',
+                  style: TextStyle(
+                    color: c.authTextSecondary,
+                    fontSize: sw * 0.032,
+                  ),
+                ),
+                SizedBox(height: h * 0.05),
+                _PinDots(
+                  longueur: pinCourant.length,
+                  erreur: _erreur != null,
+                  colors: c,
+                ),
+                if (_erreur != null) ...[
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: sw * 0.1),
+                    child: Text(
+                      _erreur!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  ),
+                ],
+                SizedBox(height: h * 0.05),
+                if (_isLoading)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 40),
+                    child: CircularProgressIndicator(color: c.authAccent),
+                  )
+                else
+                  ClavierNumerique(
+                    onChiffre: _onChiffre,
+                    onSupprimer: _onSupprimer,
+                    colors: c,
+                    sw: sw,
+                  ),
+                SizedBox(height: h * 0.04),
+              ],
+            ),
+          ),
         );
       },
     );
