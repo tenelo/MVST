@@ -4,11 +4,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
+import 'package:mvst/services/api_client.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class ChoixPaiement extends StatefulWidget {
@@ -93,8 +93,6 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       _isLoading = true;
     });
 
-    final url = Uri.parse('$kBaseUrl/ajouterTickets.php');
-
     try {
       // Construire le payload pour l'envoi des données
       final payload = {
@@ -116,13 +114,11 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
       };
 
       // Envoyer la requête POST
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode(payload),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.post(
+        'ajouterTickets.php',
+        body: payload,
+        timeout: const Duration(seconds: 10),
+      );
       // Vérifier la réponse du serveur
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -131,25 +127,6 @@ class _ChoixPaiementState extends State<ChoixPaiement> {
           // Nettoyer et afficher un message en cas de succès
           listeDeVerification.clear();
           messageEnCasDeSucces(context);
-
-          // ── Notifier les admins en temps réel ──────────────────────────
-          final documentId =
-              '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
-
-          socket.emit('rejoindre_room', {
-            'depart': widget.depart,
-            'destination': widget.destination,
-            'date': widget.idDate,
-            'heure': widget.heure,
-          });
-
-          socket.emit('place_achetee', {
-            'documentId': documentId,
-            'depart': widget.depart,
-            'destination': widget.destination,
-            'date': widget.idDate,
-            'heure': widget.heure,
-          });
         } else {
           // Gérer les cas où l'insertion échoue côté serveur
           messageEnCasDecheque(context);

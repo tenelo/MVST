@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/config/app_colors.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/services/api_client.dart';
 
 class Profil extends StatefulWidget {
   const Profil({
@@ -24,11 +24,16 @@ class _ProfilState extends State<Profil> {
   final TextEditingController _telephone = TextEditingController();
   final TextEditingController _residence = TextEditingController();
 
+  late Future<Map<String, dynamic>?> _userDataFuture = getUserData(
+    widget.idUtilisateur,
+  );
+
   Future<Map<String, dynamic>?> getUserData(String userId) async {
     try {
-      final resp = await http
-          .get(Uri.parse('$kBaseUrl/get_utilisateur.php?id=$userId'))
-          .timeout(const Duration(seconds: 8));
+      final resp = await ApiClient.instance.get(
+        'get_utilisateur.php?id=$userId',
+        timeout: const Duration(seconds: 8),
+      );
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         if (data['success'] == true && data['utilisateur'] != null) {
@@ -76,82 +81,87 @@ class _ProfilState extends State<Profil> {
               ),
             ),
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Poignée ─────────────────────────────────────────────────
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: c.homeTextPrimary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Text(
-                  'Modifier le profil',
-                  style: TextStyle(
-                    color: c.homeTextPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _champEdition('Nom', _nom, Icons.person_outline, c),
-                const SizedBox(height: 14),
-                _champEdition('Prénoms', _prenoms, Icons.badge_outlined, c),
-                const SizedBox(height: 14),
-                _champEdition(
-                  'Téléphone',
-                  _telephone,
-                  Icons.phone_outlined,
-                  c,
-                  inputType: TextInputType.phone,
-                  enabled: false,
-                  style: TextStyle(
-                    color: c.homeTextPrimary.withValues(alpha: 0.5),
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _champEdition(
-                  'Lieu de résidence',
-                  _residence,
-                  Icons.location_on_outlined,
-                  c,
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      editerDocument(
-                        context,
-                        widget.idUtilisateur,
-                        _nom.text.trim(),
-                        _prenoms.text.trim(),
-                        _telephone.text.trim(),
-                        _residence.text.trim(),
-                      );
-                      Navigator.pop(context);
-                      setState(() {}); // force refresh
-                    },
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Enregistrer'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: c.homeButtonPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Poignée ─────────────────────────────────────────────────
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: c.homeTextPrimary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  Text(
+                    'Modifier le profil',
+                    style: TextStyle(
+                      color: c.homeTextPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _champEdition('Nom', _nom, Icons.person_outline, c),
+                  const SizedBox(height: 14),
+                  _champEdition('Prénoms', _prenoms, Icons.badge_outlined, c),
+                  const SizedBox(height: 14),
+                  _champEdition(
+                    'Téléphone',
+                    _telephone,
+                    Icons.phone_outlined,
+                    c,
+                    inputType: TextInputType.phone,
+                    enabled: false,
+                    style: TextStyle(
+                      color: c.homeTextPrimary.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _champEdition(
+                    'Lieu de résidence',
+                    _residence,
+                    Icons.location_on_outlined,
+                    c,
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        await editerDocument(
+                          context,
+                          widget.idUtilisateur,
+                          _nom.text.trim(),
+                          _prenoms.text.trim(),
+                          _telephone.text.trim(),
+                          _residence.text.trim(),
+                        );
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                        setState(() {
+                          _userDataFuture = getUserData(widget.idUtilisateur);
+                        });
+                      },
+                      icon: const Icon(Icons.check_rounded),
+                      label: const Text('Enregistrer'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: c.homeButtonPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -219,7 +229,7 @@ class _ProfilState extends State<Profil> {
     return Scaffold(
       backgroundColor: c.homeBackground,
       body: FutureBuilder<Map<String, dynamic>?>(
-        future: getUserData(widget.idUtilisateur),
+        future: _userDataFuture,
         builder: (context, snapshot) {
           // ── Chargement ───────────────────────────────────────────────────
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -497,18 +507,16 @@ Future<void> editerDocument(
   String residence,
 ) async {
   try {
-    final resp = await http
-        .post(
-          Uri.parse('$kBaseUrl/update_utilisateur.php'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'idUtilisateur': idUtilisateur,
-            'nom': nom,
-            'prenoms': prenoms,
-            'residence': residence,
-          }),
-        )
-        .timeout(const Duration(seconds: 8));
+    final resp = await ApiClient.instance.post(
+      'update_utilisateur.php',
+      body: {
+        'idUtilisateur': idUtilisateur,
+        'nom': nom,
+        'prenoms': prenoms,
+        'residence': residence,
+      },
+      timeout: const Duration(seconds: 8),
+    );
     if (resp.statusCode != 200) return;
     final data = jsonDecode(resp.body);
     if (data['success'] == true && ctx.mounted) {

@@ -1,13 +1,13 @@
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/commande.dart';
+import 'package:mvst/services/api_client.dart';
 
 const Color _kVipGold = Color(0xFFFFD700);
 
@@ -30,14 +30,13 @@ class _CartesLignesTrajetsState extends State<CartesLignesTrajets> {
   bool _loading = false;
 
   Future<Map<String, dynamic>?> _verifierUtilisateur() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
+    if (!AuthService.estConnecte()) return null;
     try {
-      final res = await http.post(
-        Uri.parse('$kBaseUrl/verifierUtilisateur.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'idUtilisateur': user.uid}),
-      ).timeout(const Duration(seconds: 10));
+      final res = await ApiClient.instance.post(
+        'verifierUtilisateur.php',
+        body: {'idUtilisateur': AuthService.getUid()},
+        timeout: const Duration(seconds: 10),
+      );
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == false) return null;
@@ -98,11 +97,11 @@ class _CartesLignesTrajetsState extends State<CartesLignesTrajets> {
 
   Future<int?> _getPrix() async {
     try {
-      final res = await http.post(
-        Uri.parse('$kBaseUrl/getPrixDesTickets.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'type': widget.typeVoyage}),
-      ).timeout(const Duration(seconds: 10));
+      final res = await ApiClient.instance.post(
+        'getPrixDesTickets.php',
+        body: {'type': widget.typeVoyage},
+        timeout: const Duration(seconds: 10),
+      );
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == true) {
@@ -118,7 +117,7 @@ class _CartesLignesTrajetsState extends State<CartesLignesTrajets> {
   }
 
   Future<void> _onTap() async {
-    if (FirebaseAuth.instance.currentUser == null) {
+    if (!AuthService.estConnecte()) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const Login()),
@@ -137,7 +136,7 @@ class _CartesLignesTrajetsState extends State<CartesLignesTrajets> {
         context,
         MaterialPageRoute(
           builder: (_) => Commande(
-            idUtilisateur: FirebaseAuth.instance.currentUser!.uid,
+            idUtilisateur: AuthService.getUid()!,
             nom: userData['nom'],
             prenoms: userData['prenoms'] ?? '',
             telephone: userData['telephone'],

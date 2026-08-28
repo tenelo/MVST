@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/qrcode/creationQrCode.dart';
+import 'package:mvst/services/api_client.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:ticket_widget/ticket_widget.dart';
 
@@ -136,14 +136,11 @@ class _VipDetailsTicketsState extends State<VipDetailsTickets> {
 
   Future<void> _rafraichirEtat() async {
     try {
-      final response = await http.post(
-        Uri.parse('$kBaseUrl/etatTicket.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'documentId': widget.idTicket,
-          'place': widget.place,
-        }),
-      ).timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.post(
+        'etatTicket.php',
+        body: {'documentId': widget.idTicket, 'place': widget.place},
+        timeout: const Duration(seconds: 10),
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && mounted) {

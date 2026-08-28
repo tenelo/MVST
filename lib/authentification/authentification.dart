@@ -13,6 +13,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:mvst/authentification/pin_creation.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/auth_service.dart';
+import 'package:mvst/services/api_client.dart';
+import 'package:mvst/services/token_storage.dart';
 
 // ════════════════════════════════════════════════════════════════
 // FONCTIONS GLOBALES
@@ -68,6 +71,29 @@ Future<void> creerUtilisateurEtAuthentifierParMail(
       await storage.write(key: 'user_pin', value: pin);
       await storage.write(key: 'user_id', value: user.uid);
       await storage.write(key: 'user_name', value: '$nom $prenoms');
+
+      // Obtention du token Laravel, comme le fait connection.dart au login
+      // normal — sans ça, AuthService.estConnecte() resterait false pour un
+      // compte tout juste créé.
+      try {
+        final response = await ApiClient.instance.post(
+          'login',
+          body: {'telephone': telephone, 'pin': pin},
+          timeout: const Duration(seconds: 10),
+        );
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final utilisateur = data['utilisateur'] as Map<String, dynamic>;
+          await TokenStorage.saveToken(data['token'] as String);
+          await storage.write(
+            key: 'user_idUtilisateur',
+            value: utilisateur['idUtilisateur']?.toString() ?? '',
+          );
+          await AuthService.chargerDepuisStorage();
+        }
+      } catch (e) {
+        debugPrint('Erreur obtention du token après inscription: $e');
+      }
     }
   } catch (e) {
     debugPrint('Erreur création compte: $e');

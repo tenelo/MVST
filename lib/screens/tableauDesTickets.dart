@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/detailsTickets.dart';
+import 'package:mvst/services/api_client.dart';
 
 class TableauDeTickets extends StatefulWidget {
   const TableauDeTickets({Key? key, required this.idUtilisateur})
@@ -51,17 +51,15 @@ class _TableauDeTicketsState extends State<TableauDeTickets> {
 
   Future<void> _chargerPage(int offset) async {
     try {
-      final response = await http
-          .post(
-            Uri.parse('$kBaseUrl/recuperation_mes_tickets_tableau.php'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({
-              "idUtilisateur": widget.idUtilisateur,
-              "offset": offset,
-              "limit": 150,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.post(
+        'recuperation_mes_tickets_tableau.php',
+        body: {
+          "idUtilisateur": widget.idUtilisateur,
+          "offset": offset,
+          "limit": 150,
+        },
+        timeout: const Duration(seconds: 10),
+      );
 
       if (!mounted) return;
 

@@ -9,6 +9,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/authentification/pin_forgot.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/models/clavier_numerique.dart';
 import 'package:mvst/screens/home.dart';
 
@@ -434,8 +435,7 @@ class _PinUnlockState extends State<PinUnlock> {
     );
 
     if (confirmer == true) {
-      await FirebaseAuth.instance.signOut();
-      await _storage.deleteAll();
+      await AuthService.deconnexion();
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,

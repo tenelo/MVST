@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/models/clavier_numerique.dart';
 import 'package:mvst/screens/home.dart';
+import 'package:mvst/services/api_client.dart';
+import 'package:mvst/services/token_storage.dart';
 
 // Étapes du flux "PIN oublié"
 enum _EtapePinForgot { telephone, otp, nouveauPin, confirmerPin }
@@ -262,6 +265,30 @@ Future<void> _envoyerSms() async {
           }
           if (user != null) {
             await _storage.write(key: 'user_id', value: user.uid);
+          }
+
+          // Obtention du token Laravel avec le nouveau PIN, comme le fait
+          // connection.dart au login normal — sans ça, AuthService.estConnecte()
+          // resterait false après une réinitialisation de Code Secret.
+          try {
+            final loginResponse = await ApiClient.instance.post(
+              'login',
+              body: {'telephone': _telephone, 'pin': _nouveauPin},
+              timeout: const Duration(seconds: 10),
+            );
+            final loginData = jsonDecode(loginResponse.body);
+            if (loginData['success'] == true) {
+              final utilisateur =
+                  loginData['utilisateur'] as Map<String, dynamic>;
+              await TokenStorage.saveToken(loginData['token'] as String);
+              await _storage.write(
+                key: 'user_idUtilisateur',
+                value: utilisateur['idUtilisateur']?.toString() ?? '',
+              );
+              await AuthService.chargerDepuisStorage();
+            }
+          } catch (e) {
+            debugPrint('Erreur obtention du token après réinitialisation: $e');
           }
 
           if (mounted) {

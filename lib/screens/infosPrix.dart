@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
+import 'package:mvst/services/api_client.dart';
 
 // ── VIP constants ─────────────────────────────────────────────────────────────
 final Color vertVIP = const Color.fromARGB(255, 2, 136, 80);
@@ -15,18 +15,26 @@ final Color vertVIP = const Color.fromARGB(255, 2, 136, 80);
   return (parts[0], parts.sublist(1).join(' '));
 }
 
-class InformationPrix extends StatelessWidget {
+class InformationPrix extends StatefulWidget {
   const InformationPrix({super.key});
+
+  @override
+  State<InformationPrix> createState() => _InformationPrixState();
+}
+
+class _InformationPrixState extends State<InformationPrix> {
+  late final Future<List<List<InfosTarifs>>> _tarifsFuture = Future.wait([
+    _chargerStandard(),
+    _chargerVip(),
+  ]);
 
   // ── Standard prices ───────────────────────────────────────────────────────
   Future<List<InfosTarifs>> _chargerStandard() async {
     try {
-      final response = await http
-          .get(
-            Uri.parse('$kBaseUrl/tarifsAxes_et_infos_gare.php?type=tarifs'),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.get(
+        'tarifsAxes_et_infos_gare.php?type=tarifs',
+        timeout: const Duration(seconds: 10),
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
@@ -58,12 +66,10 @@ class InformationPrix extends StatelessWidget {
   // ── VIP prices ────────────────────────────────────────────────────────────
   Future<List<InfosTarifs>> _chargerVip() async {
     try {
-      final response = await http
-          .get(
-            Uri.parse('$kBaseUrl/prixTickets.php?type=vip'),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.get(
+        'prixTickets.php?type=vip',
+        timeout: const Duration(seconds: 10),
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
@@ -97,7 +103,7 @@ class InformationPrix extends StatelessWidget {
     return Scaffold(
       backgroundColor: c.homeBackground,
       body: FutureBuilder<List<List<InfosTarifs>>>(
-        future: Future.wait([_chargerStandard(), _chargerVip()]),
+        future: _tarifsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(

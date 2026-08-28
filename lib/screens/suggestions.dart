@@ -2,14 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/config/app_colors.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/services/api_client.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 // ── Constantes ────────────────────────────────────────────────────────────────
-const String _apiUrl = '$kBaseUrl/api_suggestions.php';
+// Chemin SANS kBaseUrl : ApiClient le préfixe lui-même.
+const String _apiPath = 'api_suggestions.php';
 
 // ── Catégories disponibles ─────────────────────────────────────────────────
 const List<_Categorie> _categories = [
@@ -154,13 +155,10 @@ class _SuggestionsState extends State<Suggestions>
     // Import lazy pour éviter la dépendance directe au top du fichier
     // si Firestore est déjà dans l'app pour d'autres usages
     try {
-      final resp = await http
-          .get(
-            Uri.parse(
-              '$kBaseUrl/get_utilisateur.php?id=${widget.idUtilisateur}',
-            ),
-          )
-          .timeout(const Duration(seconds: 5));
+      final resp = await ApiClient.instance.get(
+        'get_utilisateur.php?id=${widget.idUtilisateur}',
+        timeout: const Duration(seconds: 5),
+      );
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         if (data['success'] == true && data['utilisateur'] != null) {
@@ -176,13 +174,10 @@ class _SuggestionsState extends State<Suggestions>
     if (_loadingSuggestions) return;
     setState(() => _loadingSuggestions = true);
     try {
-      final resp = await http
-          .get(
-            Uri.parse(
-              '$_apiUrl?action=get_by_user&idutilisateur=${widget.idUtilisateur}',
-            ),
-          )
-          .timeout(const Duration(seconds: 10));
+      final resp = await ApiClient.instance.get(
+        '$_apiPath?action=get_by_user&idutilisateur=${widget.idUtilisateur}',
+        timeout: const Duration(seconds: 10),
+      );
 
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -248,24 +243,22 @@ class _SuggestionsState extends State<Suggestions>
     }
 
     try {
-      final resp = await http
-          .post(
-            Uri.parse(_apiUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'action': 'add',
-              'nom': _nomUtilisateur.isNotEmpty
-                  ? '$_nomUtilisateur${_prenomsUtilisateur.isNotEmpty ? " $_prenomsUtilisateur" : ""}'
-                  : 'Utilisateur',
-              'telephone': _telephoneUtilisateur.isNotEmpty
-                  ? _telephoneUtilisateur
-                  : '-',
-              'message': _messageCtrl.text.trim(),
-              'categorie': _categorieSelectionnee,
-              'idutilisateur': widget.idUtilisateur,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
+      final resp = await ApiClient.instance.post(
+        _apiPath,
+        body: {
+          'action': 'add',
+          'nom': _nomUtilisateur.isNotEmpty
+              ? '$_nomUtilisateur${_prenomsUtilisateur.isNotEmpty ? " $_prenomsUtilisateur" : ""}'
+              : 'Utilisateur',
+          'telephone': _telephoneUtilisateur.isNotEmpty
+              ? _telephoneUtilisateur
+              : '-',
+          'message': _messageCtrl.text.trim(),
+          'categorie': _categorieSelectionnee,
+          'idutilisateur': widget.idUtilisateur,
+        },
+        timeout: const Duration(seconds: 10),
+      );
 
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -336,17 +329,15 @@ class _SuggestionsState extends State<Suggestions>
     if (confirm != true || !mounted) return;
 
     try {
-      final resp = await http
-          .post(
-            Uri.parse(_apiUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'action': 'delete',
-              'id': s.id,
-              'idutilisateur': widget.idUtilisateur,
-            }),
-          )
-          .timeout(const Duration(seconds: 8));
+      final resp = await ApiClient.instance.post(
+        _apiPath,
+        body: {
+          'action': 'delete',
+          'id': s.id,
+          'idutilisateur': widget.idUtilisateur,
+        },
+        timeout: const Duration(seconds: 8),
+      );
 
       final data = jsonDecode(resp.body);
       if (data['success'] == true) {

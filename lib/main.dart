@@ -16,6 +16,7 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/config/config.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:mvst/firebase_options.dart';
+import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -202,6 +203,21 @@ Future<void> _checkTermsAcceptance(BuildContext ctx) async {
     return;
   }
 
+  // Priorité au token Laravel : s'il est présent, l'utilisateur est
+  // connecté, quel que soit l'état de la session Firebase (en cours de
+  // migration) — voir AuthService.
+  await AuthService.chargerDepuisStorage();
+  if (AuthService.estConnecte()) {
+    if (ctx.mounted) {
+      Navigator.of(
+        ctx,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const Home()));
+    }
+    return;
+  }
+
+  // Repli : pas de token (utilisateur pas encore migré sur le login
+  // Laravel) — ancien comportement basé sur la session Firebase, inchangé.
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) {
     if (ctx.mounted) {

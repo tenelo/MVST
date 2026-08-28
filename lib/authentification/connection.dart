@@ -1,13 +1,15 @@
 // ignore_for_file: library_private_types_in_public_api
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mvst/authentification/authentification.dart';
 import 'package:mvst/authentification/pin_forgot.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/models/clavier_numerique.dart';
 import 'package:mvst/screens/home.dart';
+import 'package:mvst/services/api_client.dart';
+import 'package:mvst/services/token_storage.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -140,33 +142,55 @@ class _LoginState extends State<Login> {
   Future<void> _seConnecter() async {
     setState(() => _isLoading = true);
     try {
-      final result = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: '$_telephone@gmail.com',
-        password: '${_pin}mv',
-      );
+      final response = await ApiClient.instance
+          .post('login', body: {'telephone': _telephone, 'pin': _pin})
+          .timeout(const Duration(seconds: 10));
 
-      final user = result.user;
-      if (user == null) throw Exception('Utilisateur introuvable');
+      final data = json.decode(response.body);
 
-      // Sauvegarde de la session locale
-      await _storage.write(key: 'user_phone', value: _telephone);
-      await _storage.write(key: 'user_pin', value: _pin);
-      await _storage.write(key: 'user_id', value: user.uid);
-      await _storage.write(key: 'user_name', value: user.displayName ?? '');
+      if (data['success'] == true) {
+        final utilisateur = data['utilisateur'] as Map<String, dynamic>;
 
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const Home()),
-          (route) => false,
+        await TokenStorage.saveToken(data['token'] as String);
+
+        // Sauvegarde de la session locale (inchangé : d'autres écrans en dépendent)
+        await _storage.write(
+          key: 'user_phone',
+          value: utilisateur['telephone']?.toString() ?? _telephone,
         );
-      }
-    } on FirebaseAuthException {
-      if (mounted) {
-        setState(() {
-          _erreur = 'Numéro ou Code Secret incorrect.';
-          _pin = '';
-        });
+        await _storage.write(key: 'user_pin', value: _pin);
+        await _storage.write(
+          key: 'user_id',
+          value: utilisateur['id']?.toString() ?? '',
+        );
+        await _storage.write(
+          key: 'user_name',
+          value: utilisateur['nom']?.toString() ?? '',
+        );
+        // Identifiant métier utilisé partout dans l'app (Mes tickets,
+        // Profil, Suggestions...) : l'ex-UID Firebase, renvoyé par Laravel
+        // sous le champ idUtilisateur (distinct de "id", la clé numérique).
+        await _storage.write(
+          key: 'user_idUtilisateur',
+          value: utilisateur['idUtilisateur']?.toString() ?? '',
+        );
+        await AuthService.chargerDepuisStorage();
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const Home()),
+            (route) => false,
+          );
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _erreur =
+                data['message'] as String? ?? 'Numéro ou Code Secret incorrect.';
+            _pin = '';
+          });
+        }
       }
     } catch (_) {
       if (mounted) {

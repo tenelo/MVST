@@ -4,7 +4,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
@@ -13,7 +12,7 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
 import 'package:mvst/screens/choixPlaceVip.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:mvst/services/api_client.dart';
 
 String? dateFormatee, idMois, idMoisAnnee, idAnnee;
 final Color vertVip = Color.fromARGB(255, 2, 215, 27);
@@ -59,8 +58,6 @@ class _CommandeState extends State<Commande> {
   bool _isLoading = false;
   final formKey = GlobalKey<FormState>();
 
-  late IO.Socket _socket;
-
   bool get _isVip => widget.typeVoyage == 'vip';
 
   @override
@@ -71,32 +68,14 @@ class _CommandeState extends State<Commande> {
     });
     _initialiserForm();
     _recupHeuresDeDeparts();
-    _connecterSocket();
   }
 
   @override
   void dispose() {
-    _socket.disconnect();
-    _socket.dispose();
     nomController.dispose();
     contactController.dispose();
     _dateController.dispose();
     super.dispose();
-  }
-
-  void _connecterSocket() {
-    _socket = IO.io(
-      kBaseUrl,
-      IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .disableAutoConnect()
-          .build(),
-    );
-    _socket.connect();
-    _socket.on('config_dates_maj', (data) {
-      final int nbJours = (data['nbJours'] as num?)?.toInt() ?? 6;
-      _appliquerNbJours(nbJours);
-    });
   }
 
   void _appliquerNbJours(int nbJours) {
@@ -110,13 +89,11 @@ class _CommandeState extends State<Commande> {
 
   Future<void> _chargerNbJours() async {
     try {
-      final response = await http
-          .post(
-            Uri.parse('$kBaseUrl/datesDisponibles.php'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'action': 'lire'}),
-          )
-          .timeout(const Duration(seconds: 8));
+      final response = await ApiClient.instance.post(
+        'datesDisponibles.php',
+        body: {'action': 'lire'},
+        timeout: const Duration(seconds: 8),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -863,13 +840,11 @@ class _CommandeState extends State<Commande> {
 
   Future<void> _recupHeuresDeDeparts() async {
     try {
-      final response = await http
-          .post(
-            Uri.parse('$kBaseUrl/recuperationHeure.php'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'type': widget.typeVoyage}),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.post(
+        'recuperationHeure.php',
+        body: {'type': widget.typeVoyage},
+        timeout: const Duration(seconds: 10),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

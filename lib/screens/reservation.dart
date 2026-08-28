@@ -2,12 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:mvst/services/api_client.dart';
 
 class Reservation extends StatefulWidget {
   const Reservation({
@@ -55,33 +54,13 @@ class Reservation extends StatefulWidget {
 class _ReservationState extends State<Reservation> {
   bool _isLoading = false;
   bool _isNavigating = false;
-  late io.Socket _socket;
 
   bool get _isVip => widget.typeVoyage == 'vip';
 
   @override
-  void initState() {
-    super.initState();
-    _connecterSocket();
-  }
-
-  @override
   void dispose() {
-    _socket.disconnect();
-    _socket.dispose();
     if (!_isNavigating) _nettoyer();
     super.dispose();
-  }
-
-  void _connecterSocket() {
-    _socket = io.io(
-      kBaseUrl,
-      io.OptionBuilder()
-          .setTransports(['websocket'])
-          .disableAutoConnect()
-          .build(),
-    );
-    _socket.connect();
   }
   // dans le payload, on envoie un documentId unique pour chaque réservation, basé sur le trajet, la date, l'heure et l'idDate. Cela permettra aux admins de suivre les réservations en temps réel et d'identifier facilement chaque ticket acheté.
   // typeVoyage est envoyé pour différencier les réservations VIP des standard, ce qui peut être utile pour les statistiques et la gestion des places.
@@ -91,8 +70,6 @@ class _ReservationState extends State<Reservation> {
   Future<void> _confirmerReservation() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
-
-    final url = Uri.parse('$kBaseUrl/ajouterTickets.php');
 
     try {
       final payload = {
@@ -113,38 +90,17 @@ class _ReservationState extends State<Reservation> {
         'typeVoyage': widget.typeVoyage,
       };
 
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode(payload),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.post(
+        'ajouterTickets.php',
+        body: payload,
+        timeout: const Duration(seconds: 10),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
         if (data['success'] == true) {
           listeDeVerification.clear();
-
-          // ── Notifier les admins en temps réel ────────────────────────────
-          final documentId =
-              '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
-
-          _socket.emit('rejoindre_room', {
-            'depart': widget.depart,
-            'destination': widget.destination,
-            'date': widget.idDate,
-            'heure': widget.heure,
-          });
-
-          _socket.emit('place_achetee', {
-            'documentId': documentId,
-            'depart': widget.depart,
-            'destination': widget.destination,
-            'date': widget.idDate,
-            'heure': widget.heure,
-          });
 
           if (mounted) {
             final bloc = BlocProvider.of<BlocCompteur>(context);

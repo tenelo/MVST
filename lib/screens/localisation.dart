@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_direct_caller_plugin/flutter_direct_caller_plugin.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
+import 'package:mvst/services/api_client.dart';
 
 class LocalisationsDesGars extends StatefulWidget {
   LocalisationsDesGars({super.key});
@@ -13,14 +13,15 @@ class LocalisationsDesGars extends StatefulWidget {
 }
 
 class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
+  late final Future<List<Map<String, dynamic>>> _infosGaresFuture =
+      infosGares();
+
   Future<List<Map<String, dynamic>>> infosGares() async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          '$kBaseUrl/tarifsAxes_et_infos_gare.php?type=gares',
-        ),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.get(
+        'tarifsAxes_et_infos_gare.php?type=gares',
+        timeout: const Duration(seconds: 10),
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
@@ -49,7 +50,7 @@ class _LocalisationsDesGarsState extends State<LocalisationsDesGars> {
     return Scaffold(
       backgroundColor: c.homeBackground,
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: infosGares(),
+        future: _infosGaresFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(

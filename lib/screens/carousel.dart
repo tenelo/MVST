@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/detailsImages.dart';
+import 'package:mvst/services/api_client.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class PromoStripWidget extends StatefulWidget {
@@ -20,6 +22,8 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
   bool _loading = true;
   int _current = 0;
   io.Socket? _socket;
+  Timer? _reconnectTimer;
+  int _reconnectAttempt = 0;
   static const String _base = '$kBaseUrl/';
 
   @override
@@ -31,6 +35,7 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
 
   @override
   void dispose() {
+    _reconnectTimer?.cancel();
     _socket?.off('connect');
     _socket?.off('images_modifiees');
     _socket?.off('disconnect');
@@ -50,19 +55,33 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
             .build(),
       );
       _socket!.connect();
-      _socket!.on('connect', (_) => _charger());
+      _socket!.on('connect', (_) {
+        _reconnectAttempt = 0;
+        _charger();
+      });
       _socket!.on('images_modifiees', (_) => _charger());
       _socket!.on('disconnect', (_) {
-        Future.delayed(const Duration(seconds: 3), _connectSocket);
+        if (!mounted) return;
+        // Backoff progressif (3s, 6s, 9s...) plafonné à 30s, au lieu de
+        // marteler le serveur toutes les 3s indéfiniment.
+        final delai = Duration(
+          seconds: (3 * (_reconnectAttempt + 1)).clamp(3, 30),
+        );
+        _reconnectAttempt++;
+        _reconnectTimer?.cancel();
+        _reconnectTimer = Timer(delai, () {
+          if (mounted) _connectSocket();
+        });
       });
     } catch (_) {}
   }
 
   Future<void> _charger() async {
     try {
-      final res = await http
-          .get(Uri.parse('$kBaseUrl/getImages.php'))
-          .timeout(const Duration(seconds: 10));
+      final res = await ApiClient.instance.get(
+        'getImages.php',
+        timeout: const Duration(seconds: 10),
+      );
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == true && mounted) {
@@ -148,22 +167,24 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                       child: item.hasImage
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(14),
-                              child: Image.network(
-                                url!,
+                              child: CachedNetworkImage(
+                                imageUrl: url!,
                                 fit: BoxFit.cover,
                                 width: double.infinity,
-                                errorBuilder: (context, error, stack) =>
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: accent.withValues(alpha: 0.07),
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Icon(
-                                        Icons.image_outlined,
-                                        color: accent.withValues(alpha: 0.3),
-                                        size: 28,
-                                      ),
-                                    ),
+                                // Bannière large ~16% de la hauteur d'écran :
+                                // pas besoin de décoder l'image en pleine résolution.
+                                memCacheWidth: 800,
+                                errorWidget: (context, url, error) => Container(
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(alpha: 0.07),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Icon(
+                                    Icons.image_outlined,
+                                    color: accent.withValues(alpha: 0.3),
+                                    size: 28,
+                                  ),
+                                ),
                               ),
                             )
                           : _buildInfoCard(

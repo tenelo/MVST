@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/config/config.dart';
@@ -14,6 +13,7 @@ import 'package:mvst/screens/infos.dart';
 import 'package:mvst/screens/mestickets.dart';
 import 'package:mvst/screens/suggestions.dart';
 import 'package:mvst/screens/tableauDesTickets.dart';
+import 'package:mvst/services/api_client.dart';
 import 'dart:convert';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -27,7 +27,7 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  User? _currentUser;
+  AppUser? _currentUser;
   String _nomUtilisateur = '';
   String _prenomsUtilisateur = '';
 
@@ -43,23 +43,35 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       if (mounted) setState(() {});
     });
     BlocProvider.of<BlocCompteur>(context).add(EventInitialise());
-    FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      if (mounted) {
-        setState(() => _currentUser = user);
-        if (user != null) _chargerNomEtPrenoms(user.uid);
-      }
-    });
+
+    // Source de vérité : le token/idUtilisateur Laravel (AuthService).
+    // Repli sur la session Firebase tant que le flux PIN (pin_unlock.dart)
+    // et le routage de démarrage (main.dart) n'ont pas migré dessus.
+    final utilisateurConnecte = AuthService.getUtilisateur();
+    if (utilisateurConnecte != null) {
+      _currentUser = utilisateurConnecte;
+      _chargerNomEtPrenoms(utilisateurConnecte.uid);
+    } else {
+      FirebaseAuth.instance.authStateChanges().listen((User? user) {
+        if (mounted) {
+          setState(
+            () => _currentUser = user != null
+                ? AppUser(uid: user.uid, displayName: user.displayName)
+                : null,
+          );
+          if (user != null) _chargerNomEtPrenoms(user.uid);
+        }
+      });
+    }
   }
 
   Future<void> _chargerNomEtPrenoms(String uid) async {
     try {
-      final res = await http
-          .post(
-            Uri.parse('$kBaseUrl/verifierUtilisateur.php'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'idUtilisateur': uid}),
-          )
-          .timeout(const Duration(seconds: 10));
+      final res = await ApiClient.instance.post(
+        'verifierUtilisateur.php',
+        body: {'idUtilisateur': uid},
+        timeout: const Duration(seconds: 10),
+      );
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == true && mounted) {
@@ -215,7 +227,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       color: c.homeCardBackground,
       elevation: 0,
       padding: EdgeInsets.zero,
-      height: 70,
+      height: 55,
       child: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -561,7 +573,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
 }
 
 void _deconnexion(BuildContext context) async {
-  await FirebaseAuth.instance.signOut();
+  await AuthService.deconnexion();
   Navigator.pushAndRemoveUntil(
     context,
     MaterialPageRoute(builder: (_) => const Login()),

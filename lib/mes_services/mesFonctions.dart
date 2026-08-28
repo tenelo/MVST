@@ -37,6 +37,16 @@ String formaterHeure(String heure) {
 // ─── Nettoyage des places temporaires au lancement ───────────────────────────
 // Supprime les places choisies mais jamais finalisées
 // (utilisateur ayant abandonné le processus d'achat)
+//
+// Volontairement en http.* direct plutôt que via ApiClient : cette fonction
+// est aussi invoquée depuis l'Isolate d'arrière-plan lancé au démarrage
+// (main.dart, _tachesArrierePlan/Isolate.spawn). ApiClient lit le token via
+// flutter_secure_storage, qui repose sur des platform channels indisponibles
+// dans un Isolate secondaire — l'utiliser ici bloquerait ou planterait
+// silencieusement ce chemin. L'endpoint est un nettoyage best-effort, sans
+// donnée sensible en retour et sans besoin d'authentification ; il reste
+// donc en dehors d'ApiClient pour fonctionner à l'identique dans les deux
+// contextes (isolate et appel normal).
 Future<void> suppressionPlacesTemporaires() async {
   const String apiUrl = '$kBaseUrl/process_places_temporaires.php';
   try {

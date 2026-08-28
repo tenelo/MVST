@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mvst/config/config.dart';
@@ -56,29 +57,25 @@ class _DetailsImagesState extends State<DetailsImages> {
               child: InteractiveViewer(
                 minScale: 1.0,
                 maxScale: 5.0,
-                child: Image.network(
-                  widget.imageUrl!,
+                child: CachedNetworkImage(
+                  imageUrl: widget.imageUrl!,
                   fit: BoxFit.contain,
                   alignment: const Alignment(0, -0.4),
                   width: double.infinity,
                   height: double.infinity,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
+                  progressIndicatorBuilder: (context, url, progress) {
                     return Container(
                       color: Colors.black,
                       child: Center(
                         child: CircularProgressIndicator(
-                          value: progress.expectedTotalBytes != null
-                              ? progress.cumulativeBytesLoaded /
-                                    progress.expectedTotalBytes!
-                              : null,
+                          value: progress.progress,
                           color: c.homeButtonPrimary,
                           strokeWidth: 2,
                         ),
                       ),
                     );
                   },
-                  errorBuilder: (context, error, stack) => Container(
+                  errorWidget: (context, url, error) => Container(
                     color: Colors.black,
                     child: const Column(
                       mainAxisAlignment: MainAxisAlignment.center,

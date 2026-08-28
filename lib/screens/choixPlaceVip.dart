@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -15,6 +14,7 @@ import 'package:mvst/bloc/state.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
+import 'package:mvst/services/api_client.dart';
 
 // ── Couleurs VIP (palette Émeraude Lumière) ───────────────────────────────────
 const Color _vipOr = Color(0xFF00D87E);
@@ -88,14 +88,15 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
           'numerosDePlace': _selectedSeats.toList(),
         });
       } else {
-        http.post(
-          Uri.parse('$kBaseUrl/process_places_temporaires.php'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
+        // Fire-and-forget volontaire : best-effort, ne doit pas bloquer la
+        // fermeture de l'écran. Ne pas ajouter d'await ici.
+        ApiClient.instance.post(
+          'process_places_temporaires.php',
+          body: {
             'documentId':
                 '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h',
             'places': _selectedSeats.toList(),
-          }),
+          },
         );
       }
     }
@@ -159,13 +160,11 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     try {
       final documentId =
           '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
-      final response = await http
-          .post(
-            Uri.parse('$kBaseUrl/placesAssises.php'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'documentId': documentId}),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.post(
+        'placesAssises.php',
+        body: {'documentId': documentId},
+        timeout: const Duration(seconds: 10),
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (mounted) {

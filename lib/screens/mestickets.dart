@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/main.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/detailsTickets.dart';
+import 'package:mvst/services/api_client.dart';
 import 'package:ticket_material/ticket_material.dart';
 
 class MesTickets extends StatefulWidget {
@@ -71,17 +71,15 @@ class _MesTicketsState extends State<MesTickets> with RouteAware {
 
   Future<void> _chargerPage(int offset) async {
     try {
-      final response = await http
-          .post(
-            Uri.parse('$kBaseUrl/recuperation_mes_tickets.php'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'idUtilisateur': widget.idUtilisateur,
-              'offset': offset,
-              'limit': _pas,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await ApiClient.instance.post(
+        'recuperation_mes_tickets.php',
+        body: {
+          'idUtilisateur': widget.idUtilisateur,
+          'offset': offset,
+          'limit': _pas,
+        },
+        timeout: const Duration(seconds: 10),
+      );
 
       if (!mounted) return;
 

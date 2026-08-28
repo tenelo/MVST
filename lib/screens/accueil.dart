@@ -1,14 +1,14 @@
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/carousel.dart';
 import 'package:mvst/screens/commande.dart';
+import 'package:mvst/services/api_client.dart';
 
 //const Color _vipGreen = Color(0xFF00D87E);
 //const Color _vipGold = Color(0xFFC8A227);
@@ -69,9 +69,10 @@ class _AccueilState extends State<Accueil> {
     if (!mounted) return;
     setState(() => _loadingLignes = true);
     try {
-      final res = await http
-          .get(Uri.parse('$kBaseUrl/api_lignes.php?type=all'))
-          .timeout(const Duration(seconds: 10));
+      final res = await ApiClient.instance.get(
+        'api_lignes.php?type=all',
+        timeout: const Duration(seconds: 10),
+      );
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == true && mounted) {
@@ -160,7 +161,7 @@ class _AccueilState extends State<Accueil> {
     required String type,
     required void Function(bool) setLoading,
   }) async {
-    if (FirebaseAuth.instance.currentUser == null) {
+    if (!AuthService.estConnecte()) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const Login()),
@@ -169,14 +170,12 @@ class _AccueilState extends State<Accueil> {
     }
     setLoading(true);
     try {
-      final user = FirebaseAuth.instance.currentUser!;
-      final userRes = await http
-          .post(
-            Uri.parse('$kBaseUrl/verifierUtilisateur.php'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'idUtilisateur': user.uid}),
-          )
-          .timeout(const Duration(seconds: 10));
+      final uid = AuthService.getUid()!;
+      final userRes = await ApiClient.instance.post(
+        'verifierUtilisateur.php',
+        body: {'idUtilisateur': uid},
+        timeout: const Duration(seconds: 10),
+      );
       if (userRes.statusCode != 200 || !mounted) return;
       final userData = json.decode(userRes.body);
       if (userData['success'] == false) return;
@@ -185,13 +184,11 @@ class _AccueilState extends State<Accueil> {
         return;
       }
 
-      final prixRes = await http
-          .post(
-            Uri.parse('$kBaseUrl/getPrixDesTickets.php'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({'type': type}),
-          )
-          .timeout(const Duration(seconds: 10));
+      final prixRes = await ApiClient.instance.post(
+        'getPrixDesTickets.php',
+        body: {'type': type},
+        timeout: const Duration(seconds: 10),
+      );
       if (prixRes.statusCode != 200 || !mounted) return;
       final prixData = json.decode(prixRes.body);
       if (prixData['success'] != true) return;
@@ -206,7 +203,7 @@ class _AccueilState extends State<Accueil> {
         context,
         MaterialPageRoute(
           builder: (_) => Commande(
-            idUtilisateur: user.uid,
+            idUtilisateur: uid,
             nom: userData['nom'] ?? '',
             prenoms: userData['prenoms'] ?? '',
             telephone: userData['telephone'] ?? '',
@@ -473,221 +470,6 @@ class _AccueilState extends State<Accueil> {
       ),
     );
   }
-
-  // Widget _buildVipSection(BuildContext context) {
-  //   final c = Config.colors;
-  //   final w = MediaQuery.of(context).size.width;
-  //   final destsVip = _destsVip(_departVip);
-  //   final bool canReserve = _departVip != null && _destVip != null;
-  //   return Container(
-  //     margin: EdgeInsets.fromLTRB(w * 0.020, w * 0.02, w * 0.020, 0),
-  //     decoration: BoxDecoration(
-  //       gradient: const LinearGradient(
-  //         begin: Alignment.topLeft,
-  //         end: Alignment.bottomRight,
-  //         colors: [
-  //           Color(0xFF091A0E),
-  //           Color.fromARGB(255, 24, 66, 19),
-  //           Color(0xFF061009),
-  //         ],
-  //         // colors: [
-  //         //   Color.fromARGB(255, 0, 32, 9),
-  //         //   Color.fromARGB(255, 35, 95, 2),
-  //         //   Color.fromARGB(255, 0, 32, 9),
-  //         // ],
-  //         stops: [0.0, 0.80, 1.0],
-  //         // colors: [
-  //         //   Color.fromARGB(255, 2, 57, 18),
-  //         //   Color.fromARGB(255, 48, 125, 3),
-  //         //   Color.fromARGB(255, 2, 57, 18),
-  //         // ],
-  //         //stops: [0.0, 0.55, 1.0],
-  //       ),
-  //       borderRadius: BorderRadius.circular(w * 0.045),
-  //       border: Border.all(
-  //         color: _vipGreen.withValues(alpha: 0.30),
-  //         width: 1.5,
-  //       ),
-  //     ),
-  //     padding: EdgeInsets.all(w * 0.020),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Row(
-  //           children: [
-  //             Container(
-  //               padding: EdgeInsets.symmetric(
-  //                 horizontal: w * 0.025,
-  //                 vertical: w * 0.008,
-  //               ),
-  //               decoration: BoxDecoration(
-  //                 color: _vipGreen.withValues(alpha: 0.12),
-  //                 borderRadius: BorderRadius.circular(30),
-  //                 border: Border.all(
-  //                   color: _vipGreen.withValues(alpha: 0.30),
-  //                   width: 0.8,
-  //                 ),
-  //               ),
-  //               child: Row(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 children: [
-  //                   Icon(
-  //                     Icons.airline_seat_recline_extra,
-  //                     color: _vipGreen,
-  //                     size: w * 0.033,
-  //                   ),
-  //                   SizedBox(width: w * 0.015),
-  //                   Text(
-  //                     'VIP — Voyages Premium',
-  //                     style: TextStyle(
-  //                       color: _vipGreen,
-  //                       fontWeight: FontWeight.w700,
-  //                       fontSize: w * 0.029,
-  //                       letterSpacing: 0.4,
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //             const Spacer(),
-  //             if (!_loadingLignes)
-  //               Text(
-  //                 '${_lignesVip.length} lignes',
-  //                 style: TextStyle(
-  //                   color: c.homeAccent,
-  //                   fontSize: w * 0.027,
-  //                   fontWeight: FontWeight.w600,
-  //                 ),
-  //               ),
-  //           ],
-  //         ),
-  //         SizedBox(height: w * 0.02),
-  //         Row(
-  //           children: [
-  //             Text(
-  //               'Voyagez en première classe',
-  //               style: TextStyle(
-  //                 color: Colors.white,
-  //                 fontWeight: FontWeight.w900,
-  //                 height: 1.15,
-  //                 letterSpacing: -0.8,
-  //               ),
-  //             ),
-  //             const Spacer(),
-  //             IconButton(
-  //               onPressed: () => setState(() {
-  //                 _departVip = null;
-  //                 _destVip = null;
-  //                 _sectionActive = null;
-  //               }),
-  //               icon: Icon(
-  //                 Icons.refresh_rounded,
-  //                 color: _vipGreen,
-  //                 size: w * 0.05,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //         SizedBox(height: w * 0.010),
-  //         if (_loadingLignes)
-  //           Center(
-  //             child: Padding(
-  //               padding: EdgeInsets.symmetric(vertical: w * 0.04),
-  //               child: CircularProgressIndicator(
-  //                 color: _vipGreen,
-  //                 strokeWidth: 1,
-  //               ),
-  //             ),
-  //           )
-  //         else if (_lignesVip.isEmpty)
-  //           Padding(
-  //             padding: EdgeInsets.symmetric(vertical: w * 0.04),
-  //             child: Text(
-  //               'Aucune ligne VIP disponible',
-  //               style: TextStyle(
-  //                 color: _vipGreen.withValues(alpha: 0.5),
-  //                 fontSize: w * 0.035,
-  //               ),
-  //             ),
-  //           )
-  //         else ...[
-  //           Row(
-  //             children: [
-  //               Expanded(
-  //                 child: _buildDropdown(
-  //                   hint: 'Départ',
-  //                   value: _departVip,
-  //                   items: _departsVip,
-  //                   accentColor: _vipGreen,
-  //                   enabled: _sectionActive == null || _sectionActive == 'vip',
-  //                   onChanged: (val) => setState(() {
-  //                     _departVip = val;
-  //                     _destVip = null;
-  //                     _sectionActive = val != null ? 'vip' : null;
-  //                   }),
-  //                   dark: true,
-  //                 ),
-  //               ),
-  //               SizedBox(width: w * 0.01),
-  //               Expanded(
-  //                 child: _buildDropdown(
-  //                   hint: 'Destination',
-  //                   value: _destVip,
-  //                   items: destsVip,
-  //                   accentColor: _vipGreen,
-  //                   enabled: _sectionActive == 'vip' && _departVip != null,
-  //                   onChanged: (val) => setState(() => _destVip = val),
-  //                   dark: true,
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //           SizedBox(height: w * 0.02),
-  //           SizedBox(
-  //             width: double.infinity,
-  //             height: w * 0.10,
-  //             child: ElevatedButton(
-  //               onPressed: (canReserve && !_loadingVip)
-  //                   ? () => _reserver(
-  //                       depart: _departVip!,
-  //                       destination: _destVip!,
-  //                       type: 'vip',
-  //                       setLoading: (v) => setState(() => _loadingVip = v),
-  //                     )
-  //                   : null,
-  //               style: ElevatedButton.styleFrom(
-  //                 backgroundColor: _vipGreen,
-  //                 disabledBackgroundColor: _vipGreen.withValues(alpha: 0.25),
-  //                 shape: RoundedRectangleBorder(
-  //                   borderRadius: BorderRadius.circular(w * 0.035),
-  //                 ),
-  //                 elevation: 0,
-  //               ),
-  //               child: _loadingVip
-  //                   ? SizedBox(
-  //                       width: w * 0.055,
-  //                       height: w * 0.055,
-  //                       child: const CircularProgressIndicator(
-  //                         strokeWidth: 2.5,
-  //                         color: _vipGreen,
-  //                       ),
-  //                     )
-  //                   : Text(
-  //                       'Réserver VIP',
-  //                       style: TextStyle(
-  //                         color: Colors.white,
-  //                         fontWeight: FontWeight.w800,
-  //                         fontSize: w * 0.038,
-  //                         letterSpacing: 0.3,
-  //                       ),
-  //                     ),
-  //             ),
-  //           ),
-  //         ],
-  //       ],
-  //     ),
-  //   );
-  // }
 
   Widget _buildStdSection(BuildContext context) {
     final c = Config.colors;

@@ -40,7 +40,7 @@ class CreationQrCode {
     couleurB = qrCouleurB;
 
     return FutureBuilder<ui.Image>(
-      future: _loadOverlayImage(),
+      future: _overlayImage(),
       builder: (BuildContext ctx, AsyncSnapshot<ui.Image> snapshot) {
         const double size = 400.0;
         return CustomPaint(
@@ -64,6 +64,14 @@ class CreationQrCode {
         );
       },
     );
+  }
+
+  // Image d'overlay identique à chaque appel : décodée une seule fois puis
+  // réutilisée, au lieu de redécoder le PNG à chaque rebuild du ticket.
+  static Future<ui.Image>? _overlayImageFuture;
+
+  static Future<ui.Image> _overlayImage() {
+    return _overlayImageFuture ??= _loadOverlayImage();
   }
 
   static Future<ui.Image> _loadOverlayImage() async {
