@@ -288,19 +288,6 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     socket.onDisconnect((_) {});
 
     socket.connect();
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
-      socket.emit('rejoindre_room', {
-        'depart': widget.depart,
-        'destination': widget.destination,
-        'date': widget.idDate,
-        'heure': widget.heure,
-        'mois': widget.mois,
-        'moisAnnee': widget.moisAnnee,
-        'annee': widget.annee,
-      });
-    });
   }
 
   // ── Logique de sélection centralisée ─────────────────────────────────────────
