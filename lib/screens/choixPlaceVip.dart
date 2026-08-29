@@ -195,9 +195,6 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     socket.onConnect((_) {
       if (!mounted) return;
 
-      final documentId =
-          '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
-
       socket.emit('rejoindre_room', {
         'depart': widget.depart,
         'destination': widget.destination,
@@ -206,25 +203,6 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'mois': widget.mois,
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
-      });
-
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) socket.emit('charger_places', {'documentId': documentId});
-      });
-    });
-
-    // Données complètes de la salle (reçues après charger_places)
-    socket.on('places_chargees', (data) {
-      if (!mounted) return;
-      final newOccupied = Set<int>.from(
-        (data['placesOccupees'] ?? []).map((p) => p as int),
-      );
-      // Ne pas écraser les places déjà sélectionnées / en cours par ce voyageur
-      newOccupied.removeAll(_selectedSeats);
-      newOccupied.removeAll(_loadingSeats);
-      setState(() {
-        _occupiedSeats = newOccupied;
-        _isLoading = false;
       });
     });
 

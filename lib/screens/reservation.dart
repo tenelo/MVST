@@ -160,6 +160,8 @@ class _ReservationState extends State<Reservation> {
     );
   }
 
+  // Ne libere PAS les places cote serveur : cette responsabilite est geree
+  // par ChoixPlaces/ChoixPlacesVip (plus bas dans la pile de navigation).
   Future<void> _nettoyer() async {
     listeDeVerification.clear();
   }

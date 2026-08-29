@@ -305,20 +305,11 @@ class _TicketsState extends State<Tickets> {
     );
   }
 
+  // Ne libere PAS les places cote serveur : cette responsabilite est geree
+  // par ChoixPlaces/ChoixPlacesVip (plus bas dans la pile de navigation),
+  // via dispose()/liberer_places. Cette fonction ne fait que vider la
+  // liste de verification locale a cet ecran.
   Future<bool> _netoyageEnCasDeFermeture() async {
-    if (listeDeVerification.isNotEmpty) {
-      // await supprimerPlaces(
-      //   widget.depart,
-      //   widget.destination,
-      //   widget.idDate,
-      //   widget.id,
-      //   widget.mois,
-      //   widget.moisAnnee,
-      //   widget.annee,
-      //   widget.heure,
-      //   listeDeVerification,
-      // );
-    }
     listeDeVerification.clear();
     return true;
   }
