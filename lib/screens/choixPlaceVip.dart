@@ -271,6 +271,20 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
 
     socket.onConnectError((err) {});
     socket.onError((err) {});
+
+    socket.onReconnect((_) {
+      if (!mounted) return;
+      socket.emit('rejoindre_room', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'mois': widget.mois,
+        'moisAnnee': widget.moisAnnee,
+        'annee': widget.annee,
+      });
+    });
+
     socket.onDisconnect((_) {});
 
     socket.connect();
