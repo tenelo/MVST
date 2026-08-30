@@ -96,6 +96,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     socket.off('place_liberee');
     socket.off('place_confirmee');
     socket.off('place_echec');
+    socket.off('liberation_echec');
     socket.off('connect');
     socket.offAny();
     socket.disconnect();
@@ -121,6 +122,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     socket.off('place_liberee');
     socket.off('place_confirmee');
     socket.off('place_echec');
+    socket.off('liberation_echec');
     socket.offAny();
     socket.disconnect();
   }
@@ -236,6 +238,19 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         _occupiedSeats.add(place);
       });
       showAlertDialog(context);
+    });
+
+    socket.on('liberation_echec', (data) {
+      if (!mounted) return;
+      final places = Set<int>.from(
+        (data['numerosDePlace'] ?? []).map((p) => p as int),
+      );
+      setState(() {
+        _selectedSeats.addAll(places);
+        _occupiedSeats.removeAll(places);
+        _loadingSeats.removeAll(places);
+      });
+      showAlertDialogLiberationEchec(context);
     });
 
     socket.onConnectError((err) {});

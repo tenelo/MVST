@@ -87,6 +87,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     socket.off('place_liberee');
     socket.off('place_confirmee');
     socket.off('place_echec');
+    socket.off('liberation_echec');
     socket.off('connect');
     socket.offAny();
     socket.disconnect();
@@ -111,6 +112,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     socket.off('place_liberee');
     socket.off('place_confirmee');
     socket.off('place_echec');
+    socket.off('liberation_echec');
     socket.offAny();
     socket.disconnect();
   }
@@ -242,6 +244,19 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         _occupiedSeats.add(place);
       });
       showAlertDialog(context);
+    });
+
+    socket.on('liberation_echec', (data) {
+      if (!mounted) return;
+      final places = Set<int>.from(
+        (data['numerosDePlace'] ?? []).map((p) => p as int),
+      );
+      setState(() {
+        _selectedSeats.addAll(places);
+        _occupiedSeats.removeAll(places);
+        _loadingSeats.removeAll(places);
+      });
+      showAlertDialogLiberationEchec(context);
     });
 
     socket.onDisconnect((_) {});
@@ -738,6 +753,26 @@ void showAlertDialog(BuildContext context) {
         title: const Text('Place occupée à l\'instant'),
         content: const Text(
           'La place vient d\'être prise par quelqu\'un d\'autre',
+        ),
+        actions: [
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+void showAlertDialogLiberationEchec(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Libération échouée'),
+        content: const Text(
+          'La désélection de la place n\'a pas pu être confirmée par le serveur. Elle reste réservée à votre nom — réessayez si besoin.',
         ),
         actions: [
           TextButton(
