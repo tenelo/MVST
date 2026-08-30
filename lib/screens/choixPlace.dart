@@ -70,28 +70,19 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
 
   @override
   void dispose() {
-    if (_selectedSeats.isNotEmpty) {
-      if (socket.connected) {
-        socket.emit('liberer_places', {
-          'depart': widget.depart,
-          'destination': widget.destination,
-          'date': widget.idDate,
-          'heure': widget.heure,
-          'numerosDePlace': _selectedSeats.toList(),
-        });
-      } else {
-        // Fire-and-forget volontaire : best-effort, ne doit pas bloquer la
-        // fermeture de l'écran. Ne pas ajouter d'await ici.
-        ApiClient.instance.post(
-          'process_places_temporaires.php',
-          body: {
-            'documentId':
-                '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h',
-            'places': _selectedSeats.toList(),
-          },
-        );
-      }
+    if (_selectedSeats.isNotEmpty && socket.connected) {
+      socket.emit('liberer_places', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.idDate,
+        'heure': widget.heure,
+        'numerosDePlace': _selectedSeats.toList(),
+      });
     }
+    // Si le socket est deja deconnecte a ce stade, le serveur a deja
+    // libere les places via gererDeconnexion au moment de la
+    // deconnexion (voir mvst-socket/handlers/places.js) — plus besoin
+    // d'appel de secours ici.
     socket.off('place_prise');
     socket.off('place_liberee');
     socket.off('place_confirmee');

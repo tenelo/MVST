@@ -1,4 +1,3 @@
-import 'dart:isolate';
 import 'dart:math';
 import 'dart:ui';
 
@@ -49,36 +48,21 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  late ReceivePort receivePort;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _isolationDeTaches();
-  }
-
-  Future<void> _isolationDeTaches() async {
-    receivePort = ReceivePort();
-    try {
-      await Isolate.spawn(_tachesArrierePlan, receivePort.sendPort);
-    } catch (e) {}
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    receivePort.close();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      suppressionPlacesTemporaires();
-    }
   }
 
   @override
@@ -249,11 +233,4 @@ Future<void> _checkTermsAcceptance(BuildContext ctx) async {
       ctx,
     ).pushReplacement(MaterialPageRoute(builder: (_) => const Home()));
   }
-}
-
-// ── Tâches en arrière-plan ─────────────────────────────────────────────────────
-void _tachesArrierePlan(SendPort sendPort) async {
-  try {
-    await suppressionPlacesTemporaires();
-  } catch (e) {}
 }
