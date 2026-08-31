@@ -164,7 +164,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
           setState(() {
             _occupiedSeats = Set<int>.from(
               (data['places'] ?? []).map((p) => p['place'] as int),
-            );
+            )..removeAll(_selectedSeats);
             _isLoading = false;
           });
         }
@@ -267,6 +267,10 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
       });
+      // Resynchronise l'etat complet des places : pendant la coupure,
+      // d'autres clients ont pu prendre ou liberer des sieges sans que
+      // ce client le sache (aucun evenement temps reel recu hors ligne).
+      _chargerPlacesViaHttp();
     });
 
     socket.onDisconnect((_) {});
