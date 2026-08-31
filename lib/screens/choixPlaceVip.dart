@@ -16,12 +16,13 @@ import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 import 'package:mvst/services/api_client.dart';
 
-// ── Couleurs VIP (palette Émeraude Lumière) ───────────────────────────────────
+// ── Couleurs VIP ───────────────────────────────────
 const Color _vipOr = Color(0xFF00D87E);
 const Color _vipFond = Color.fromARGB(255, 255, 255, 255);
 const Color _vipSiege = Color.fromARGB(255, 227, 246, 237);
 const Color _vipSiegeSelectionne = Color(0xFF00D87E);
 const Color _vipSiegeReserve = Color.fromARGB(255, 198, 197, 197);
+const Color _vipMaPlace = Color.fromARGB(255, 117, 250, 2);
 
 class ChoixPlacesVip extends StatefulWidget {
   const ChoixPlacesVip({
@@ -662,14 +663,14 @@ class PlacesVip extends StatelessWidget {
         ? screenWidth * 0.090
         : screenWidth * 0.093;
 
-    final Color couleur = isOccupied
-        ? _vipSiegeSelectionne
-        : isSelected
+    final Color couleur = isSelected
+        ? _vipMaPlace
+        : isOccupied
         ? _vipSiegeSelectionne
         : _vipSiege;
 
     final Color textColor = isSelected
-        ? Colors.white
+        ? Colors.black87
         : isOccupied
         ? Colors.white
         : const Color(0xFF006B3C);

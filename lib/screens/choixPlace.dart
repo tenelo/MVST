@@ -15,6 +15,12 @@ import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 import 'package:mvst/services/api_client.dart';
 
+// ── Couleurs standard ──────────────────────────────
+const Color _couleurDispo = Color.fromARGB(226, 10, 41, 66);
+const Color _couleurPrise = Color.fromARGB(255, 182, 214, 251);
+const Color _couleurMaPlace = Color.fromARGB(255, 6, 68, 240);
+const Color _couleurVendu = Color.fromARGB(255, 198, 197, 197);
+
 class ChoixPlaces extends StatefulWidget {
   const ChoixPlaces({
     super.key,
@@ -684,13 +690,12 @@ class Places extends StatelessWidget {
   final bool isOccupied;
   final VoidCallback onTap;
 
-  static const Color _couleurDispo = Color.fromARGB(226, 10, 41, 66);
-  static const Color _couleurPrise = Color.fromARGB(255, 182, 214, 251);
-
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    final Color couleurSiege = (isSelected || isOccupied)
+    final Color couleurSiege = isSelected
+        ? _couleurMaPlace
+        : isOccupied
         ? _couleurPrise
         : _couleurDispo;
 
@@ -805,7 +810,6 @@ void showAlertDialogLiberationEchec(BuildContext context) {
 class PlacesReservees extends StatelessWidget {
   PlacesReservees({super.key, required this.numero});
   final int numero;
-  Color couleurSelection = const Color.fromARGB(166, 249, 195, 115);
 
   @override
   Widget build(BuildContext context) {
@@ -817,7 +821,7 @@ class PlacesReservees extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Card(
-            color: couleurSelection,
+            color: _couleurVendu,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
