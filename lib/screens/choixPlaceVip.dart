@@ -303,6 +303,18 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'numeroDePlace': numero,
         'typeVoyage': widget.typeVoyage,
       });
+      // Filet de sécurité : si aucune réponse serveur (place_confirmee /
+      // place_echec / liberation_echec) n'arrive dans ce délai — cas d'une
+      // déconnexion survenant juste après cet emit, où la réponse ne peut
+      // plus jamais nous parvenir — on débloque le siège localement pour
+      // qu'il redevienne tapable. En fonctionnement normal, la réponse
+      // arrive bien avant ce délai et ce timer ne fait rien.
+      Future.delayed(const Duration(seconds: 15), () {
+        if (!mounted) return;
+        if (_loadingSeats.contains(numero)) {
+          setState(() => _loadingSeats.remove(numero));
+        }
+      });
     }
   }
 
