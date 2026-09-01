@@ -95,27 +95,26 @@ class _DetailsTicketsState extends State<DetailsTickets> {
 
     // ── Connexion établie → rejoindre la Room du trajet ───────────────────
     socket.onConnect((_) {
-      final dateAvecUnderscores = widget.date.replaceAll(' ', '_');
+      if (!mounted) return;
       socket.emit('rejoindre_room', {
         'depart': widget.depart,
         'destination': widget.destination,
-        'date': dateAvecUnderscores,
+        'date': widget.date.replaceAll(' ', '_'),
+        'heure': widget.heure,
+      });
+    });
+
+    socket.onReconnect((_) {
+      if (!mounted) return;
+      socket.emit('rejoindre_room', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.date.replaceAll(' ', '_'),
         'heure': widget.heure,
       });
     });
 
     socket.connect();
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
-      final dateAvecUnderscores = widget.date.replaceAll(' ', '_');
-      socket.emit('rejoindre_room', {
-        'depart': widget.depart,
-        'destination': widget.destination,
-        'date': dateAvecUnderscores,
-        'heure': widget.heure,
-      });
-    });
 
     // ── Ticket scanné par l'admin → changer couleur QR code ───────────────
     socket.on('ticket_valide', (data) {

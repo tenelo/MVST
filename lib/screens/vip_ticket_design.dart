@@ -98,18 +98,6 @@ class _VipDetailsTicketsState extends State<VipDetailsTickets> {
     );
 
     socket.onConnect((_) {
-      final dateAvecUnderscores = widget.date.replaceAll(' ', '_');
-      socket.emit('rejoindre_room', {
-        'depart': widget.depart,
-        'destination': widget.destination,
-        'date': dateAvecUnderscores,
-        'heure': widget.heure,
-      });
-    });
-
-    socket.connect();
-
-    Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       socket.emit('rejoindre_room', {
         'depart': widget.depart,
@@ -118,6 +106,18 @@ class _VipDetailsTicketsState extends State<VipDetailsTickets> {
         'heure': widget.heure,
       });
     });
+
+    socket.onReconnect((_) {
+      if (!mounted) return;
+      socket.emit('rejoindre_room', {
+        'depart': widget.depart,
+        'destination': widget.destination,
+        'date': widget.date.replaceAll(' ', '_'),
+        'heure': widget.heure,
+      });
+    });
+
+    socket.connect();
 
     socket.on('ticket_valide', (data) {
       if (data['idUtilisateur']?.toString() == widget.idUtilisateur &&
