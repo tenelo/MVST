@@ -6,6 +6,7 @@ import 'package:mvst/authentification/authentification.dart';
 import 'package:mvst/authentification/pin_forgot.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/auth_service.dart';
+import 'package:mvst/mes_services/fcm_service.dart';
 import 'package:mvst/models/clavier_numerique.dart';
 import 'package:mvst/screens/home.dart';
 import 'package:mvst/services/api_client.dart';
@@ -175,6 +176,9 @@ class _LoginState extends State<Login> {
           value: utilisateur['idUtilisateur']?.toString() ?? '',
         );
         await AuthService.chargerDepuisStorage();
+
+        // Enregistrer le token FCM du compte fraichement connecte (best-effort).
+        await FcmService.enregistrerTokenSiConnecte();
 
         if (mounted) {
           Navigator.pushAndRemoveUntil(
