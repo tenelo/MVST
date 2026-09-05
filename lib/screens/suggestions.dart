@@ -58,6 +58,7 @@ class _Suggestion {
   final String categorie;
   final String idutilisateur;
   String statut;
+  String? reponse;
   final DateTime createdat;
 
   _Suggestion({
@@ -68,6 +69,7 @@ class _Suggestion {
     required this.categorie,
     required this.idutilisateur,
     required this.statut,
+    this.reponse,
     required this.createdat,
   });
 
@@ -79,6 +81,7 @@ class _Suggestion {
     categorie: j['categorie'] ?? 'Autre',
     idutilisateur: j['idutilisateur'] ?? '',
     statut: j['statut'] ?? 'en_attente',
+    reponse: j['reponse'],
     createdat: DateTime.tryParse(j['createdat'] ?? '') ?? DateTime.now(),
   );
 }
@@ -867,6 +870,30 @@ class _SuggestionsState extends State<Suggestions>
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
+
+              if (s.reponse != null && s.reponse!.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.25)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: const [
+                      Icon(Icons.reply_rounded, size: 13, color: Color(0xFF10B981)),
+                      SizedBox(width: 5),
+                      Text('Réponse de MVST',
+                          style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.w700)),
+                    ]),
+                    const SizedBox(height: 5),
+                    Text(s.reponse!,
+                        style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.8), fontSize: 12.5, height: 1.4)),
+                  ]),
+                ),
+              ],
 
               Row(
                 children: [
