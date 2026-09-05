@@ -21,6 +21,8 @@ import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+final GlobalKey<NavigatorState> navigatorKeyClient = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -73,6 +75,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       create: (context) => BlocCompteur(),
       child: MaterialApp(
         title: 'MVST',
+        navigatorKey: navigatorKeyClient,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Config.colors.bleuFonce),

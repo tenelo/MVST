@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:mvst/services/api_client.dart';
+import 'package:mvst/main.dart';
 import 'package:mvst/mes_services/auth_service.dart';
+import 'package:mvst/screens/suggestions.dart';
+import 'package:mvst/services/api_client.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -55,6 +58,25 @@ class FcmService {
         );
       }
     });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _ouvrirSuggestions();
+    });
+
+    final initial = await FirebaseMessaging.instance.getInitialMessage();
+    if (initial != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _ouvrirSuggestions();
+      });
+    }
+  }
+
+  static void _ouvrirSuggestions() {
+    final nav = navigatorKeyClient.currentState;
+    if (nav == null) return;
+    final uid = AuthService.getUid();
+    if (uid == null || uid.isEmpty) return;
+    nav.push(MaterialPageRoute(builder: (_) => Suggestions(idUtilisateur: uid)));
   }
 
   static Future<void> enregistrerTokenSiConnecte() async {
