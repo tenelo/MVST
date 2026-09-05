@@ -16,6 +16,7 @@ import 'package:mvst/config/config.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:mvst/firebase_options.dart';
 import 'package:mvst/mes_services/auth_service.dart';
+import 'package:mvst/mes_services/fcm_service.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +30,7 @@ void main() async {
   ]);
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await FcmService.initialiser();
   await Config.chargerTheme();
 
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
