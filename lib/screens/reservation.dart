@@ -67,6 +67,236 @@ class _ReservationState extends State<Reservation> {
   // par defaut, le statut est 'valide' et l'etatScanne est 'nonScanné', ce qui correspond à une réservation fraîchement confirmée. Ces champs pourront être mis à jour plus tard par les admins lors du processus de validation et de scan des tickets.
   // le typeVoyage par défaut est 'standard',
 
+  Future<bool> _afficherConfirmation() async {
+    final c = Config.colors;
+    final bool vip = _isVip;
+    final Color accent = vip ? const Color(0xFFFFC107) : c.homeButtonPrimary;
+    final int total = widget.prixUnitaire * widget.nombreDeTicket;
+    final String totalFmt =
+        total.toString().replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+          (m) => '${m[1]} ',
+        );
+
+    final resultat = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            decoration: BoxDecoration(
+              color: c.homeCardBackground,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // En-tete degrade
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: vip
+                          ? [const Color(0xFFFFC107), const Color(0xFFFF8F00)]
+                          : [c.homeHeaderTop, c.homeButtonPrimary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          vip ? '★ VIP' : 'STANDARD',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.depart,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                          ),
+                          Flexible(
+                            child: Text(
+                              widget.destination,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${widget.date} · ${formaterHeure(widget.heure)} h',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Corps
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                  child: Column(
+                    children: [
+                      _ligneRecap(c, Icons.person_outline_rounded, 'Passager', widget.nom),
+                      const SizedBox(height: 12),
+                      _ligneRecap(c, Icons.confirmation_number_outlined, 'Tickets',
+                          '${widget.nombreDeTicket}'),
+                      const SizedBox(height: 16),
+                      Container(height: 1, color: c.homeTextPrimary.withValues(alpha: 0.08)),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Total',
+                            style: TextStyle(
+                              color: c.homeTextPrimary.withValues(alpha: 0.6),
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            '$totalFmt FCFA',
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Boutons
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(color: c.homeTextPrimary.withValues(alpha: 0.2)),
+                            ),
+                          ),
+                          child: Text(
+                            'Annuler',
+                            style: TextStyle(
+                              color: c.homeTextPrimary.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: vip ? Colors.black87 : Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text(
+                            'Valider',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    return resultat == true;
+  }
+
+  Widget _ligneRecap(dynamic c, IconData icon, String label, String valeur) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: c.homeButtonPrimary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: c.homeButtonPrimary, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.5), fontSize: 13),
+        ),
+        const Spacer(),
+        Flexible(
+          child: Text(
+            valeur,
+            style: TextStyle(
+              color: c.homeTextPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _confirmerReservation() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
@@ -425,7 +655,12 @@ class _ReservationState extends State<Reservation> {
           margin: EdgeInsets.symmetric(horizontal: screenW * 0.05),
           width: screenW,
           child: FilledButton.icon(
-            onPressed: _isLoading ? null : _confirmerReservation,
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    final ok = await _afficherConfirmation();
+                    if (ok) await _confirmerReservation();
+                  },
             icon: _isLoading
                 ? const SizedBox(
                     width: 18,
