@@ -6,6 +6,8 @@ import 'package:mvst/main.dart';
 import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/screens/suggestions.dart';
 import 'package:mvst/services/api_client.dart';
+import 'package:mvst/mes_services/annonces_store.dart';
+import 'package:mvst/screens/annonces_screen.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -31,6 +33,14 @@ class FcmService {
       const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ),
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null || payload.isEmpty) return;
+        try {
+          final data = Map<String, dynamic>.from(jsonDecode(payload));
+          _gererTapData(data);
+        } catch (_) {}
+      },
     );
 
     await _localNotif
@@ -60,13 +70,13 @@ class FcmService {
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      _ouvrirSuggestions();
+      _gererTap(message);
     });
 
     final initial = await FirebaseMessaging.instance.getInitialMessage();
     if (initial != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _ouvrirSuggestions();
+        _gererTap(initial);
       });
     }
   }
@@ -77,6 +87,37 @@ class FcmService {
     final uid = AuthService.getUid();
     if (uid == null || uid.isEmpty) return;
     nav.push(MaterialPageRoute(builder: (_) => Suggestions(idUtilisateur: uid, ongletInitial: 1)));
+  }
+
+  static Future<void> _gererTap(RemoteMessage message) async {
+    final data = Map<String, dynamic>.from(message.data);
+    // Fallback titre/message depuis notification si absents du data.
+    data['titre'] ??= message.notification?.title;
+    data['message'] ??= message.notification?.body;
+    await _gererTapData(data);
+  }
+
+  static Future<void> _gererTapData(Map<String, dynamic> data) async {
+    if (data['type'] == 'diffusion') {
+      // Sauvegarde locale de l'annonce (A3-a : au tap) puis ouverture de l'ecran.
+      final annonce = Annonce(
+        id: data['idAnnonce']?.toString() ??
+            '${DateTime.now().millisecondsSinceEpoch}',
+        titre: data['titre']?.toString() ?? 'Annonce',
+        message: data['message']?.toString() ?? '',
+        date: DateTime.now(),
+      );
+      await AnnoncesStore.ajouter(annonce);
+      _ouvrirAnnonces();
+    } else {
+      _ouvrirSuggestions();
+    }
+  }
+
+  static void _ouvrirAnnonces() {
+    final nav = navigatorKeyClient.currentState;
+    if (nav == null) return;
+    nav.push(MaterialPageRoute(builder: (_) => const AnnoncesScreen()));
   }
 
   static Future<void> enregistrerTokenSiConnecte() async {

@@ -8,6 +8,7 @@ import 'package:mvst/authentification/connection.dart';
 import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/profil/profil.dart';
 import 'package:mvst/screens/accueil.dart';
+import 'package:mvst/screens/annonces_screen.dart';
 import 'package:mvst/screens/conditionsDutilisation.dart';
 import 'package:mvst/screens/infos.dart';
 import 'package:mvst/screens/mestickets.dart';
@@ -391,10 +392,11 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                   icon: Icons.notification_add_outlined,
                   label: 'Notification',
                   onTap: () {
-                    if (!AuthService.estConnecte()) {
-                      Navigator.pop(context);
-                      AuthService.afficherSnackNonConnecte(context);
-                    }
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AnnoncesScreen()),
+                    );
                   },
                 ),
                 _buildDrawerItem(
