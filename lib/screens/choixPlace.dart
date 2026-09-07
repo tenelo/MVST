@@ -181,7 +181,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
           .build(),
     );
 
-    socket.onConnect((_) {
+    void rejoindreLaRoom() {
       if (!mounted) return;
       socket.emit('rejoindre_room', {
         'depart': widget.depart,
@@ -192,7 +192,9 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
       });
-    });
+    }
+
+    socket.onConnect((_) => rejoindreLaRoom());
 
     socket.onConnectError((err) {});
     socket.onError((err) {});
@@ -272,6 +274,12 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     socket.onDisconnect((_) {});
 
     socket.connect();
+    // Filet : si le socket est deja connecte a ce stade (cas ou onConnect
+    // ne se redeclenche pas), on rejoint la room explicitement. Le serveur
+    // gere les rejoins multiples sans probleme.
+    if (socket.connected) {
+      rejoindreLaRoom();
+    }
   }
 
   // ── Logique de sélection centralisée ─────────────────────────────────────────

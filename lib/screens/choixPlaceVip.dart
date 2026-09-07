@@ -186,9 +186,8 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
           .build(),
     );
 
-    socket.onConnect((_) {
+    void rejoindreLaRoom() {
       if (!mounted) return;
-
       socket.emit('rejoindre_room', {
         'depart': widget.depart,
         'destination': widget.destination,
@@ -198,7 +197,9 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
       });
-    });
+    }
+
+    socket.onConnect((_) => rejoindreLaRoom());
 
     // ── Mises à jour temps réel des autres voyageurs ──────────────────────────
     socket.on('place_prise', (data) {
@@ -277,6 +278,12 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     socket.onDisconnect((_) {});
 
     socket.connect();
+    // Filet : si le socket est deja connecte a ce stade (cas ou onConnect
+    // ne se redeclenche pas), on rejoint la room explicitement. Le serveur
+    // gere les rejoins multiples sans probleme.
+    if (socket.connected) {
+      rejoindreLaRoom();
+    }
   }
 
   // ── Logique de sélection centralisée ─────────────────────────────────────────
