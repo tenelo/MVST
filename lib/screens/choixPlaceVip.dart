@@ -12,6 +12,7 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/bloc/state.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 import 'package:mvst/services/api_client.dart';
@@ -69,6 +70,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
   final Set<int> _selectedSeats = {}; // confirmées par le serveur
   final Set<int> _loadingSeats = {}; // en attente de réponse serveur
   Set<int> _occupiedSeats = {}; // occupées par d'autres voyageurs
+  Set<int> _mesPlacesAchetees = {}; // mes places déjà achetées (Tickets à moi)
 
   @override
   void initState() {
@@ -156,16 +158,27 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
           '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
       final response = await ApiClient.instance.post(
         'placesAssises.php',
-        body: {'documentId': documentId},
+        body: {
+          'documentId': documentId,
+          'idUtilisateur': AuthService.getUid(),
+        },
         timeout: const Duration(seconds: 10),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final List<dynamic> placesData = data['places'] ?? [];
         if (mounted) {
           setState(() {
+            _mesPlacesAchetees = Set<int>.from(
+              placesData
+                  .where((p) => p['estAMoi'] == true)
+                  .map((p) => p['place'] as int),
+            );
             _occupiedSeats = Set<int>.from(
-              (data['places'] ?? []).map((p) => p['place'] as int),
-            )..removeAll(_selectedSeats);
+              placesData.map((p) => p['place'] as int),
+            )
+              ..removeAll(_selectedSeats)
+              ..removeAll(_mesPlacesAchetees);
             _isLoading = false;
           });
         }
@@ -396,7 +409,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
             (n) => PlacesVip(
               key: ValueKey(n),
               numero: n,
-              isSelected: _selectedSeats.contains(n),
+              isSelected: _selectedSeats.contains(n) || _mesPlacesAchetees.contains(n),
               isLoading: _loadingSeats.contains(n),
               isOccupied: _occupiedSeats.contains(n),
               onTap: () => _onSeatTap(n),

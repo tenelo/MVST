@@ -11,6 +11,7 @@ import 'package:mvst/bloc/bloc.dart';
 import 'package:mvst/bloc/event.dart';
 import 'package:mvst/bloc/state.dart';
 import 'package:mvst/config/config.dart';
+import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 import 'package:mvst/services/api_client.dart';
@@ -66,6 +67,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
       {}; // confirmées par le serveur (= mes places)
   final Set<int> _loadingSeats = {}; // en attente de réponse serveur
   Set<int> _occupiedSeats = {}; // occupées par d'autres voyageurs
+  Set<int> _mesPlacesAchetees = {}; // mes places déjà achetées (Tickets à moi)
 
   @override
   void initState() {
@@ -151,16 +153,27 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
           '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
       final response = await ApiClient.instance.post(
         'placesAssises.php',
-        body: {'documentId': documentId},
+        body: {
+          'documentId': documentId,
+          'idUtilisateur': AuthService.getUid(),
+        },
         timeout: const Duration(seconds: 10),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final List<dynamic> placesData = data['places'] ?? [];
         if (mounted) {
           setState(() {
+            _mesPlacesAchetees = Set<int>.from(
+              placesData
+                  .where((p) => p['estAMoi'] == true)
+                  .map((p) => p['place'] as int),
+            );
             _occupiedSeats = Set<int>.from(
-              (data['places'] ?? []).map((p) => p['place'] as int),
-            )..removeAll(_selectedSeats);
+              placesData.map((p) => p['place'] as int),
+            )
+              ..removeAll(_selectedSeats)
+              ..removeAll(_mesPlacesAchetees);
             _isLoading = false;
           });
         }
@@ -377,7 +390,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     return Places(
       key: ValueKey(numero),
       numero: numero,
-      isSelected: _selectedSeats.contains(numero),
+      isSelected: _selectedSeats.contains(numero) || _mesPlacesAchetees.contains(numero),
       isLoading: _loadingSeats.contains(numero),
       isOccupied: _occupiedSeats.contains(numero),
       onTap: () => _onSeatTap(numero),
