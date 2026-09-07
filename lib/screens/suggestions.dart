@@ -88,8 +88,9 @@ class _Suggestion {
 
 // ──────────────────────────────────────────────────────────────────────────────
 class Suggestions extends StatefulWidget {
-  const Suggestions({super.key, required this.idUtilisateur});
+  const Suggestions({super.key, required this.idUtilisateur, this.ongletInitial = 0});
   final String idUtilisateur;
+  final int ongletInitial;
 
   @override
   State<Suggestions> createState() => _SuggestionsState();
@@ -118,7 +119,7 @@ class _SuggestionsState extends State<Suggestions>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.ongletInitial);
     _messageCtrl.addListener(() => setState(() {}));
     _chargerProfil();
     _chargerSuggestions();

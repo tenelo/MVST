@@ -76,7 +76,7 @@ class FcmService {
     if (nav == null) return;
     final uid = AuthService.getUid();
     if (uid == null || uid.isEmpty) return;
-    nav.push(MaterialPageRoute(builder: (_) => Suggestions(idUtilisateur: uid)));
+    nav.push(MaterialPageRoute(builder: (_) => Suggestions(idUtilisateur: uid, ongletInitial: 1)));
   }
 
   static Future<void> enregistrerTokenSiConnecte() async {
