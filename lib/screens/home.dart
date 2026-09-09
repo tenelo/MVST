@@ -15,6 +15,7 @@ import 'package:mvst/screens/mestickets.dart';
 import 'package:mvst/screens/suggestions.dart';
 import 'package:mvst/screens/tableauDesTickets.dart';
 import 'package:mvst/services/api_client.dart';
+import 'package:mvst/services/version_check.dart';
 import 'dart:convert';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -35,6 +36,9 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) VersionCheck.verifier(context);
+    });
     _tabController = TabController(
       length: 4,
       vsync: this,
