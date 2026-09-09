@@ -80,7 +80,9 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
               if (_modeSelection)
                 IconButton(
                   icon: Icon(Icons.delete_outline, color: c.homeAccent),
-                  onPressed: _selection.isEmpty ? null : _confirmerSuppressionMultiple,
+                  onPressed: _selection.isEmpty
+                      ? null
+                      : _confirmerSuppressionMultiple,
                 ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -103,10 +105,16 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            Icon(Icons.campaign_rounded, color: c.homeAccent, size: 28),
+                            Icon(
+                              Icons.campaign_rounded,
+                              color: c.homeAccent,
+                              size: 28,
+                            ),
                             const SizedBox(width: 10),
                             Text(
-                              _modeSelection ? '${_selection.length} selectionnee(s)' : 'Annonces',
+                              _modeSelection
+                                  ? '${_selection.length} selectionnee(s)'
+                                  : 'Annonces',
                               style: TextStyle(
                                 color: c.homeAccent,
                                 fontSize: 26,
@@ -118,7 +126,10 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
                         const SizedBox(height: 4),
                         Text(
                           'Les messages de MVST',
-                          style: TextStyle(color: c.homeAccent.withValues(alpha: 0.85), fontSize: 13),
+                          style: TextStyle(
+                            color: c.homeAccent.withValues(alpha: 0.85),
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -129,10 +140,12 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
           ),
         ],
         body: _chargement
-            ? Center(child: CircularProgressIndicator(color: c.homeButtonPrimary))
+            ? Center(
+                child: CircularProgressIndicator(color: c.homeButtonPrimary),
+              )
             : _annonces.isEmpty
-                ? _etatVide(c)
-                : _liste(c),
+            ? _etatVide(c)
+            : _liste(c),
       ),
     );
   }
@@ -142,16 +155,27 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.notifications_none_rounded, size: 80, color: c.homeTextPrimary.withValues(alpha: 0.25)),
+          Icon(
+            Icons.notifications_none_rounded,
+            size: 80,
+            color: c.homeTextPrimary.withValues(alpha: 0.25),
+          ),
           const SizedBox(height: 16),
           Text(
             'Aucune annonce',
-            style: TextStyle(color: c.homeTextPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: c.homeTextPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Les messages de MVST apparaitront ici.',
-            style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.5), fontSize: 13),
+            style: TextStyle(
+              color: c.homeTextPrimary.withValues(alpha: 0.5),
+              fontSize: 13,
+            ),
           ),
         ],
       ),
@@ -169,8 +193,11 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
             padding: const EdgeInsets.only(bottom: 12, left: 4, right: 4),
             child: Row(
               children: [
-                Icon(Icons.swipe_left_alt_rounded,
-                    size: 16, color: c.homeTextPrimary.withValues(alpha: 0.45)),
+                Icon(
+                  Icons.swipe_left_alt_rounded,
+                  size: 16,
+                  color: c.homeTextPrimary.withValues(alpha: 0.45),
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -196,7 +223,9 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
         }
         return Dismissible(
           key: ValueKey(a.id),
-          direction: _modeSelection ? DismissDirection.none : DismissDirection.endToStart,
+          direction: _modeSelection
+              ? DismissDirection.none
+              : DismissDirection.endToStart,
           background: Container(
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 24),
@@ -218,7 +247,9 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
                 color: c.homeCardBackground,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: selected ? c.homeButtonPrimary : c.homeBordurePetiteCarte.withValues(alpha: 0.4),
+                  color: selected
+                      ? c.homeButtonPrimary
+                      : c.homeBordurePetiteCarte.withValues(alpha: 0.4),
                   width: selected ? 2 : 1,
                 ),
                 boxShadow: [
@@ -238,8 +269,12 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
                       Padding(
                         padding: const EdgeInsets.only(right: 12, top: 2),
                         child: Icon(
-                          selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                          color: selected ? c.homeButtonPrimary : c.homeTextPrimary.withValues(alpha: 0.3),
+                          selected
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          color: selected
+                              ? c.homeButtonPrimary
+                              : c.homeTextPrimary.withValues(alpha: 0.3),
                           size: 22,
                         ),
                       ),
@@ -249,7 +284,11 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
                         color: c.homeButtonPrimary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Icons.campaign_rounded, color: c.homeButtonPrimary, size: 22),
+                      child: Icon(
+                        Icons.campaign_rounded,
+                        color: c.homeButtonPrimary,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -293,10 +332,19 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
                         },
                         child: Padding(
                           padding: const EdgeInsets.only(left: 8, top: 2),
-                          child: Icon(
-                            Icons.delete_outline_rounded,
-                            color: c.homeTextPrimary.withValues(alpha: 0.35),
-                            size: 20,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.swipe_left_alt_rounded,
+                                size: 16,
+                                color: const Color.fromARGB(255, 241, 126, 118),
+                              ),
+                              Icon(
+                                Icons.delete_outline_rounded,
+                                color: const Color.fromARGB(255, 241, 126, 118),
+                                size: 20,
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -322,11 +370,17 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
           style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.7)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Supprimer',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -346,11 +400,17 @@ class _AnnoncesScreenState extends State<AnnoncesScreen> {
           style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.7)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Supprimer',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
