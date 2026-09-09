@@ -21,8 +21,9 @@ import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/termesDutilisation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-final GlobalKey<NavigatorState> navigatorKeyClient = GlobalKey<NavigatorState>();
-
+final GlobalKey<NavigatorState> navigatorKeyClient =
+    GlobalKey<NavigatorState>();
+final c = Config.colors;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -78,7 +79,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         navigatorKey: navigatorKeyClient,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Config.colors.bleuFonce),
+          colorScheme: ColorScheme.fromSeed(seedColor: c.bleuFonce),
           useMaterial3: true,
         ),
         localizationsDelegates: const [
@@ -153,16 +154,13 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
               height: 120.0,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: Config.colors.bleuFonce2,
-                  width: 2.10,
-                ),
+                border: Border.all(color: c.bleuFonce2, width: 2.10),
               ),
               child: Center(
                 child: Text(
                   'MVST',
                   style: TextStyle(
-                    color: Config.colors.bleuFonce2,
+                    color: c.bleuFonce2,
                     fontSize: 24,
                     fontFamily: 'Lobster',
                   ),
@@ -170,7 +168,7 @@ class _MonSplashScreenState extends State<MonSplashScreen> {
               ),
             ),
             const SizedBox(height: 30),
-            SpinKitThreeBounce(color: Config.colors.bleuFonce2),
+            SpinKitThreeBounce(color: c.bleuFonce2),
           ],
         ),
       ),
