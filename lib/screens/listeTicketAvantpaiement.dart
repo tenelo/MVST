@@ -23,6 +23,7 @@ class Tickets extends StatefulWidget {
     required this.moisAnnee,
     required this.annee,
     this.typeVoyage = 'standard',
+    this.documentId,
   });
   final String idDate;
   final String id;
@@ -39,6 +40,7 @@ class Tickets extends StatefulWidget {
   final String depart;
   final int prixDuTicket;
   final String typeVoyage;
+  final String? documentId;
 
   @override
   State<Tickets> createState() => _TicketsState();
@@ -176,6 +178,7 @@ class _TicketsState extends State<Tickets> {
                       annee: widget.annee,
                       datePourCalcule: dateFormatee,
                       typeVoyage: widget.typeVoyage,
+                      documentId: widget.documentId,
                     ),
                   ),
                 );

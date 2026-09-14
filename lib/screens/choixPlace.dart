@@ -38,6 +38,7 @@ class ChoixPlaces extends StatefulWidget {
     required this.heure,
     required this.prixDuBillet,
     required this.typeVoyage,
+    this.documentId,
   });
   final String idDate;
   final String id;
@@ -52,12 +53,19 @@ class ChoixPlaces extends StatefulWidget {
   final String destination;
   final int prixDuBillet;
   final String typeVoyage;
+  final String? documentId;
   @override
   State<ChoixPlaces> createState() => _ChoixPlacesState();
 }
 
 class _ChoixPlacesState extends State<ChoixPlaces> {
-  int _seconds = 60;
+  // documentId resolu (recu de commande.dart) ou reconstruit en repli.
+  String get _documentId =>
+      (widget.documentId != null && widget.documentId!.isNotEmpty)
+      ? widget.documentId!
+      : '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
+
+  int _seconds = 90;
   late Timer _timer;
   bool _isLoading = true;
   late io.Socket socket;
@@ -84,6 +92,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'numerosDePlace': _selectedSeats.toList(),
       });
     }
@@ -113,6 +122,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'numerosDePlace': _selectedSeats.toList(),
       });
     }
@@ -149,12 +159,10 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
 
   Future<void> _chargerPlacesViaHttp() async {
     try {
-      final documentId =
-          '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
       final response = await ApiClient.instance.post(
         'placesAssises.php',
         body: {
-          'documentId': documentId,
+          'documentId': _documentId,
           'idUtilisateur': AuthService.getUid(),
         },
         timeout: const Duration(seconds: 10),
@@ -169,11 +177,10 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                   .where((p) => p['estAMoi'] == true)
                   .map((p) => p['place'] as int),
             );
-            _occupiedSeats = Set<int>.from(
-              placesData.map((p) => p['place'] as int),
-            )
-              ..removeAll(_selectedSeats)
-              ..removeAll(_mesPlacesAchetees);
+            _occupiedSeats =
+                Set<int>.from(placesData.map((p) => p['place'] as int))
+                  ..removeAll(_selectedSeats)
+                  ..removeAll(_mesPlacesAchetees);
             _isLoading = false;
           });
         }
@@ -193,7 +200,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
           .disableAutoConnect()
           .build(),
     );
-
+    // CREATION DU DEPART
     void rejoindreLaRoom() {
       if (!mounted) return;
       socket.emit('rejoindre_room', {
@@ -201,6 +208,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'mois': widget.mois,
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
@@ -219,6 +227,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'mois': widget.mois,
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
@@ -310,6 +319,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'numerosDePlace': [numero],
       });
       BlocProvider.of<BlocCompteur>(context).add(EventDecrement());
@@ -321,6 +331,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'mois': widget.mois,
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
@@ -364,6 +375,7 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
             destination: widget.destination,
             prixDuTicket: widget.prixDuBillet,
             typeVoyage: widget.typeVoyage,
+            documentId: _documentId,
           ),
         ),
       );
@@ -390,7 +402,9 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
     return Places(
       key: ValueKey(numero),
       numero: numero,
-      isSelected: _selectedSeats.contains(numero) || _mesPlacesAchetees.contains(numero),
+      isSelected:
+          _selectedSeats.contains(numero) ||
+          _mesPlacesAchetees.contains(numero),
       isLoading: _loadingSeats.contains(numero),
       isOccupied: _occupiedSeats.contains(numero),
       onTap: () => _onSeatTap(numero),
@@ -497,12 +511,12 @@ class _ChoixPlacesState extends State<ChoixPlaces> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _placeReservee(61),
-                                  _placeReservee(60),
-                                  _placeReservee(59),
-                                  _placeReservee(58),
-                                  _placeReservee(57),
-                                  _placeReservee(56),
+                                  _place(61),
+                                  _place(60),
+                                  _place(59),
+                                  _place(58),
+                                  _place(57),
+                                  _place(56),
                                 ],
                               ),
                               Row(

@@ -356,6 +356,38 @@ class _CommandeState extends State<Commande> {
     } catch (error) {}
   }
 
+  /// Demande au serveur le documentId du bon car (premier non plein).
+  /// Repli : si l'appel echoue, on renvoie null -> les ecrans fabriquent
+  /// le documentId du car 1 comme avant (aucune vente bloquee).
+  Future<String?> _resoudreCar({
+    required String depart,
+    required String destination,
+    required String dateResolue,
+    required String heureResolue,
+    required String type,
+  }) async {
+    try {
+      final response = await ApiClient.instance.post(
+        'resoudreCar.php',
+        body: {
+          'depart': depart,
+          'destination': destination,
+          'date': dateResolue,
+          'heure': heureResolue,
+          'type': type,
+        },
+        timeout: const Duration(seconds: 8),
+      );
+      final data = jsonDecode(response.body);
+      if (data['success'] == true && data['documentId'] != null) {
+        return data['documentId'].toString();
+      }
+    } catch (_) {
+      // repli silencieux : car 1
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = Config.colors;
@@ -603,6 +635,14 @@ class _CommandeState extends State<Commande> {
 
                               setState(() => _isLoading = true);
                               counterBloc.add(EventInitialise());
+                              final String? docResolu = await _resoudreCar(
+                                depart: widget.depart,
+                                destination: widget.destination,
+                                dateResolue: dateFormatee!,
+                                heureResolue: heureDeDepart!,
+                                type: widget.typeVoyage,
+                              );
+                              if (!mounted) return;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -621,6 +661,7 @@ class _CommandeState extends State<Commande> {
                                           moisAnnee: idMoisAnnee!,
                                           annee: idAnnee!,
                                           typeVoyage: widget.typeVoyage,
+                                          documentId: docResolu,
                                         )
                                       : ChoixPlaces(
                                           idDate: dateFormatee!,
@@ -636,6 +677,7 @@ class _CommandeState extends State<Commande> {
                                           moisAnnee: idMoisAnnee!,
                                           annee: idAnnee!,
                                           typeVoyage: widget.typeVoyage,
+                                          documentId: docResolu,
                                         ),
                                 ),
                               ).then((_) => setState(() => _isLoading = false));

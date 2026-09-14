@@ -41,6 +41,7 @@ class ChoixPlacesVip extends StatefulWidget {
     required this.heure,
     required this.prixDuBillet,
     required this.typeVoyage,
+    this.documentId,
   });
 
   final String idDate;
@@ -56,12 +57,19 @@ class ChoixPlacesVip extends StatefulWidget {
   final String destination;
   final int prixDuBillet;
   final String typeVoyage;
+  final String? documentId;
   @override
   State<ChoixPlacesVip> createState() => _ChoixPlacesVipState();
 }
 
 class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
-  int _seconds = 90;
+  // documentId resolu (recu de commande.dart) ou reconstruit en repli.
+  String get _documentId =>
+      (widget.documentId != null && widget.documentId!.isNotEmpty)
+          ? widget.documentId!
+          : '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
+
+  int _seconds = 150;
   late Timer _timer;
   bool _isLoading = true;
   late io.Socket socket;
@@ -87,6 +95,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'numerosDePlace': _selectedSeats.toList(),
       });
     }
@@ -117,6 +126,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'numerosDePlace': _selectedSeats.toList(),
       });
     }
@@ -154,12 +164,10 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
 
   Future<void> _chargerPlacesViaHttp() async {
     try {
-      final documentId =
-          '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h';
       final response = await ApiClient.instance.post(
         'placesAssises.php',
         body: {
-          'documentId': documentId,
+          'documentId': _documentId,
           'idUtilisateur': AuthService.getUid(),
         },
         timeout: const Duration(seconds: 10),
@@ -206,6 +214,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'mois': widget.mois,
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
@@ -278,6 +287,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'mois': widget.mois,
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
@@ -312,6 +322,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'numerosDePlace': [numero],
       });
       BlocProvider.of<BlocCompteur>(context).add(EventDecrement());
@@ -322,6 +333,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
         'destination': widget.destination,
         'date': widget.idDate,
         'heure': widget.heure,
+        'documentId': _documentId,
         'mois': widget.mois,
         'moisAnnee': widget.moisAnnee,
         'annee': widget.annee,
@@ -365,6 +377,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
             destination: widget.destination,
             prixDuTicket: widget.prixDuBillet,
             typeVoyage: widget.typeVoyage,
+            documentId: _documentId,
           ),
         ),
       );

@@ -28,6 +28,7 @@ class Reservation extends StatefulWidget {
     required this.depart,
     // Par défaut, le type de voyage est 'standard'. Si c'est une réservation VIP, il faut passer 'vip' lors de la création de l'instance.
     this.typeVoyage = 'standard',
+    this.documentId,
   });
 
   final String idDate;
@@ -46,6 +47,7 @@ class Reservation extends StatefulWidget {
   final String moisAnnee;
   final String annee;
   final String typeVoyage;
+  final String? documentId;
 
   @override
   State<Reservation> createState() => _ReservationState();
@@ -72,11 +74,10 @@ class _ReservationState extends State<Reservation> {
     final bool vip = _isVip;
     final Color accent = vip ? const Color(0xFFFFC107) : c.homeButtonPrimary;
     final int total = widget.prixUnitaire * widget.nombreDeTicket;
-    final String totalFmt =
-        total.toString().replaceAllMapped(
-          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-          (m) => '${m[1]} ',
-        );
+    final String totalFmt = total.toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]} ',
+    );
 
     final resultat = await showDialog<bool>(
       context: context,
@@ -117,7 +118,10 @@ class _ReservationState extends State<Reservation> {
                   child: Column(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(20),
@@ -149,7 +153,11 @@ class _ReservationState extends State<Reservation> {
                           ),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                           Flexible(
                             child: Text(
@@ -180,12 +188,19 @@ class _ReservationState extends State<Reservation> {
                   padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
                   child: Column(
                     children: [
-                      _ligneRecap(c, Icons.person_outline_rounded, 'Passager', widget.nom),
+                      //_ligneRecap(c, Icons.person_outline_rounded, 'Passager', widget.nom),
                       const SizedBox(height: 12),
-                      _ligneRecap(c, Icons.confirmation_number_outlined, 'Tickets',
-                          '${widget.nombreDeTicket}'),
+                      _ligneRecap(
+                        c,
+                        Icons.confirmation_number_outlined,
+                        'Tickets',
+                        '${widget.nombreDeTicket}',
+                      ),
                       const SizedBox(height: 16),
-                      Container(height: 1, color: c.homeTextPrimary.withValues(alpha: 0.08)),
+                      Container(
+                        height: 1,
+                        color: c.homeTextPrimary.withValues(alpha: 0.08),
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -223,7 +238,9 @@ class _ReservationState extends State<Reservation> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(color: c.homeTextPrimary.withValues(alpha: 0.2)),
+                              side: BorderSide(
+                                color: c.homeTextPrimary.withValues(alpha: 0.2),
+                              ),
                             ),
                           ),
                           child: Text(
@@ -241,7 +258,9 @@ class _ReservationState extends State<Reservation> {
                           onPressed: () => Navigator.pop(ctx, true),
                           style: FilledButton.styleFrom(
                             backgroundColor: accent,
-                            foregroundColor: vip ? Colors.black87 : Colors.white,
+                            foregroundColor: vip
+                                ? Colors.black87
+                                : Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -279,7 +298,10 @@ class _ReservationState extends State<Reservation> {
         const SizedBox(width: 12),
         Text(
           label,
-          style: TextStyle(color: c.homeTextPrimary.withValues(alpha: 0.5), fontSize: 13),
+          style: TextStyle(
+            color: c.homeTextPrimary.withValues(alpha: 0.5),
+            fontSize: 13,
+          ),
         ),
         const Spacer(),
         Flexible(
@@ -304,7 +326,9 @@ class _ReservationState extends State<Reservation> {
     try {
       final payload = {
         'documentId':
-            '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h',
+            (widget.documentId != null && widget.documentId!.isNotEmpty)
+                ? widget.documentId!
+                : '${widget.depart}-${widget.destination}_${widget.idDate}_${widget.heure}_h',
         'idUtilisateur': widget.id,
         'nom': widget.nom,
         'telephone': widget.contact,
