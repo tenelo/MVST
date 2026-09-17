@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/screens/choixPlace.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:socket_io_client_new/socket_io_client_new.dart' as io;
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,6 +16,7 @@ import 'package:mvst/mes_services/auth_service.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/listeTicketAvantpaiement.dart';
 import 'package:mvst/services/api_client.dart';
+import 'package:mvst/services/token_storage.dart';
 
 // ── Couleurs VIP ───────────────────────────────────
 const Color _vipOr = Color(0xFF00D87E);
@@ -159,7 +160,7 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
 
   Future<void> _chargerPlacesEtConnecterSocket() async {
     await _chargerPlacesViaHttp();
-    if (mounted) _connecterSocket();
+    if (mounted) await _connecterSocket();
   }
 
   Future<void> _chargerPlacesViaHttp() async {
@@ -198,11 +199,14 @@ class _ChoixPlacesVipState extends State<ChoixPlacesVip> {
     }
   }
 
-  void _connecterSocket() {
+  Future<void> _connecterSocket() async {
+    final token = await TokenStorage.getToken();
+    if (!mounted) return;
     socket = io.io(
       kBaseUrl,
       io.OptionBuilder()
           .setTransports(['websocket', 'polling'])
+          .setQuery({'token': token ?? ''})
           .disableAutoConnect()
           .build(),
     );

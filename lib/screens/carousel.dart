@@ -8,7 +8,7 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/models/models.dart';
 import 'package:mvst/screens/detailsImages.dart';
 import 'package:mvst/services/api_client.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:socket_io_client_new/socket_io_client_new.dart' as io;
 
 class PromoStripWidget extends StatefulWidget {
   const PromoStripWidget({super.key});

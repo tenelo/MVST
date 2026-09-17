@@ -6,7 +6,7 @@ import 'package:mvst/config/config.dart';
 import 'package:mvst/mes_services/mesFonctions.dart';
 import 'package:mvst/qrcode/creationQrCode.dart';
 import 'package:mvst/services/api_client.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:socket_io_client_new/socket_io_client_new.dart' as io;
 import 'package:ticket_widget/ticket_widget.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════

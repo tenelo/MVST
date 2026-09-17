@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:mvst/config/app_colors.dart';
 import 'package:mvst/config/config.dart';
 import 'package:mvst/services/api_client.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:socket_io_client_new/socket_io_client_new.dart' as io;
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 // Chemin SANS kBaseUrl : ApiClient le préfixe lui-même.
