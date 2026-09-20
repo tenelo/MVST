@@ -37,6 +37,10 @@ class FcmService {
         final payload = response.payload;
         if (payload == null || payload.isEmpty) return;
         try {
+          // Le payload embarque deja titre/message avec fallback applique
+          // (voir onMessage.listen) ; si jamais absent, _sauvegarderAnnonceSiDiffusion
+          // retombe sur des valeurs par defaut et AnnoncesStore.ajouter
+          // deduplique par id avec l'annonce deja sauvegardee a la reception.
           final data = Map<String, dynamic>.from(jsonDecode(payload));
           _gererTapData(data);
         } catch (_) {}
@@ -51,6 +55,14 @@ class FcmService {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final notif = message.notification;
       if (notif != null) {
+        final data = Map<String, dynamic>.from(message.data);
+        // Fallback titre/message depuis notification si absents du data —
+        // reutilise pour le payload de la notif locale, afin qu'un tap
+        // dessus (onDidReceiveNotificationResponse) recupere les memes
+        // valeurs plutot que de retomber sur les defauts de _sauvegarderAnnonceSiDiffusion.
+        data['titre'] ??= notif.title;
+        data['message'] ??= notif.body;
+
         _localNotif.show(
           notif.hashCode,
           notif.title,
@@ -64,8 +76,15 @@ class FcmService {
               priority: Priority.high,
             ),
           ),
-          payload: jsonEncode(message.data),
+          payload: jsonEncode(data),
         );
+
+        // Sauvegarde immediate de l'annonce des la reception (premier plan),
+        // independamment d'un tap eventuel sur la notif locale. La dedup
+        // par id dans AnnoncesStore.ajouter empeche tout doublon si
+        // l'utilisateur tape ensuite dessus (-> _gererTapData rappelle
+        // le meme id).
+        _sauvegarderAnnonceSiDiffusion(data);
       }
     });
 
@@ -97,17 +116,31 @@ class FcmService {
     await _gererTapData(data);
   }
 
+  /// Construit et persiste l'annonce si data decrit une diffusion.
+  /// Partagee entre la reception premier plan (onMessage.listen) et le tap
+  /// (onMessageOpenedApp / getInitialMessage / onDidReceiveNotificationResponse) ;
+  /// AnnoncesStore.ajouter deduplique par id, donc l'appeler deux fois pour
+  /// la meme annonce (reception puis tap) est sans effet de bord.
+  static Future<void> _sauvegarderAnnonceSiDiffusion(
+    Map<String, dynamic> data,
+  ) async {
+    if (data['type'] != 'diffusion') return;
+    final annonce = Annonce(
+      id: data['idAnnonce']?.toString() ??
+          '${DateTime.now().millisecondsSinceEpoch}',
+      titre: data['titre']?.toString() ?? 'Annonce',
+      message: data['message']?.toString() ?? '',
+      date: DateTime.now(),
+    );
+    await AnnoncesStore.ajouter(annonce);
+  }
+
   static Future<void> _gererTapData(Map<String, dynamic> data) async {
     if (data['type'] == 'diffusion') {
-      // Sauvegarde locale de l'annonce (A3-a : au tap) puis ouverture de l'ecran.
-      final annonce = Annonce(
-        id: data['idAnnonce']?.toString() ??
-            '${DateTime.now().millisecondsSinceEpoch}',
-        titre: data['titre']?.toString() ?? 'Annonce',
-        message: data['message']?.toString() ?? '',
-        date: DateTime.now(),
-      );
-      await AnnoncesStore.ajouter(annonce);
+      // Sauvegarde deja faite a la reception si le premier plan l'a vue
+      // passer ; ce rappel couvre le tap arriere-plan/cold-start et sert
+      // de filet (dedup par id) sinon.
+      await _sauvegarderAnnonceSiDiffusion(data);
       _ouvrirAnnonces();
     } else {
       _ouvrirSuggestions();
