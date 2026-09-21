@@ -5,7 +5,6 @@
 
 import 'dart:convert';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +20,14 @@ import 'package:mvst/services/token_storage.dart';
 // FONCTIONS GLOBALES
 // ════════════════════════════════════════════════════════════════
 
-Future<void> creerUtilisateurEtAuthentifierParMail(
+/// Finalise l'inscription APRÈS que l'OTP SMS a été valide (voir
+/// _creerCompte / _EcranOtpInscription) : le numero est deja verifie et
+/// FirebaseAuth.instance.currentUser est deja authentifie via
+/// signInWithCredential. Aucun email Firebase ni ecriture Firestore ici —
+/// l'uid Firebase (issu de l'OTP) sert directement d'idUtilisateur cote
+/// serveur (insert_utilisateur.php), exactement comme AuthService le fait
+/// deja pour les comptes existants.
+Future<void> creerCompteApresOtp(
   String nom,
   String prenoms,
   String telephone,
@@ -30,70 +36,50 @@ Future<void> creerUtilisateurEtAuthentifierParMail(
   BuildContext context,
 ) async {
   try {
-    final UserCredential userCredential = await FirebaseAuth.instance
-        .createUserWithEmailAndPassword(
-          email: "$telephone@gmail.com",
-          password: '${pin}mv',
-        );
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('Session de vérification OTP expirée.');
+    }
+    final String idUtilisateur = user.uid;
 
-    User? user = userCredential.user;
-    if (user != null) {
-      await user.updateDisplayName('$nom $prenoms');
+    await ajouterUtilisateurALaBaseDeDonnees(
+      idUtilisateur: idUtilisateur,
+      idAuth: idUtilisateur,
+      nom: nom,
+      prenoms: prenoms,
+      residence: ville,
+      telephone: telephone,
+      points: 3,
+      mail: '',
+    );
 
-      await FirebaseFirestore.instance
-          .collection('utilisateurs')
-          .doc(user.uid)
-          .set({
-            'id': user.uid,
-            'idAuth': user.uid,
-            'nom': nom,
-            'prenoms': prenoms,
-            'residence': ville,
-            'telephone': telephone,
-            'points': 3,
-            'mail': "$telephone@gmail.com",
-            'dateDeCreation': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+    const storage = FlutterSecureStorage();
+    await storage.write(key: 'user_phone', value: telephone);
+    await storage.write(key: 'user_pin', value: pin);
+    await storage.write(key: 'user_id', value: idUtilisateur);
+    await storage.write(key: 'user_name', value: '$nom $prenoms');
 
-      await ajouterUtilisateurALaBaseDeDonnees(
-        idUtilisateur: user.uid,
-        idAuth: user.uid,
-        nom: nom,
-        prenoms: prenoms,
-        residence: ville,
-        telephone: telephone,
-        points: 3,
-        mail: "$telephone@gmail.com",
+    // Obtention du token Laravel, comme le fait connection.dart au login
+    // normal — sans ça, AuthService.estConnecte() resterait false pour un
+    // compte tout juste créé.
+    try {
+      final response = await ApiClient.instance.post(
+        'login',
+        body: {'telephone': telephone, 'pin': pin},
+        timeout: const Duration(seconds: 10),
       );
-
-      const storage = FlutterSecureStorage();
-      await storage.write(key: 'user_phone', value: telephone);
-      await storage.write(key: 'user_pin', value: pin);
-      await storage.write(key: 'user_id', value: user.uid);
-      await storage.write(key: 'user_name', value: '$nom $prenoms');
-
-      // Obtention du token Laravel, comme le fait connection.dart au login
-      // normal — sans ça, AuthService.estConnecte() resterait false pour un
-      // compte tout juste créé.
-      try {
-        final response = await ApiClient.instance.post(
-          'login',
-          body: {'telephone': telephone, 'pin': pin},
-          timeout: const Duration(seconds: 10),
+      final data = json.decode(response.body);
+      if (data['success'] == true) {
+        final utilisateur = data['utilisateur'] as Map<String, dynamic>;
+        await TokenStorage.saveToken(data['token'] as String);
+        await storage.write(
+          key: 'user_idUtilisateur',
+          value: utilisateur['idUtilisateur']?.toString() ?? '',
         );
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final utilisateur = data['utilisateur'] as Map<String, dynamic>;
-          await TokenStorage.saveToken(data['token'] as String);
-          await storage.write(
-            key: 'user_idUtilisateur',
-            value: utilisateur['idUtilisateur']?.toString() ?? '',
-          );
-          await AuthService.chargerDepuisStorage();
-        }
-      } catch (e) {
-        debugPrint('Erreur obtention du token après inscription: $e');
+        await AuthService.chargerDepuisStorage();
       }
+    } catch (e) {
+      debugPrint('Erreur obtention du token après inscription: $e');
     }
   } catch (e) {
     debugPrint('Erreur création compte: $e');
@@ -328,14 +314,66 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
     }
 
     if (!mounted) return;
-    setState(() => _isLoading = false);
 
-    // Aller directement vers PinCreation
+    // Numéro valide → envoyer le SMS (même pattern que pin_forgot.dart).
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: '+225${_telephoneController.text}',
+        timeout: const Duration(seconds: 120),
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          try {
+            await FirebaseAuth.instance.signInWithCredential(credential);
+            if (mounted) {
+              setState(() => _isLoading = false);
+              _ouvrirCreationPin();
+            }
+          } catch (_) {
+            if (mounted) setState(() => _isLoading = false);
+          }
+        },
+        verificationFailed: (e) {
+          if (mounted) {
+            setState(() {
+              _erreur = 'Erreur d\'envoi du SMS. Vérifiez le numéro.';
+              _isLoading = false;
+            });
+          }
+        },
+        codeSent: (verificationId, _) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => _EcranOtpInscription(
+                  nom: _nomController.text,
+                  prenoms: _prenomController.text,
+                  telephone: _telephoneController.text,
+                  residence: _residenceController.text,
+                  verificationId: verificationId,
+                ),
+              ),
+            );
+          }
+        },
+        codeAutoRetrievalTimeout: (_) {},
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _erreur = 'Une erreur est survenue. Réessayez.';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _ouvrirCreationPin() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PinCreation(
-          onPinConfirmed: (pin) => creerUtilisateurEtAuthentifierParMail(
+          onPinConfirmed: (pin) => creerCompteApresOtp(
             _nomController.text,
             _prenomController.text,
             _telephoneController.text,
@@ -527,6 +565,215 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// ÉCRAN OTP INSCRIPTION — même logique Firebase que pin_forgot.dart
+// (PhoneAuthProvider.credential + signInWithCredential), UI dédiée car
+// pin_forgot.dart garde ses widgets prives (_ClavierOtp/_PinDots).
+// ════════════════════════════════════════════════════════════════
+class _EcranOtpInscription extends StatefulWidget {
+  const _EcranOtpInscription({
+    required this.nom,
+    required this.prenoms,
+    required this.telephone,
+    required this.residence,
+    required this.verificationId,
+  });
+
+  final String nom;
+  final String prenoms;
+  final String telephone;
+  final String residence;
+  final String verificationId;
+
+  @override
+  State<_EcranOtpInscription> createState() => _EcranOtpInscriptionState();
+}
+
+class _EcranOtpInscriptionState extends State<_EcranOtpInscription> {
+  final _codeController = TextEditingController();
+  bool _isLoading = false;
+  String? _erreur;
+
+  @override
+  void initState() {
+    super.initState();
+    _codeController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _verifierOtp(String code) async {
+    setState(() {
+      _isLoading = true;
+      _erreur = null;
+    });
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: widget.verificationId,
+        smsCode: code,
+      );
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PinCreation(
+              onPinConfirmed: (pin) => creerCompteApresOtp(
+                widget.nom,
+                widget.prenoms,
+                widget.telephone,
+                widget.residence,
+                pin,
+                context,
+              ),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        String message = 'Code incorrect. Réessayez.';
+        if (e is FirebaseAuthException) {
+          switch (e.code) {
+            case 'session-expired':
+              message = 'Le code a expiré. Redemandez un nouveau code.';
+              break;
+            case 'invalid-verification-code':
+              message = 'Code incorrect. Vérifiez le SMS et réessayez.';
+              break;
+            case 'too-many-requests':
+              message = 'Trop de tentatives. Réessayez plus tard.';
+              break;
+            case 'network-request-failed':
+              message = 'Erreur réseau. Vérifiez votre connexion.';
+              break;
+          }
+        }
+        setState(() {
+          _erreur = message;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Config.colors;
+    final double sw = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      backgroundColor: c.authBackground,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: IconThemeData(color: c.authTextPrimary),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: sw * 0.08),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.sms_outlined, color: c.authAccent, size: 56),
+              SizedBox(height: sw * 0.06),
+              Text(
+                'Code de vérification',
+                style: TextStyle(
+                  color: c.authTextPrimary,
+                  fontSize: sw * 0.055,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: sw * 0.02),
+              Text(
+                'Code envoyé au +225 ${widget.telephone}',
+                style: TextStyle(
+                  color: c.authAccent,
+                  fontSize: sw * 0.032,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: sw * 0.08),
+              Container(
+                decoration: BoxDecoration(
+                  color: c.authCardBackground,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: c.authBorder, width: 1.5),
+                ),
+                child: TextField(
+                  controller: _codeController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: c.authTextPrimary,
+                    fontSize: sw * 0.06,
+                    letterSpacing: 8,
+                  ),
+                  decoration: const InputDecoration(
+                    counterText: '',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+              if (_erreur != null) ...[
+                SizedBox(height: sw * 0.03),
+                Text(
+                  _erreur!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red, fontSize: 13),
+                ),
+              ],
+              SizedBox(height: sw * 0.06),
+              SizedBox(
+                width: double.infinity,
+                height: sw * 0.13,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: c.authButton,
+                    foregroundColor: c.authTextPrimary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: (_isLoading || _codeController.text.trim().length != 6)
+                      ? null
+                      : () => _verifierOtp(_codeController.text.trim()),
+                  child: _isLoading
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: c.authTextPrimary,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Text(
+                          'Vérifier',
+                          style: TextStyle(
+                            fontSize: sw * 0.038,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
