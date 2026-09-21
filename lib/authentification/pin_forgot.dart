@@ -234,27 +234,20 @@ Future<void> _envoyerSms() async {
     setState(() => _isLoading = true);
 
     try {
-      // Appel serveur pour mettre à jour le mot de passe Firebase via Admin SDK
-      final response = await http
-          .post(
-            Uri.parse('$kBaseUrl/reinitialiser_pin'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'telephone': _telephone,
-              'nouveauPin': _nouveauPin,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
+      // Appel serveur pour mettre à jour le PIN côté MVST (Sanctum/PostgreSQL).
+      // Le numéro est déjà vérifié par OTP SMS (voir _envoyerSms/_verifierOtp
+      // ci-dessus), qui a déjà authentifié FirebaseAuth.instance.currentUser
+      // via signInWithCredential — pas besoin d'une reconnexion Firebase
+      // supplémentaire ici.
+      final response = await ApiClient.instance.post(
+        'reset-pin',
+        body: {'telephone': _telephone, 'nouveau_pin': _nouveauPin},
+        timeout: const Duration(seconds: 10),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          // Reconnexion avec nouveau PIN
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: '$_telephone@gmail.com',
-            password: '${_nouveauPin}mv',
-          );
-
           // Mise à jour du PIN en local
           await _storage.write(key: 'user_pin', value: _nouveauPin);
           await _storage.write(key: 'user_phone', value: _telephone);
