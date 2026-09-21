@@ -218,8 +218,8 @@ class _PromoStripWidgetState extends State<PromoStripWidget> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(
-                        0.35,
+                      color: Colors.black.withValues(
+                        alpha: 0.35,
                       ), // fond sombre semi-transparent
                       borderRadius: BorderRadius.circular(12),
                     ),
