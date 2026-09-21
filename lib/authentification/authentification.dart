@@ -27,13 +27,19 @@ import 'package:mvst/services/token_storage.dart';
 /// l'uid Firebase (issu de l'OTP) sert directement d'idUtilisateur cote
 /// serveur (insert_utilisateur.php), exactement comme AuthService le fait
 /// deja pour les comptes existants.
+///
+/// Ne prend volontairement PAS de BuildContext : cette fonction est appelée
+/// depuis PinCreation.onPinConfirmed, invoqué APRÈS que l'écran OTP qui a
+/// créé la closure (_EcranOtpInscription) a été démonté par
+/// Navigator.pushReplacement. Un paramètre BuildContext capturé depuis cet
+/// écran lèverait "This widget has been unmounted..." dès son évaluation,
+/// même sans jamais être utilisé dans le corps de la fonction.
 Future<void> creerCompteApresOtp(
   String nom,
   String prenoms,
   String telephone,
   String ville,
   String pin,
-  BuildContext context,
 ) async {
   try {
     final user = FirebaseAuth.instance.currentUser;
@@ -379,7 +385,6 @@ class _PageDAuthentificationState extends State<PageDAuthentification> {
             _telephoneController.text,
             _residenceController.text,
             pin,
-            context,
           ),
         ),
       ),
@@ -635,7 +640,6 @@ class _EcranOtpInscriptionState extends State<_EcranOtpInscription> {
                 widget.telephone,
                 widget.residence,
                 pin,
-                context,
               ),
             ),
           ),
